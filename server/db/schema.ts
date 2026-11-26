@@ -8,7 +8,7 @@ type TimestampNull = ColumnType<Date | null, Date | string | null | undefined, D
 type Json<T> = ColumnType<T, string, string>;
 type JsonNull<T> = ColumnType<T | null, string | null | undefined, string | null>;
 
-export type Role = 'admin' | 'organiser' | 'interviewer';
+export type Role = 'admin' | 'organiser' | 'interviewer' | 'reviewer';
 
 export interface UsersTable {
   id: Generated<string>;
@@ -147,6 +147,81 @@ export interface RoundMembersTable {
   added_by: string | null;
 }
 
+// ---- Question review (migration 0003, REVIEW-1 to REVIEW-7) ----
+
+export interface ReviewRequestsTable {
+  id: Generated<string>;
+  track_id: string;
+  scope: 'track' | 'category' | 'questions';
+  category_id: string | null;
+  note: Generated<string>;
+  due_date: ColumnType<string | null, string | null | undefined, string | null>;
+  state: Generated<'open' | 'closed'>;
+  created_by: string | null;
+  created_at: Generated<Date>;
+  closed_at: TimestampNull;
+}
+
+export interface ReviewRequestItemsTable {
+  request_id: string;
+  question_id: string;
+  position: number;
+}
+
+export interface ReviewRequestReviewersTable {
+  request_id: string;
+  user_id: string;
+}
+
+export type ReviewOutcome = 'looks_good' | 'commented' | 'proposed' | 'nothing_to_add';
+
+export interface ReviewProgressTable {
+  request_id: string;
+  user_id: string;
+  question_id: string;
+  outcome: ReviewOutcome;
+  updated_at: Generated<Date>;
+}
+
+export type ProposalStatus = 'open' | 'accepted' | 'accepted_with_edits' | 'declined' | 'withdrawn';
+
+export interface QuestionProposalsTable {
+  id: Generated<string>;
+  kind: 'change' | 'new';
+  track_id: string;
+  question_id: string | null;
+  base_version: number | null;
+  proposed: Json<Record<string, unknown>>;
+  new_category_name: string | null;
+  reason: string;
+  status: Generated<ProposalStatus>;
+  proposed_by: string;
+  created_at: Generated<Date>;
+  review_request_id: string | null;
+  decided_by: string | null;
+  decided_at: TimestampNull;
+  decision_reason: string | null;
+  result_question_id: string | null;
+  result_version: number | null;
+}
+
+export interface QuestionCommentsTable {
+  id: Generated<string>;
+  question_id: string;
+  author_id: string;
+  text: string;
+  question_version: number;
+  review_request_id: string | null;
+  created_at: Generated<Date>;
+}
+
+export interface QuestionLooksGoodTable {
+  question_id: string;
+  user_id: string;
+  question_version: number;
+  created_at: Generated<Date>;
+}
+
 export interface Database {
   users: UsersTable;
   auth_sessions: AuthSessionsTable;
@@ -160,6 +235,13 @@ export interface Database {
   schema_migrations: SchemaMigrationsTable;
   rounds: RoundsTable;
   round_members: RoundMembersTable;
+  review_requests: ReviewRequestsTable;
+  review_request_items: ReviewRequestItemsTable;
+  review_request_reviewers: ReviewRequestReviewersTable;
+  review_progress: ReviewProgressTable;
+  question_proposals: QuestionProposalsTable;
+  question_comments: QuestionCommentsTable;
+  question_looks_good: QuestionLooksGoodTable;
 }
 
 export type UserRow = Selectable<UsersTable>;

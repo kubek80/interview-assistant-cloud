@@ -1,0 +1,47 @@
+/* Question review (REVIEW-1 to REVIEW-7). */
+.rv-feedback { border-top: 1px solid var(--color-border); padding-top: var(--space-4); margin-top: var(--space-4); }
+.rv-feedback__title { font-size: var(--text-md); margin: 0; }
+.rv-comments { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.rv-comments li { border-left: 3px solid var(--color-border-strong); padding-left: var(--space-3); }
+.rv-comments p { margin: 0; }
+.rv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.rv-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; }
+.rv-card__main { flex: 1 1 22rem; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.rv-card__title { font-weight: 650; color: var(--color-heading); overflow-wrap: anywhere; }
+.rv-card__meta { color: var(--color-text-muted); font-size: var(--text-sm); }
+.rv-card p { margin: 0; }
+.rv-progress { display: flex; flex-direction: column; gap: var(--space-2); min-width: 12rem; }
+.rv-compare { width: 100%; }
+.rv-compare th[scope='row'] { white-space: nowrap; vertical-align: top; width: 9rem; }
+.rv-compare td { vertical-align: top; width: 42%; overflow-wrap: anywhere; }
+.rv-compare ul { margin: 0; padding-left: var(--space-4); }
+.rv-changed { background: var(--color-highlight); }
+.rv-mark { font-weight: 650; font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.03em; display: inline-block; margin-right: var(--space-1); }
+.rv-add { text-decoration: underline; text-decoration-style: solid; }
+.rv-del { text-decoration: line-through; color: var(--color-text-muted); }
+.rv-work { display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+.rv-work__list { position: sticky; top: var(--space-4); max-height: calc(100vh - 8rem); overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.rv-work__list ol { list-style: none; margin: 0; padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; }
+.rv-work__list button { width: 100%; text-align: left; display: flex; gap: var(--space-2); align-items: baseline; background: none; border: 0; border-radius: var(--radius); padding: var(--space-2); color: var(--color-text); font: inherit; cursor: pointer; min-height: var(--target-min); }
+.rv-work__list button:hover { background: var(--color-surface-2); }
+.rv-work__list button[aria-current='true'] { background: var(--color-accent-soft); color: var(--color-accent); font-weight: 600; }
+.rv-work__num { font-variant-numeric: tabular-nums; min-width: 2ch; }
+.rv-work__state { margin-left: auto; white-space: nowrap; font-size: var(--text-xs); }
+.rv-work__main { min-width: 0; }
+.rv-actions { position: sticky; bottom: 0; background: var(--color-bg); border-top: 1px solid var(--color-border); padding: var(--space-3) 0; display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; z-index: 1; }
+@media (max-width: 48rem) {
+  .rv-work { grid-template-columns: minmax(0, 1fr); }
+  .rv-work__list { position: static; max-height: 14rem; }
+  .rv-compare th[scope='row'] { width: auto; }
+}
+.select.rv-show { width: auto; min-width: 14rem; }
+.rv-pick { max-height: 16rem; overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.rv-radio { gap: var(--space-2); min-height: var(--target-min); }
+@media (max-width: 40rem) {
+  /* Narrow screens: each field is a block, with "Now" above "Proposed". */
+  .rv-compare thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .rv-compare, .rv-compare tbody, .rv-compare tr, .rv-compare th, .rv-compare td { display: block; width: 100%; }
+  .rv-compare tr { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-border); }
+  .table.rv-compare th, .table.rv-compare td { border: 0; padding: var(--space-1) 0; }
+  .rv-compare td[data-label]::before { content: attr(data-label); display: block; font-size: var(--text-xs); font-weight: 650; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+}

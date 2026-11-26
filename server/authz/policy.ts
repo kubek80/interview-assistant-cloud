@@ -11,11 +11,38 @@ export interface Actor {
   role: Role;
 }
 
+/**
+ * What a role may touch at all, before any single permission. REVIEW-1: question reviewers have the
+ * question bank and nothing else. Interview data (rounds, candidates, interviews, judgements,
+ * decisions, summaries, transcripts, the audit log, settings) needs the `interviewData` capability,
+ * which reviewers lack. A permission is a question-bank permission only if it is listed in
+ * QUESTION_BANK_ACTIONS; every other permission, including any added later, needs interview data, and
+ * every round permission does too (canInRound). So a new route is closed to reviewers by default.
+ */
+export type Capability = 'questionBank' | 'interviewData';
+const CAPABILITIES: Record<Role, readonly Capability[]> = {
+  admin: ['questionBank', 'interviewData'],
+  organiser: ['questionBank', 'interviewData'],
+  interviewer: ['questionBank', 'interviewData'],
+  reviewer: ['questionBank'],
+};
+
+export function hasCapability(actor: Actor | null, c: Capability): boolean {
+  return !!actor && (CAPABILITIES[actor.role]?.includes(c) ?? false);
+}
+
+/** Permissions that are about the question bank only (no interview data behind them). */
+export const QUESTION_BANK_ACTIONS: ReadonlySet<string> = new Set(['bank.read', 'bank.edit', 'bank.import', 'bank.propose', 'bank.comment', 'bank.review', 'reviews.respond']);
+
 /** Permissions that do not depend on a round. */
 export const GLOBAL_ACTIONS = [
   'bank.read',
   'bank.edit',
   'bank.import',
+  'bank.propose',
+  'bank.comment',
+  'bank.review',
+  'reviews.respond',
   'users.read',
   'users.manage',
   'audit.read',
@@ -29,7 +56,15 @@ export type GlobalAction = (typeof GLOBAL_ACTIONS)[number];
 
 /** USER-2 as a table: which role has which permission. */
 const GLOBAL: Record<GlobalAction, readonly Role[]> = {
-  'bank.read': ['admin', 'organiser', 'interviewer'],
+  'bank.read': ['admin', 'organiser', 'interviewer', 'reviewer'],
+  // REVIEW-2, REVIEW-3, REVIEW-4: reviewers propose changes and new questions and mark "looks good".
+  'bank.propose': ['reviewer'],
+  // REVIEW-4: comments are written and read by reviewers, organisers and administrators.
+  'bank.comment': ['admin', 'organiser', 'reviewer'],
+  // REVIEW-5, REVIEW-7: deciding proposals and asking for reviews.
+  'bank.review': ['admin', 'organiser'],
+  // REVIEW-7: a reviewer's own list of review requests.
+  'reviews.respond': ['reviewer'],
   'bank.edit': ['admin', 'organiser'],
   // DB-3: uploading track or CSV files with the import report is for administrators.
   'bank.import': ['admin'],
@@ -48,6 +83,7 @@ const GLOBAL: Record<GlobalAction, readonly Role[]> = {
 
 export function can(actor: Actor | null, action: GlobalAction): boolean {
   if (!actor) return false;
+  if (!QUESTION_BANK_ACTIONS.has(action) && !hasCapability(actor, 'interviewData')) return false;
   return GLOBAL[action]?.includes(actor.role) ?? false;
 }
 
@@ -82,6 +118,8 @@ const ALLOWED_WHEN_CLOSED: ReadonlySet<RoundAction> = new Set(['round.read', 'ro
  */
 export function canInRound(actor: Actor | null, action: RoundAction, round: RoundAccess | null): boolean {
   if (!actor || !round) return false;
+  // REVIEW-1: nothing inside a round, ever, without interview data, whatever the membership says.
+  if (!hasCapability(actor, 'interviewData')) return false;
   if (round.state === 'closed' && !ALLOWED_WHEN_CLOSED.has(action)) return false;
   if (actor.role === 'admin') return true;
   const member = round.memberRole;

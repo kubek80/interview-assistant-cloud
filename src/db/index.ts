@@ -27,3 +27,25 @@ export type { SaveQuestionInput, CategoryInput, NewTrackInput, SaveQuestionResul
 export { useUsers, previewInvites, addUsers, updateUser, removeUser } from './users';
 export { useAuditLog, exportAuditCsv, AUDIT_ACTION_LABELS } from './audit';
 export type { AuditFilter } from './audit';
+export {
+  useReviewCounts,
+  useProposals,
+  useProposal,
+  proposeChange,
+  proposeNew,
+  proposeMany,
+  withdrawProposal,
+  acceptProposal,
+  declineProposal,
+  useFeedback,
+  addComment,
+  setLooksGood,
+  useReviewers,
+  useReviewRequests,
+  useReviewRequest,
+  createReviewRequest,
+  closeReviewRequest,
+  useMyReviews,
+  useMyReview,
+  setItemDone,
+} from './review';

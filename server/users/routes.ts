@@ -15,7 +15,7 @@ import { publish } from '../live/bus';
 import type { Executor } from '../db/pool';
 import type { InvitePreviewLine, InviteResult, Page, UserSummary } from '../../src/shared/api';
 
-const ROLE = z.enum(['admin', 'organiser', 'interviewer']);
+const ROLE = z.enum(['admin', 'organiser', 'interviewer', 'reviewer']);
 const ID = z.object({ id: z.uuid() }).strict();
 export const MAX_INVITES = 500;
 

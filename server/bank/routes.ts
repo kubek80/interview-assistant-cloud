@@ -15,7 +15,7 @@ const CATEGORY_ID = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).max(200);
 const TEXT_LIST = z.array(z.string().max(5000)).max(60);
 const RUBRIC = z.object({ '1': z.string().max(5000).optional(), '2': z.string().max(5000).optional(), '3': z.string().max(5000).optional(), '4': z.string().max(5000).optional() }).strict().nullable();
 
-const DRAFT = z
+export const DRAFT = z
   .object({
     text: z.string().max(5000),
     description: z.string().max(10000),

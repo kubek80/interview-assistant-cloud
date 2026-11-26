@@ -171,6 +171,8 @@ export interface SaveQuestionInput {
   id?: string;
   draft: QuestionDraft;
   newCategory?: CategoryInput;
+  /** Recorded as the audit entry's reason (REVIEW-5: who proposed it and who accepted it). */
+  auditReason?: string;
 }
 
 const EDITABLE: Array<keyof QuestionDraft> = ['text', 'description', 'categoryId', 'difficulty', 'type', 'timeMin', 'lookFor', 'redFlags', 'probes', 'rubricOverride'];
@@ -207,8 +209,10 @@ export async function saveQuestion(db: Executor, actor: AuditActor, input: SaveQ
     if (bumped) await recordVersion(db, after, 'edit', userIdOf(actor));
     await markChanged(db, input.trackId);
     const pick = (q: Question) => Object.fromEntries([...changedFields, 'version'].map((k) => [k, q[k as keyof Question] ?? null]));
-    await appendAudit(db, actor, { action: 'bank.question_edited', entity: 'question', entityId: after.id, before: pick(before), after: pick(after) });
+    await appendAudit(db, actor, { action: 'bank.question_edited', entity: 'question', entityId: after.id, before: pick(before), after: pick(after), reason: input.auditReason ?? null });
     await bankEvent(db, 'question', after.id);
+    // REVIEW-6: open proposals on this question may now be out of date.
+    await publish(db, { topic: 'reviews', kind: 'question', id: after.id });
     return { id: after.id, number: after.number, version: after.version, bumped, changed: true };
   }
 
@@ -217,7 +221,7 @@ export async function saveQuestion(db: Executor, actor: AuditActor, input: SaveQ
   await db.insertInto('questions').values({ id: question.id, track_id: input.trackId, number, ...questionColumns(question), version: 1, status: 'active' }).execute();
   await recordVersion(db, question, 'create', userIdOf(actor));
   await markChanged(db, input.trackId);
-  await appendAudit(db, actor, { action: 'bank.question_added', entity: 'question', entityId: question.id, after: question });
+  await appendAudit(db, actor, { action: 'bank.question_added', entity: 'question', entityId: question.id, after: question, reason: input.auditReason ?? null });
   await bankEvent(db, 'question', question.id);
   return { id: question.id, number, version: 1, bumped: false, changed: true };
 }

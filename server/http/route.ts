@@ -16,8 +16,8 @@ export type Access =
   | { public: true }
   /** Any signed-in, active user. */
   | { signedIn: true }
-  /** A global permission from the policy (USER-2). */
-  | { action: GlobalAction }
+  /** A global permission from the policy (USER-2); with a list, any one of them. */
+  | { action: GlobalAction | readonly GlobalAction[] }
   /**
    * A permission on one round (ROUND-2). `roundOf` finds the round the target belongs to, from
    * the database, never from the request body (no IDOR): e.g. the round of the interview in the
@@ -68,7 +68,7 @@ const EMPTY = z.object({}).strict();
 export function describeAccess(a: Access): string {
   if ('public' in a) return 'public';
   if ('signedIn' in a) return 'signedIn';
-  if ('action' in a) return a.action;
+  if ('action' in a) return [a.action].flat().join('|');
   return `round:${a.round}`;
 }
 
@@ -102,7 +102,7 @@ export async function checkAccess(req: FastifyRequest, ctx: AppContext, access: 
   if (!actor) throw notSignedIn();
   if ('signedIn' in access) return;
   if ('action' in access) {
-    if (!can(actor, access.action)) throw forbidden();
+    if (![access.action].flat().some((x) => can(actor, x))) throw forbidden();
     return;
   }
   const roundId = await access.roundOf(req, ctx);

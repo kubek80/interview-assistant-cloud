@@ -3,18 +3,25 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { Icon } from '../ui/Icon';
 import { useOnline } from '../ui/hooks';
 import { MenuButton } from '../ui/MenuButton';
-import { signOut } from '../db';
+import { signOut, useReviewCounts } from '../db';
 import { ROLE_LABELS, type Me } from '../shared/api';
 
-/** The main navigation: only what the signed-in person can use (the server checks it again). */
-function navFor(me: Me) {
+/**
+ * The main navigation: only what the signed-in person can use (the server checks it again).
+ * REVIEW-1: a question reviewer sees their review list, the question bank and the docs.
+ * REVIEW-7: counts of open proposals (organisers, administrators) and open review items (reviewers).
+ */
+function navFor(me: Me, counts: { openProposals: number; openReviewItems: number } | undefined) {
   const has = (p: string) => me.permissions.includes(p);
+  const reviewer = me.role === 'reviewer';
   return [
-    { to: '/', label: 'Home', end: true, show: true },
-    { to: '/bank', label: 'Question bank', show: has('bank.read') },
-    { to: '/users', label: 'Users', show: has('users.read') },
-    { to: '/admin', label: 'Admin', show: has('audit.read') },
-    { to: '/docs', label: 'Docs', show: true },
+    { to: '/', label: 'Home', end: true, show: !reviewer, count: 0 },
+    { to: '/to-review', label: 'To review', show: has('reviews.respond'), count: counts?.openReviewItems ?? 0, countLabel: 'to do' },
+    { to: '/bank', label: 'Question bank', show: has('bank.read'), count: 0 },
+    { to: '/reviews', label: 'Reviews', show: has('bank.review'), count: counts?.openProposals ?? 0, countLabel: 'proposals waiting' },
+    { to: '/users', label: 'Users', show: has('users.read'), count: 0 },
+    { to: '/admin', label: 'Admin', show: has('audit.read'), count: 0 },
+    { to: '/docs', label: 'Docs', show: true, count: 0 },
   ].filter((n) => n.show);
 }
 
@@ -81,6 +88,7 @@ export function Layout({ me }: { me: Me }) {
   const online = useOnline();
   const mainRef = useRef<HTMLElement>(null);
   useFocusOnRouteChange(mainRef);
+  const counts = useReviewCounts(me.permissions.includes('bank.review') || me.permissions.includes('reviews.respond'));
 
   return (
     <>
@@ -103,10 +111,16 @@ export function Layout({ me }: { me: Me }) {
           </Link>
           <nav className="app-nav" aria-label="Main">
             <ul>
-              {navFor(me).map((n) => (
+              {navFor(me, counts).map((n) => (
                 <li key={n.to}>
                   <NavLink to={n.to} end={n.end}>
                     {n.label}
+                    {n.count > 0 && (
+                      <span className="app-nav__count">
+                        {n.count}
+                        <span className="visually-hidden"> {n.countLabel}</span>
+                      </span>
+                    )}
                   </NavLink>
                 </li>
               ))}

@@ -6,7 +6,7 @@ The **local app** (the MVP pilot: a single-page app with no server, data in the 
 
 **Status: step 1 of 3 is built.**
 
-1. **Foundation (built):** server, database schema and migrations for the whole data model, Google sign-in and sessions, users and roles with the Users page, the question bank in the database (API, import scripts, the bank screens), the audit log, configuration, Dockerfile, CI, deployment guide, development and test tooling.
+1. **Foundation (built):** server, database schema and migrations for the whole data model, Google sign-in and sessions, users and roles with the Users page, the question bank in the database (API, import scripts, the bank screens), **question reviewers and the review workflow** (proposals, comments, review requests: `REVIEW-1` to `REVIEW-7`), the audit log, configuration, Dockerfile, CI, deployment guide, development and test tooling.
 2. **Next:** hiring rounds, planning, interviewing together live, scorecards, debrief and decision, summary. Until then those screens say "Coming in the next step".
 3. **Later:** transcripts, recordings and AI on the server, importing local-app files, the retention job, privacy requests, final verification.
 
@@ -42,7 +42,7 @@ cp .env.example .env        # development settings: development sign-in on, admi
 export DATABASE_URL=postgres://ia@127.0.0.1:54329/ia_dev
 npm run db:migrate          # create the tables
 npm run db:seed             # import the four bundled tracks (207 questions)
-npm run db:dev-users        # optional: organiser@example.test and interviewer@example.test
+npm run db:dev-users        # optional: organiser@, interviewer@ and reviewer@example.test
 npm run dev                 # API on :8080 and Vite on :5173; open http://localhost:5173
 ```
 
@@ -95,7 +95,7 @@ Server tests: `vitest.server.config.ts` migrates a template database once (`serv
 
 - **API:** JSON under `/api`. Every route is declared with `route(app, ctx, { method, url, access, params?, query?, body?, handler })` (`server/http/route.ts`). `access` is required: `{ public: true }`, `{ signedIn: true }`, `{ action: 'bank.edit' }` (a global permission) or `{ round: 'round.plan', roundOf }` (a permission on one round). A route registered any other way stops the server starting. Inputs are zod schemas; use `.strict()` objects (unknown fields are refused: no mass assignment). Errors: throw `ApiError`, `notFound()`, `invalid()` or `conflict()`; responses are `{ error: { code, message, details? } }`. Lists that grow are paged with `?limit=&cursor=` → `{ items, nextCursor }`.
 - **Writes** happen in one transaction with their audit entry (`appendAudit(trx, actor, …)`) and their live event (`publish(trx, …)`, delivered only on commit). Lock the parent row (`forUpdate()`) when numbering or counting.
-- **Permissions:** add a permission to `server/authz/policy.ts` and nowhere else. `server/authz/authz.test.ts` enumerates every route: add the role expectations there.
+- **Permissions:** add a permission to `server/authz/policy.ts` and nowhere else. Question reviewers (`REVIEW-1`) hold only the question-bank capability: any permission not listed in `QUESTION_BANK_ACTIONS`, and every round permission, is refused to them automatically, so step-2 routes need nothing extra (`server/authz/authz.test.ts` lists exactly what a reviewer can reach). `server/authz/authz.test.ts` enumerates every route: add the role expectations there.
 - **Ids:** random UUIDs for anything that can carry candidate data (`PRIV-3`). No candidate text in URLs, log lines, or audit `before`/`after` beyond what `docs/06` allows.
 
 ### (a) Add a round-scoped route

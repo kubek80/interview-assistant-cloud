@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { RepoError, saveQuestion, type SaveQuestionResult } from '../../db';
+import { RepoError, acceptProposal, proposeChange, proposeNew, saveQuestion, type SaveQuestionResult } from '../../db';
 import {
   changedVersionedFields,
   defaultTimeMin,
@@ -17,7 +17,17 @@ import { DIFFICULTIES, QUESTION_TYPES, type Category, type Difficulty, type Ques
 import { Alert, Button, ConfirmDialog, Dialog, DocLink, Field, Select, TextArea, TextInput } from '../../ui';
 import { ListEditor } from './ListEditor';
 
-export type EditorMode = { kind: 'add'; categoryId?: string } | { kind: 'edit'; question: Question } | { kind: 'duplicate'; from: Question };
+export type EditorMode =
+  | { kind: 'add'; categoryId?: string }
+  | { kind: 'edit'; question: Question }
+  | { kind: 'duplicate'; from: Question }
+  // REVIEW-2, REVIEW-3: the same form proposes instead of saving; the bank does not change.
+  | { kind: 'propose-change'; question: Question; requestId?: string }
+  | { kind: 'propose-new'; categoryId?: string; requestId?: string }
+  // REVIEW-5, REVIEW-6: an organiser edits a proposal, then accepts it.
+  | { kind: 'accept'; proposalId: string; question: Question | null; draft: QuestionDraft; newCategoryName: string | null; confirmOutOfDate: boolean };
+
+const isPropose = (m: EditorMode) => m.kind === 'propose-change' || m.kind === 'propose-new';
 
 const NEW_CATEGORY = '__new__';
 
@@ -38,14 +48,25 @@ export interface QuestionEditorProps {
   trackId: string;
   categories: readonly Category[];
   onClose: () => void;
-  onSaved: (result: SaveQuestionResult, mode: EditorMode) => void;
+  /** `null` for a proposal (nothing is saved to the bank). */
+  onSaved: (result: SaveQuestionResult | null, mode: EditorMode) => void;
 }
 
 function title(mode: EditorMode | null): string {
   if (!mode) return '';
   if (mode.kind === 'edit') return `Edit question ${mode.question.number}`;
   if (mode.kind === 'duplicate') return `New question from question ${mode.from.number}`;
+  if (mode.kind === 'propose-change') return `Propose a change to question ${mode.question.number}`;
+  if (mode.kind === 'propose-new') return 'Propose a new question';
+  if (mode.kind === 'accept') return mode.question ? `Edit, then accept: question ${mode.question.number}` : 'Edit, then accept: new question';
   return 'Add a question';
+}
+
+function submitLabel(mode: EditorMode | null): string {
+  if (!mode) return '';
+  if (isPropose(mode)) return 'Send proposal';
+  if (mode.kind === 'accept') return 'Accept with these edits';
+  return mode.kind === 'edit' ? 'Save changes' : 'Add question';
 }
 
 /** BANK-9…BANK-11: add, edit or duplicate a question in a dialog. */
@@ -80,7 +101,7 @@ export function QuestionEditor({ mode, trackId, categories, onClose, onSaved }: 
             </span>
             <Button onClick={requestClose}>Cancel</Button>
             <Button variant="primary" type="submit" form={formId} disabled={busy} aria-keyshortcuts="Control+Enter Meta+Enter">
-              {mode?.kind === 'edit' ? 'Save changes' : 'Add question'}
+              {submitLabel(mode)}
             </Button>
           </>
         }
@@ -127,17 +148,19 @@ interface EditorFormProps {
   categories: readonly Category[];
   onDirty: (dirty: boolean) => void;
   onBusy: (busy: boolean) => void;
-  onSaved: (r: SaveQuestionResult) => void;
+  onSaved: (r: SaveQuestionResult | null) => void;
 }
 
 function initialDraft(mode: EditorMode, categories: readonly Category[]): QuestionDraft {
-  if (mode.kind === 'edit') return draftFromQuestion(mode.question);
+  if (mode.kind === 'edit' || mode.kind === 'propose-change') return draftFromQuestion(mode.question);
   if (mode.kind === 'duplicate') return draftFromQuestion(mode.from);
+  if (mode.kind === 'accept') return { ...mode.draft, categoryId: mode.draft.categoryId || (mode.newCategoryName ? NEW_CATEGORY : '') };
   return emptyDraft(mode.categoryId ?? (categories.length === 1 ? categories[0].id : ''));
 }
 
 function EditorForm({ formId, mode, trackId, categories, onDirty, onBusy, onSaved }: EditorFormProps) {
   const p = useId();
+  const reasonId = `${p}-reason`;
   const ids: Record<DraftField, string> = {
     text: `${p}-text`,
     description: `${p}-desc`,
@@ -154,8 +177,9 @@ function EditorForm({ formId, mode, trackId, categories, onDirty, onBusy, onSave
   const [draft, setDraft] = useState<QuestionDraft>(start);
   const [timeText, setTimeText] = useState(String(start.timeMin));
   // BANK-10: the estimate follows the table until the user types their own.
-  const [timeAuto, setTimeAuto] = useState(mode.kind === 'add' || start.timeMin === defaultTimeMin(start.type, start.difficulty));
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [timeAuto, setTimeAuto] = useState(mode.kind === 'add' || mode.kind === 'propose-new' || start.timeMin === defaultTimeMin(start.type, start.difficulty));
+  const [newCategoryName, setNewCategoryName] = useState(mode.kind === 'accept' && !mode.draft.categoryId ? (mode.newCategoryName ?? '') : '');
+  const [reason, setReason] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [saveError, setSaveError] = useState<{ message: string; details: string[] } | null>(null);
   const [startSnapshot] = useState(() => JSON.stringify([start, '']));
@@ -174,36 +198,50 @@ function EditorForm({ formId, mode, trackId, categories, onDirty, onBusy, onSave
   const creatingCategory = draft.categoryId === NEW_CATEGORY;
   const effective: QuestionDraft = { ...draft, timeMin: timeText.trim() === '' ? NaN : Number(timeText) };
   const knownIds = [...categories.map((c) => c.id), ...(creatingCategory && newCategoryName.trim() ? [NEW_CATEGORY] : [])];
-  const errors: DraftErrors = validateQuestionDraft(effective, knownIds);
+  const errors: DraftErrors & { reason?: string } = validateQuestionDraft(effective, knownIds);
   if (creatingCategory && !newCategoryName.trim()) errors.categoryId = 'Enter a name for the new category.';
   else if (creatingCategory && categories.some((c) => c.name.trim().toLowerCase() === newCategoryName.trim().toLowerCase())) {
     errors.categoryId = 'There is already a category with this name: choose it from the list.';
   }
+  if (isPropose(mode) && !reason.trim()) errors.reason = 'Say briefly why, for the people who decide.';
+  if (mode.kind === 'propose-change' && !Object.keys(errors).length) {
+    const q = mode.question;
+    const same = changedVersionedFields(q, effective).length === 0 && effective.categoryId === q.categoryId && effective.timeMin === q.timeMin;
+    if (same) errors.text = 'Change something first: the proposal is the same as the question.';
+  }
   const shown = submitted ? errors : {};
   const suggestedTime = defaultTimeMin(draft.type, draft.difficulty);
   const behavioural = draft.type === 'behavioural';
-  const before = mode.kind === 'edit' ? mode.question : null;
+  const before = mode.kind === 'edit' ? mode.question : mode.kind === 'accept' ? mode.question : null;
   const bumpFields = before ? changedVersionedFields(before, effective) : [];
 
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     setSubmitted(true);
-    const order: DraftField[] = ['text', 'description', 'categoryId', 'type', 'difficulty', 'timeMin', 'lookFor', 'redFlags', 'probes', 'rubricOverride'];
+    const order: Array<DraftField | 'reason'> = ['text', 'description', 'categoryId', 'type', 'difficulty', 'timeMin', 'lookFor', 'redFlags', 'probes', 'rubricOverride', 'reason'];
     const first = order.find((f) => errors[f]);
     if (first) {
-      document.getElementById(ids[first])?.focus();
+      document.getElementById(first === 'reason' ? reasonId : ids[first])?.focus();
       return;
     }
     onBusy(true);
     setSaveError(null);
+    const draftOut = creatingCategory ? { ...effective, categoryId: '' } : effective;
+    const newCategory = creatingCategory ? { name: newCategoryName.trim() } : undefined;
     try {
-      const r = await saveQuestion({
-        trackId,
-        id: mode.kind === 'edit' ? mode.question.id : undefined,
-        draft: creatingCategory ? { ...effective, categoryId: '' } : effective,
-        newCategory: creatingCategory ? { name: newCategoryName.trim() } : undefined,
-      });
-      onSaved(r);
+      if (mode.kind === 'propose-change') {
+        await proposeChange({ questionId: mode.question.id, baseVersion: mode.question.version, draft: draftOut, reason: reason.trim(), requestId: mode.requestId });
+        onSaved(null);
+      } else if (mode.kind === 'propose-new') {
+        await proposeNew({ trackId, draft: draftOut, newCategory, reason: reason.trim(), requestId: mode.requestId });
+        onSaved(null);
+      } else if (mode.kind === 'accept') {
+        const r = await acceptProposal(mode.proposalId, { draft: draftOut, newCategory, note: reason.trim() || undefined, confirmOutOfDate: mode.confirmOutOfDate });
+        onSaved({ id: r.questionId, number: 0, version: r.version, bumped: r.bumped, changed: true });
+      } else {
+        const r = await saveQuestion({ trackId, id: mode.kind === 'edit' ? mode.question.id : undefined, draft: draftOut, newCategory });
+        onSaved(r);
+      }
     } catch (err) {
       setSaveError({ message: err instanceof Error ? err.message : 'The question could not be saved.', details: err instanceof RepoError ? err.details : [] });
     } finally {
@@ -384,7 +422,17 @@ function EditorForm({ formId, mode, trackId, categories, onDirty, onBusy, onSave
         </div>
       </details>
 
-      {before && (
+      {isPropose(mode) && (
+        <Field label="Why do you propose this?" required error={shown.reason} hint="A sentence or two for the organisers who decide. Nothing changes in the bank until they accept it.">
+          <TextArea id={reasonId} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      )}
+      {mode.kind === 'accept' && (
+        <Field label="Note for the reviewer (optional)" hint="Shown to the person who proposed it, with the outcome.">
+          <TextArea id={reasonId} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      )}
+      {before && !isPropose(mode) && (
         <p className="small q-editor__version">
           {bumpFields.length
             ? `Saving raises the version from ${before.version} to ${before.version + 1} (changed: ${bumpFields.map((f) => VERSION_FIELD_LABEL[f]).join(', ')}). Interviews already set up keep their own copy.`

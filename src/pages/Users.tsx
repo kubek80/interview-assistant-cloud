@@ -193,7 +193,7 @@ function UserRow(props: { user: UserSummary; isMe: boolean; onRole: (r: Role) =>
       <td data-label="Last signed in" className="nowrap">
         {u.lastSignInAt ? <time dateTime={u.lastSignInAt}>{formatDateTime(u.lastSignInAt)}</time> : <span className="muted">Never</span>}
       </td>
-      <td data-label="Rounds">{u.rounds.length ? u.rounds.map((r) => r.name).join(', ') : <span className="muted">None</span>}</td>
+      <td data-label="Rounds">{u.role === 'reviewer' ? <span className="muted">Not on rounds</span> : u.rounds.length ? u.rounds.map((r) => r.name).join(', ') : <span className="muted">None</span>}</td>
       <td className="pc-rtable__actions">
         <MenuButton label="More" variant="ghost" size="sm" srLabel={` for ${label(u)}`} items={items} />
       </td>
@@ -325,5 +325,7 @@ function roleHelp(role: Role): string {
       return 'Organisers run hiring rounds and edit the question bank.';
     case 'interviewer':
       return 'Interviewers take part in the rounds they are on and read the question bank.';
+    case 'reviewer':
+      return 'Question reviewers read the question bank, comment and propose changes. They see no interview data.';
   }
 }

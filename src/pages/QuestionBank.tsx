@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router';
-import { exportTrackCsv, hasPermission, setQuestionStatus, useMe, useTrackBank, useTracks } from '../db';
+import { exportTrackCsv, hasPermission, setLooksGood, setQuestionStatus, useFeedback, useMe, useTrackBank, useTracks } from '../db';
+import { Feedback } from './review/Feedback';
+import '../styles/pages/review.css';
 import { filterQuestions } from '../domain/plan';
 import type { Question } from '../domain/types';
 import { Badge, Button, Dialog, DocLink, EmptyState, IconButton, PageHeader, QuestionTags, downloadFile, formatMinutes, useDocumentTitle, useToast } from '../ui';
@@ -25,6 +27,8 @@ export default function QuestionBank() {
   const tracks = useTracks();
   const me = useMe();
   const canEdit = hasPermission(me, 'bank.edit');
+  const canPropose = hasPermission(me, 'bank.propose');
+  const canComment = hasPermission(me, 'bank.comment');
   const trackId = routeTrackId ?? tracks?.[0]?.id;
   const [newTrack, setNewTrack] = useState(false);
   const [exportId, setExportId] = useState<string | null>(null);
@@ -33,7 +37,13 @@ export default function QuestionBank() {
     <>
       <PageHeader
         title="Question bank"
-        subtitle={canEdit ? 'Browse, add and edit the questions for each role. Changes are saved for everyone straight away.' : 'Browse the questions for each role.'}
+        subtitle={
+          canEdit
+            ? 'Browse, add and edit the questions for each role. Changes are saved for everyone straight away.'
+            : canPropose
+              ? 'Read the questions, comment, and propose changes or new questions.'
+              : 'Browse the questions for each role.'
+        }
         actions={
           canEdit ? (
             <Button icon="plus" onClick={() => setNewTrack(true)}>
@@ -69,7 +79,7 @@ export default function QuestionBank() {
       {tracks === undefined ? (
         <p className="muted">Loading…</p>
       ) : trackId ? (
-        <TrackBrowser key={trackId} trackId={trackId} onExport={setExportId} canEdit={canEdit} canImport={hasPermission(me, 'bank.import')} />
+        <TrackBrowser key={trackId} trackId={trackId} onExport={setExportId} canEdit={canEdit} canImport={hasPermission(me, 'bank.import')} canPropose={canPropose} canComment={canComment} />
       ) : (
         <EmptyState title="There are no questions yet." actions={canEdit ? <Button onClick={() => setNewTrack(true)}>New track…</Button> : undefined}>
           <p>{canEdit ? 'Create a track, or ask an administrator to import the question files.' : 'Ask an administrator to import the question files.'}</p>
@@ -81,7 +91,21 @@ export default function QuestionBank() {
   );
 }
 
-function TrackBrowser({ trackId, onExport, canEdit, canImport }: { trackId: string; onExport: (trackId: string) => void; canEdit: boolean; canImport: boolean }) {
+function TrackBrowser({
+  trackId,
+  onExport,
+  canEdit,
+  canImport,
+  canPropose,
+  canComment,
+}: {
+  trackId: string;
+  onExport: (trackId: string) => void;
+  canEdit: boolean;
+  canImport: boolean;
+  canPropose: boolean;
+  canComment: boolean;
+}) {
   const bank = useTrackBank(trackId);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -146,7 +170,7 @@ function TrackBrowser({ trackId, onExport, canEdit, canImport }: { trackId: stri
             <DocLink req="BANK-14" />
           </div>
         )}
-        {!canEdit && (
+        {!canEdit && !canPropose && (
           <Button icon="download" variant="ghost" onClick={exportCsv}>
             Export CSV
           </Button>
@@ -179,6 +203,20 @@ function TrackBrowser({ trackId, onExport, canEdit, canImport }: { trackId: stri
           )}
         </div>
       </div>
+      ) : canPropose ? (
+        <div className="bank-toolbar" role="group" aria-label="Propose questions for this track">
+          <div className="cluster">
+            <Button variant="primary" icon="plus" onClick={() => setEditor({ kind: 'propose-new', categoryId: filters.categoryId || undefined })}>
+              Propose a question
+            </Button>
+            <Button icon="upload" onClick={() => setDialog('bulk')}>
+              Propose several…
+            </Button>
+          </div>
+          <Button icon="download" variant="ghost" onClick={exportCsv}>
+            Export CSV
+          </Button>
+        </div>
       ) : null}
       {all.length === 0 ? (
         <EmptyState
@@ -253,8 +291,16 @@ function TrackBrowser({ trackId, onExport, canEdit, canImport }: { trackId: stri
               }
             : undefined
         }
+        below={open && canComment ? <Feedback questionId={open.id} version={open.version} /> : undefined}
         extraFooter={
-          open && canEdit && (
+          open && canPropose ? (
+            <div className="cluster">
+              <Button size="sm" icon="edit" onClick={() => setEditor({ kind: 'propose-change', question: open })}>
+                Propose a change
+              </Button>
+              <LooksGoodButton questionId={open.id} />
+            </div>
+          ) : open && canEdit && (
             <div className="cluster">
               <Button size="sm" icon="edit" onClick={() => setEditor({ kind: 'edit', question: open })}>
                 Edit
@@ -282,7 +328,9 @@ function TrackBrowser({ trackId, onExport, canEdit, canImport }: { trackId: stri
         onClose={() => setEditor(null)}
         onSaved={(r, mode) => {
           setEditor(null);
-          if (mode.kind === 'edit') {
+          if (!r) {
+            toast('Proposal sent. Nothing changes until an organiser accepts it; follow it under To review › My proposals.', 'success');
+          } else if (mode.kind === 'edit') {
             toast(r.changed ? `Question ${r.number} saved${r.bumped ? `; it is now version ${r.version}` : ''}.` : `Question ${r.number}: nothing changed.`, 'success');
           } else {
             toast(`Question ${r.number} added.`, 'success');
@@ -290,7 +338,7 @@ function TrackBrowser({ trackId, onExport, canEdit, canImport }: { trackId: stri
           }
         }}
       />
-      <BulkAddDialog open={dialog === 'bulk'} trackId={trackId} trackName={bank.track.name} categories={bank.categories} questions={all} onClose={() => setDialog(null)} />
+      <BulkAddDialog open={dialog === 'bulk'} propose={!canEdit && canPropose} trackId={trackId} trackName={bank.track.name} categories={bank.categories} questions={all} onClose={() => setDialog(null)} />
       <CategoryManager open={dialog === 'categories'} onClose={() => setDialog(null)} trackId={trackId} trackName={bank.track.name} categories={bank.categories} questions={all} />
       <Dialog open={dialog === 'import'} onClose={() => setDialog(null)} wide title="Import question files" footer={<Button onClick={() => setDialog(null)}>Close</Button>}>
         <ImportQuestions
@@ -336,5 +384,29 @@ function BankRow({ q, category, onOpen, onEdit }: { q: Question; category: strin
         {onEdit && <IconButton icon="edit" size="sm" label={`Edit question ${q.number}`} onClick={onEdit} aria-haspopup="dialog" />}
       </td>
     </tr>
+  );
+}
+
+/** REVIEW-4: a reviewer's own "looks good" mark on a question (a toggle). */
+export function LooksGoodButton({ questionId, requestId, onDone }: { questionId: string; requestId?: string; onDone?: () => void }) {
+  const fb = useFeedback(questionId);
+  const { toast } = useToast();
+  const on = !!fb?.looksGood.some((g) => g.mine);
+  return (
+    <Button
+      size="sm"
+      icon="check"
+      aria-pressed={on}
+      onClick={async () => {
+        try {
+          await setLooksGood(questionId, !on, requestId);
+          if (!on) onDone?.();
+        } catch (err) {
+          toast(err instanceof Error ? err.message : 'Not saved.', 'error');
+        }
+      }}
+    >
+      Looks good
+    </Button>
   );
 }

@@ -24,6 +24,7 @@ export async function topicAllowed(ctx: AppContext, actor: Actor, topic: string)
   if (topic === 'bank') return can(actor, 'bank.read');
   if (topic === 'users') return can(actor, 'users.read');
   if (topic === 'audit') return can(actor, 'audit.read');
+  if (topic === 'reviews') return can(actor, 'bank.review') || can(actor, 'reviews.respond') || can(actor, 'bank.comment');
   if (topic === `user:${actor.id}`) return true;
   void ctx;
   return false;

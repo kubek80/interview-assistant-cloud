@@ -39,6 +39,8 @@ export const ENTITY_LABELS: Record<AuditEntity, string> = {
   panel: 'Panel decision and summary',
   user: 'Person',
   settings: 'Settings',
+  proposal: 'Proposal',
+  review: 'Review request',
 };
 
 /** AUD-1: entity column text, e.g. "Interview 3f9a1c2b" (ids are random, PRIV-3). */

@@ -29,7 +29,7 @@ test('SEC-1 HOST-2 HOST-1 PRIV-2: the app and the API come from one origin with 
 });
 
 test('DB-3 HOST-4 MVP-4: running migrate and seed again on the running installation changes nothing', () => {
-  expect(cli('migrate')).toMatch(/Nothing to apply: all 2 migrations are already applied\./);
+  expect(cli('migrate')).toMatch(/Nothing to apply: all 3 migrations are already applied\./);
   const out = cli('seed');
   expect(out).toMatch(/Total: 0 added, 0 changed, \d+ unchanged\./);
   expect(out).toMatch(/Nothing to change\.$/m);

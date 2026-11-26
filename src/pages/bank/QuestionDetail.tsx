@@ -148,9 +148,11 @@ export interface QuestionDetailDialogProps {
   /** Position within the current list, for previous/next navigation. */
   position?: { index: number; total: number; onPrev: () => void; onNext: () => void };
   extraFooter?: ReactNode;
+  /** Shown under the question, e.g. comments (REVIEW-4). */
+  below?: ReactNode;
 }
 
-export function QuestionDetailDialog({ question, categoryName, onClose, position, extraFooter }: QuestionDetailDialogProps) {
+export function QuestionDetailDialog({ question, categoryName, onClose, position, extraFooter, below }: QuestionDetailDialogProps) {
   return (
     <Dialog
       open={!!question}
@@ -178,6 +180,7 @@ export function QuestionDetailDialog({ question, categoryName, onClose, position
       }
     >
       {question && <QuestionDetail key={question.id} question={question} categoryName={categoryName} />}
+      {question && below}
     </Dialog>
   );
 }

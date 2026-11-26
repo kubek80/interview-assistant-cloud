@@ -53,4 +53,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'bank.category_edited': 'Category edited',
   'bank.category_removed': 'Category removed',
   'bank.track_created': 'Track created',
+  'proposal.created': 'Proposal made',
+  'proposal.accepted': 'Proposal accepted',
+  'proposal.declined': 'Proposal declined',
+  'proposal.withdrawn': 'Proposal withdrawn',
+  'review.requested': 'Review requested',
+  'review.closed': 'Review request closed',
 };

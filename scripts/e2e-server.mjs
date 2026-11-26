@@ -28,7 +28,9 @@ await db.connect();
 await db.query(`INSERT INTO users (email, role, name) VALUES
   ('admin@example.test', 'admin', 'Ada Admin'),
   ('organiser@example.test', 'organiser', 'Olive Organiser'),
-  ('interviewer@example.test', 'interviewer', 'Ian Interviewer')`);
+  ('interviewer@example.test', 'interviewer', 'Ian Interviewer'),
+  ('reviewer@example.test', 'reviewer', 'Rita Reviewer'),
+  ('reviewer2@example.test', 'reviewer', 'Remy Reviewer')`);
 await db.end();
 
 mkdirSync('test-results', { recursive: true });

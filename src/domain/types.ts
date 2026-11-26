@@ -271,9 +271,16 @@ export type AuditAction =
   | 'auth.signed_in'
   | 'auth.signed_out'
   | 'audit.exported'
-  | 'settings.changed';
+  | 'settings.changed'
+  // REVIEW-2 to REVIEW-7: proposals and review requests (the question text is in the proposal, not the log).
+  | 'proposal.created'
+  | 'proposal.accepted'
+  | 'proposal.declined'
+  | 'proposal.withdrawn'
+  | 'review.requested'
+  | 'review.closed';
 
-export type AuditEntity = 'plan' | 'session' | 'answer' | 'track' | 'category' | 'question' | 'audit' | 'device' | 'invitation' | 'panel' | 'user' | 'settings';
+export type AuditEntity = 'plan' | 'session' | 'answer' | 'track' | 'category' | 'question' | 'audit' | 'device' | 'invitation' | 'panel' | 'user' | 'settings' | 'proposal' | 'review';
 
 export interface AuditEvent {
   /** Auto-incremented; assigned by the database. */

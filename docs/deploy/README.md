@@ -4,7 +4,23 @@
 
 The app is one container image (browser app + API, `HOST-2`) on **Cloud Run**, a **Cloud SQL for PostgreSQL 16** database reached through the Cloud SQL connector (a Unix socket inside the container, no public database address), secrets in **Secret Manager**, sign-in with **Google**. Step 3 adds Cloud Storage for recordings and a Cloud Scheduler job for retention; their placeholders are at the end.
 
-Every command uses these placeholders. Set them once in your shell:
+## Before you start
+
+You need:
+
+- A **Google Cloud project** with billing turned on, and an account that is **Owner** of it (or has the roles to enable APIs, create service accounts, Cloud SQL instances, secrets and Cloud Run services).
+- The **gcloud CLI**, signed in: `gcloud auth login`. Cloud Shell in the Google Cloud console has it ready, together with `git` and `openssl`; it is the easiest place to run this guide.
+- A copy of this repository (`git clone …`), and the commands below run from its top folder (where the `Dockerfile` is).
+- The address people will use (a domain you control), or the plain `…run.app` address Cloud Run gives you for a first trial.
+- The email address of the first administrator: a Google account (personal or Google Workspace) with a verified email.
+
+You do not need Docker on your computer (Cloud Build builds the image), Node.js, or PostgreSQL tools.
+
+Allow about an hour the first time. Every step ends with a **Check**; if it does not match, see **Troubleshooting** at the end before going on.
+
+## Placeholders
+
+Every command uses these shell variables. Set them once at the start of each terminal session (copy the block, edit the values on the right, paste it):
 
 ```sh
 export PROJECT_ID=your-project-id
@@ -21,6 +37,17 @@ export TAG=$(git rev-parse --short HEAD)   # image tag: the commit being deploye
 export IMAGE=$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/app:$TAG
 gcloud config set project $PROJECT_ID
 ```
+
+| Variable | What it is | Where it comes from |
+|---|---|---|
+| `PROJECT_ID` | Your Google Cloud project id (not its display name) | Console home page, or `gcloud projects list` |
+| `REGION` | Where everything runs; pick one close to your people | `gcloud run regions list` |
+| `INSTANCE`, `DB_NAME`, `DB_USER` | Names for the database server, the database and its user | You choose; the defaults are fine |
+| `REPO`, `SERVICE`, `SA` | Names for the image repository, the Cloud Run service and its service account | You choose; the defaults are fine |
+| `DOMAIN` | The address without `https://`. For a first trial without a domain, deploy once (step 10), then set it to the `….run.app` host Cloud Run prints and redeploy | Your DNS, or step 10 |
+| `ADMINS` | The first administrator's Google email (several separated by commas) | You |
+| `TAG`, `IMAGE` | The image's name, from the current commit | Computed |
+| `CONN`, `SA_EMAIL`, `GOOGLE_CLIENT_ID` | Set by the steps below; if you open a new terminal, set them again from those steps | Steps 3, 5 and 6 |
 
 ## 1. Enable the APIs
 
@@ -68,6 +95,8 @@ openssl rand -base64 48 | tr -d '\n' | gcloud secrets create ia-session-secret -
 unset DB_PASSWORD
 ```
 
+**Check:** `gcloud secrets list` shows `ia-db-password` and `ia-session-secret`.
+
 ## 5. A service account with least privilege
 
 ```sh
@@ -79,7 +108,9 @@ for s in ia-db-password ia-session-secret; do
 done
 ```
 
-It may connect to Cloud SQL and read exactly these secrets; Cloud Run writes its logs. Nothing else. (Step 3 adds `roles/storage.objectUser` on the recordings bucket only.)
+It may connect to Cloud SQL and read exactly these secrets; Cloud Run writes its logs. Nothing else.
+
+**Check:** `gcloud secrets get-iam-policy ia-session-secret` lists `serviceAccount:$SA_EMAIL` with `roles/secretmanager.secretAccessor`. (Step 3 adds `roles/storage.objectUser` on the recordings bucket only.)
 
 ## 6. Google sign-in (AUTH-1)
 
@@ -133,7 +164,7 @@ gcloud run jobs create ia-seed --image=$IMAGE --region=$REGION --service-account
 gcloud run jobs execute ia-seed --region=$REGION --wait
 ```
 
-**Check:** the job's logs (`gcloud run jobs executions list --job=ia-migrate --region=$REGION`, then the log link) say `Applied 2 migration(s)` the first time and `Nothing to apply` after; the seed says `Total: 207 added`.
+**Check:** `gcloud run jobs executions list --job=ia-migrate --region=$REGION` shows the execution as succeeded; its logs (`gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="ia-migrate"' --limit=20 --format='value(textPayload)'`) say `Applied 3 migration(s)` the first time and `Nothing to apply` after. The seed's logs say `Total: 207 added`.
 
 Do not run the seed as part of every release: it would not undo app edits (newer versions are kept), but questions retired in the app since would be restored by an older file. Import later question files with the same job and `--args=dist/server/cli.js,import-questions,seed/qa.json,--dry-run` first, or upload them in the app (Admin › Question files).
 
@@ -178,7 +209,8 @@ Automated tests use a stand-in for Google and the real OpenID library against a 
 3. As A, add B on the Users page as an interviewer. B signs in again: B sees the question bank, read-only, and no Users or Admin.
 4. As A, deactivate B. B's open page returns to the sign-in screen within seconds; B's next sign-in is refused.
 5. Sign out as A; the back button does not bring the app back.
-6. Admin › Audit log shows each of these.
+6. As A, add a third account C as a **Question reviewer**. C sees only To review, Question bank and Docs; opening `https://$DOMAIN/#/users` says "Not available".
+7. Admin › Audit log shows each of these.
 
 ## 13. Releasing a new version
 
@@ -240,3 +272,38 @@ The server writes one JSON line per event to standard output; Cloud Logging read
 # AI second opinion (HPRIV-6): the provider key in Secret Manager, readable by the service account only.
 # printf %s 'KEY' | gcloud secrets create ia-ai-key --data-file=-
 ```
+
+## Troubleshooting
+
+Look at the logs first: `gcloud run services logs read $SERVICE --region=$REGION --limit=50` (the service) or the job's logs (section 9). Each line is JSON; errors have `"severity":"ERROR"`.
+
+**The service will not start, and the log says "Interview Assistant cannot start. Fix these settings".** It lists every missing or wrong setting. Usually: `PUBLIC_URL` missing or not `https://`; `BOOTSTRAP_ADMINS` empty; `GOOGLE_CLIENT_ID` without its secret. Fix with `gcloud run services update $SERVICE --region=$REGION --update-env-vars=NAME=value` (or `--update-secrets=`). `DEV_SIGN_IN` must never be set on Cloud Run: the server refuses it.
+
+**Cloud SQL connection fails** (`connect ENOENT /cloudsql/…/.s.PGSQL.5432`, `ECONNREFUSED`, or `/healthz` says `"database":"unreachable"`).
+- The service or job was deployed without `--add-cloudsql-instances=$CONN` (service) or `--set-cloudsql-instances=$CONN` (jobs), or with a different `CONN`. Check: `gcloud run services describe $SERVICE --region=$REGION --format='value(spec.template.metadata.annotations)'` mentions `run.googleapis.com/cloudsql-instances` with `PROJECT:REGION:INSTANCE`.
+- `DATABASE_URL` must be exactly `postgres://USER@/DB_NAME?host=/cloudsql/PROJECT:REGION:INSTANCE` (nothing between `@` and `/`).
+- The service account lacks `roles/cloudsql.client` (section 5), or the Cloud SQL Admin API is not enabled (section 1).
+- `password authentication failed`: the `ia-db-password` secret does not match the user's password. Reset both: `gcloud sql users set-password $DB_USER --instance=$INSTANCE --password=NEW`, then `printf %s NEW | gcloud secrets versions add ia-db-password --data-file=-` and redeploy (secrets pinned to `latest` are read when an instance starts).
+
+**"Permission denied on secret"** (in the deploy output or the log). The service account cannot read one of the secrets: give it access to each secret named in `--set-secrets` (section 5; the Google client secret in section 6). Check with `gcloud secrets get-iam-policy <secret>`.
+
+**Google says "Error 400: redirect_uri_mismatch".** The OAuth client's authorised redirect URI must be exactly `https://<the address in PUBLIC_URL>/api/auth/google/callback`: same scheme, host, no trailing slash, no port. If you use both a `run.app` address and your domain, add both URIs, but people must open the address that is in `PUBLIC_URL`.
+
+**Google says "Access blocked: this app's request is invalid" or "org_internal".** The consent screen is "Internal" and the account is outside your Workspace organisation, or the screen is "External" and still "Testing" with the account not listed as a test user. Publish it, or switch to Internal for company accounts only.
+
+**After Google, the app shows "You don't have access".** The email is not on the Users page, is deactivated, or is not verified by Google. The first administrator must be in `BOOTSTRAP_ADMINS` exactly (case does not matter). The log has a line `"signIn":"refused","reason":"…"` (`not_invited`, `deactivated`, `email_not_verified`, `wrong_audience`, `state_mismatch`, `flow_expired`…) without the email address.
+
+**Signing in seems to work but you land on the sign-in page again (no session).** The browser did not keep the session cookie:
+- `PUBLIC_URL` is not the address in the browser bar (for example `run.app` in one and your domain in the other). The cookie and the sign-in check are tied to `PUBLIC_URL`. Open the app at exactly that address.
+- `PUBLIC_URL` is `https://…` but the page was opened over `http://`: the cookie is `Secure`. Always use `https://`.
+- A `state_mismatch` or `flow_expired` reason in the log means the sign-in started on one address and came back to another, or took over 10 minutes.
+
+**Every change fails with "This request was refused. Reload the page and try again."** The browser's `Origin` does not match `PUBLIC_URL` (the cross-site request forgery check). Same cause and fix as above.
+
+**Pages load but every API call fails with a server error, and the log says `relation "users" does not exist` (or another table).** Migrations have not run on this database. Run the release job (section 9) and check its logs.
+
+**The question bank is empty.** The seed has not run: `gcloud run jobs execute ia-seed --region=$REGION --wait`, or have an administrator upload the track files under Admin › Question files.
+
+**Live updates are slow or missing** (another person's change shows only after a reload). Make sure the service has `--no-cpu-throttling` and `--min-instances=1` (section 10); without them an idle instance's database listener can stall.
+
+**The image build fails in Cloud Build on `npm ci`.** The project's Cloud Build needs internet access to npm; check the build log for the first error. A typecheck error stops the build too, on purpose.

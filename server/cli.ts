@@ -17,7 +17,7 @@ const USAGE = `Usage:
   import-questions <files…> [--dry-run] [--track <id>]
                                             import track files (.json) and CSV files (.csv);
                                             --track names the track for CSV files
-  dev-users                                 development only: add an organiser and an interviewer`;
+  dev-users                                 development only: add an organiser, an interviewer and a reviewer`;
 
 function args(argv: string[]) {
   const files: string[] = [];
@@ -68,6 +68,7 @@ async function main() {
         for (const [email, role, name] of [
           ['organiser@example.test', 'organiser', 'Olive Organiser'],
           ['interviewer@example.test', 'interviewer', 'Ian Interviewer'],
+          ['reviewer@example.test', 'reviewer', 'Rita Reviewer'],
         ] as const) {
           const r = await db.insertInto('users').values({ email, role, name }).onConflict((oc) => oc.column('email').doNothing()).returning('id').executeTakeFirst();
           if (r) await appendAudit(db, SYSTEM('npm run db:dev-users'), { action: 'user.added', entity: 'user', entityId: r.id, after: { email, role } });

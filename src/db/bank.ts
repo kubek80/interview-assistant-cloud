@@ -14,7 +14,8 @@ export type { SaveQuestionResult, TrackBank, TrackSummary, ExportedTrack };
 /** FLOW-6 uses the same range for plan weights. */
 export const WEIGHT_RANGE = [0.1, 10] as const;
 
-const refresh = () => queryClient.invalidateQueries({ queryKey: ['bank'] });
+// A bank change can make proposals out of date (REVIEW-6), so the review lists refresh too.
+const refresh = () => Promise.all([queryClient.invalidateQueries({ queryKey: ['bank'] }), queryClient.invalidateQueries({ queryKey: ['reviews'] })]);
 
 export function useTracks(): TrackSummary[] | undefined {
   useLiveTopics('bank');

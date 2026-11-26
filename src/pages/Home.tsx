@@ -12,12 +12,17 @@ export default function Home({ me }: { me: Me }) {
     <>
       <PageHeader title={first ? `Welcome, ${first}` : 'Welcome'} />
       <Card as="div" className="home-card">
-        <p className="home-card__lead">Hiring rounds and interviews arrive in the next update. You can already use the question bank.</p>
+        <p className="home-card__lead">Hiring rounds and interviews arrive in the next update. You can already use the question bank{me.permissions.includes('bank.review') ? ', and ask question reviewers to review it' : ''}.</p>
         <div className="cluster">
           <Link to="/bank" className={buttonClass('primary', 'lg')}>
             <Icon name="doc" />
             Open the question bank
           </Link>
+          {me.permissions.includes('bank.review') && (
+            <Link to="/reviews" className={buttonClass('default', 'lg')}>
+              Reviews
+            </Link>
+          )}
           {admin && (
             <Link to="/users" className={buttonClass('default', 'lg')}>
               Manage users

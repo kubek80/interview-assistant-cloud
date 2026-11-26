@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { RepoError, bulkAddQuestions } from '../../db';
+import { RepoError, bulkAddQuestions, proposeMany } from '../../db';
 import { CSV_COLUMNS, CSV_HEADERS, bulkTemplateCsv, parseBulkQuestions, type BulkParse } from '../../domain/bankCsv';
 import { DIFFICULTY_LABEL, TYPE_LABEL } from '../../domain/rubric';
 import type { Category, Question } from '../../domain/types';
@@ -14,6 +14,8 @@ export interface BulkAddDialogProps {
   categories: readonly Category[];
   questions: readonly Question[];
   onClose: () => void;
+  /** REVIEW-3: propose the rows as new questions instead of adding them. */
+  propose?: boolean;
 }
 
 /**
@@ -32,7 +34,12 @@ export function BulkAddDialog(props: BulkAddDialogProps) {
     }
   }
   return (
-    <Dialog open={props.open} onClose={props.onClose} wide title={step === 'input' ? `Bulk add questions to ${props.trackName}` : 'Check the rows before adding them'}>
+    <Dialog
+      open={props.open}
+      onClose={props.onClose}
+      wide
+      title={step === 'input' ? `${props.propose ? 'Propose several questions for' : 'Bulk add questions to'} ${props.trackName}` : props.propose ? 'Check the rows before proposing them' : 'Check the rows before adding them'}
+    >
       {props.open &&
         (step === 'input' ? (
           <InputStep text={text} setText={setText} onPreview={() => setStep('preview')} onCancel={props.onClose} />
@@ -103,12 +110,14 @@ function InputStep({ text, setText, onPreview, onCancel }: { text: string; setTe
   );
 }
 
-function PreviewStep({ text, trackId, categories, questions, onBack, onClose }: BulkAddDialogProps & { text: string; onBack: () => void }) {
+function PreviewStep({ text, trackId, categories, questions, onBack, onClose, propose }: BulkAddDialogProps & { text: string; onBack: () => void }) {
   const { toast } = useToast();
   const parsed: BulkParse = useMemo(() => parseBulkQuestions(text, trackId, categories, questions.map((q) => q.text)), [text, trackId, categories, questions]);
   const [create, setCreate] = useState<Set<string>>(() => new Set(parsed.newCategories));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; details: string[] } | null>(null);
+  const [reason, setReason] = useState('');
+  const [reasonError, setReasonError] = useState<string | null>(null);
   const catName = new Map(categories.map((c) => [c.id, c.name]));
   const headRef = useRef<HTMLParagraphElement>(null);
   // The step replaces the form that had focus: move focus to the result (A11Y-1).
@@ -126,6 +135,16 @@ function PreviewStep({ text, trackId, categories, questions, onBack, onClose }: 
     setError(null);
     try {
       const newCats = parsed.newCategories.filter((n) => create.has(n)).map((name) => ({ name, id: parsed.rows.find((r) => r.newCategory === name)!.draft.categoryId }));
+      if (propose) {
+        if (!reason.trim()) {
+          setReasonError('Say briefly why, for the people who decide.');
+          return;
+        }
+        const ids = await proposeMany(trackId, good.map((g) => g.draft), newCats, reason.trim());
+        toast(`Sent ${ids.length} proposal${ids.length === 1 ? '' : 's'}. Nothing changes in the bank until an organiser accepts them.`, 'success');
+        onClose();
+        return;
+      }
       const r = await bulkAddQuestions(trackId, good.map((g) => g.draft), newCats);
       toast(`Added ${r.ids.length} question${r.ids.length === 1 ? '' : 's'}${r.categories.length ? ` and ${r.categories.length} categor${r.categories.length === 1 ? 'y' : 'ies'}` : ''}. Recorded in the audit log.`, 'success');
       onClose();
@@ -257,12 +276,17 @@ function PreviewStep({ text, trackId, categories, questions, onBack, onClose }: 
           )}
         </Alert>
       )}
+      {propose && (
+        <Field label="Why do you propose these?" required error={reasonError} hint="Shown to the organisers who decide.">
+          <TextArea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      )}
       <div className="pc-dialog-actions">
         <Button icon="chevron-left" onClick={onBack}>
           Back
         </Button>
         <Button variant="primary" onClick={accept} disabled={busy || good.length === 0}>
-          <Icon name="plus" /> Add {good.length} question{good.length === 1 ? '' : 's'}
+          <Icon name="plus" /> {propose ? 'Propose' : 'Add'} {good.length} question{good.length === 1 ? '' : 's'}
         </Button>
       </div>
     </div>

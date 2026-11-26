@@ -32,9 +32,9 @@ export type ApiErrorCode =
 export const CSRF_HEADER = 'x-ia-request';
 export const CSRF_HEADER_VALUE = '1';
 
-export type Role = 'admin' | 'organiser' | 'interviewer';
-export const ROLES: readonly Role[] = ['admin', 'organiser', 'interviewer'];
-export const ROLE_LABELS: Record<Role, string> = { admin: 'Administrator', organiser: 'Organiser', interviewer: 'Interviewer' };
+export type Role = 'admin' | 'organiser' | 'interviewer' | 'reviewer';
+export const ROLES: readonly Role[] = ['admin', 'organiser', 'interviewer', 'reviewer'];
+export const ROLE_LABELS: Record<Role, string> = { admin: 'Administrator', organiser: 'Organiser', interviewer: 'Interviewer', reviewer: 'Question reviewer' };
 
 export interface Me {
   id: string;
@@ -181,3 +181,115 @@ export interface LiveEvent {
 }
 
 export type { TrackFile };
+
+// ---- Question review (REVIEW-1 to REVIEW-7) ----
+
+export type ProposalStatus = 'open' | 'accepted' | 'accepted_with_edits' | 'declined' | 'withdrawn';
+export const PROPOSAL_STATUS_LABELS: Record<ProposalStatus, string> = {
+  open: 'Waiting for a decision',
+  accepted: 'Accepted',
+  accepted_with_edits: 'Accepted with edits',
+  declined: 'Declined',
+  withdrawn: 'Withdrawn',
+};
+
+/** The editable fields of a question, as the editor form has them (src/domain/bankEdit.ts QuestionDraft). */
+export type { QuestionDraft } from '../domain/bankEdit';
+
+export interface PersonRef {
+  id: string | null;
+  name: string;
+}
+
+export interface ProposalSummary {
+  id: string;
+  kind: 'change' | 'new';
+  trackId: string;
+  trackName: string;
+  questionId: string | null;
+  questionNumber: number | null;
+  /** The question's version the proposal was written against, and its version now. */
+  baseVersion: number | null;
+  currentVersion: number | null;
+  /** REVIEW-6: the question has changed since the proposal was written. */
+  outOfDate: boolean;
+  /** The proposed question text. */
+  text: string;
+  reason: string;
+  status: ProposalStatus;
+  proposedBy: PersonRef;
+  createdAt: string;
+  decidedBy: PersonRef | null;
+  decidedAt: string | null;
+  decisionReason: string | null;
+  resultQuestionId: string | null;
+  resultVersion: number | null;
+  reviewRequestId: string | null;
+}
+
+export interface ProposalDetail extends ProposalSummary {
+  proposed: import('../domain/bankEdit').QuestionDraft;
+  newCategoryName: string | null;
+  /** The question as it is now (a change), for the side-by-side comparison. */
+  current: import('../domain/types').Question | null;
+  /** The question as it was when the proposal was written (shown when out of date). */
+  base: import('../domain/types').Question | null;
+  categories: import('../domain/types').Category[];
+}
+
+export interface QuestionFeedback {
+  comments: Array<{ id: string; author: string; text: string; createdAt: string; questionVersion: number; mine: boolean }>;
+  looksGood: Array<{ name: string; version: number; at: string; mine: boolean }>;
+}
+
+export type ReviewOutcome = 'looks_good' | 'commented' | 'proposed' | 'nothing_to_add';
+
+export interface ReviewRequestSummary {
+  id: string;
+  trackId: string;
+  trackName: string;
+  scope: 'track' | 'category' | 'questions';
+  /** "Whole track", the category's name, or "12 chosen questions". */
+  scopeLabel: string;
+  note: string;
+  dueDate: string | null;
+  state: 'open' | 'closed';
+  requestedBy: string;
+  createdAt: string;
+  total: number;
+  reviewers: Array<{ id: string; name: string; done: number; proposals: number; comments: number }>;
+}
+
+export interface ReviewRequestDetail extends ReviewRequestSummary {
+  proposals: ProposalSummary[];
+}
+
+export interface MyReview {
+  id: string;
+  trackId: string;
+  trackName: string;
+  scopeLabel: string;
+  note: string;
+  dueDate: string | null;
+  state: 'open' | 'closed';
+  requestedBy: string;
+  total: number;
+  done: number;
+}
+
+export interface MyReviewDetail extends MyReview {
+  items: Array<{ questionId: string; number: number; text: string; outcome: ReviewOutcome | null }>;
+}
+
+export interface ReviewCounts {
+  /** Organisers and administrators: proposals waiting for a decision. */
+  openProposals: number;
+  /** Reviewers: questions in open review requests they have not done yet. */
+  openReviewItems: number;
+}
+
+export interface ReviewerOption {
+  id: string;
+  name: string;
+  email: string;
+}

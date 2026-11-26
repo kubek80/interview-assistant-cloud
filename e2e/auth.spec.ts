@@ -1,15 +1,16 @@
 // AUTH-1, AUTH-2, AUTH-4, AUTH-6: signing in and out of the real build.
 import { ADMIN, INTERVIEWER, ORGANISER, expect, signIn, test } from './fixtures';
 
-const navLinks = async (page: import('@playwright/test').Page) => (await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents()).map((s) => s.trim());
+const navLinks = async (page: import('@playwright/test').Page) =>
+  (await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents()).map((s) => s.replace(/\s*\d+\s*(proposals waiting|to do)$/, '').trim());
 
 test('AUTH-6 USER-2 HOST-8: development sign-in as administrator, organiser and interviewer shows each the screens of their role', async ({ page, context }) => {
   await signIn(page, ADMIN);
-  expect(await navLinks(page)).toEqual(['Home', 'Question bank', 'Users', 'Admin', 'Docs']);
+  expect(await navLinks(page)).toEqual(['Home', 'Question bank', 'Reviews', 'Users', 'Admin', 'Docs']);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome, Ada');
   await context.clearCookies();
   await signIn(page, ORGANISER);
-  expect(await navLinks(page)).toEqual(['Home', 'Question bank', 'Docs']);
+  expect(await navLinks(page)).toEqual(['Home', 'Question bank', 'Reviews', 'Docs']);
   await context.clearCookies();
   await signIn(page, INTERVIEWER);
   expect(await navLinks(page)).toEqual(['Home', 'Question bank', 'Docs']);
