@@ -34,9 +34,22 @@ This page is the specification for what is different in the hosted version. Wher
 | Administrator | Everything: users, settings, the audit log, privacy requests, every round, the question bank. |
 | Organiser | Create and run hiring rounds they own or are on: plan interviews, choose the team, record panel decisions, see the round's summary. Edit the question bank. |
 | Interviewer | Take part in interviews in the rounds they are on: score, take notes, see the round's interviews and summary. Read the question bank. |
+| Question reviewer | Read the question bank, comment on questions, and propose changes and new questions (`REVIEW-1` to `REVIEW-7`). Sees no interview data at all. |
 
 - `USER-3` A person who is deactivated or removed can do nothing, immediately. Their past judgements stay, shown under their name. An administrator cannot remove or demote the last active administrator.
 - `USER-4` Every change on the Users page is recorded in the audit log: who did what to whom, and when.
+
+## Reviewing questions
+
+People who know a subject can be asked to review the questions and propose new ones without being given access to any interview.
+
+- `REVIEW-1` A question reviewer sees only the question bank, their own proposals and comments, the review requests sent to them, and this documentation. They never see rounds, candidates, interviews, judgements, decisions, summaries, transcripts or the audit log, and nothing in the bank tells them how a question has been used or scored. The server refuses those requests for this role; hiding the screens is not the control (`AUTH-5`).
+- `REVIEW-2` A reviewer can propose a change to a question. The proposal uses the same form as the editor (`BANK-9`), plus a short reason. Saving it changes nothing in the bank: the question stays as it is until the proposal is accepted.
+- `REVIEW-3` A reviewer can propose a new question, with every field a question has, in an existing category or a suggested new one. Several can be proposed at once by pasting rows (`BANK-13`).
+- `REVIEW-4` A reviewer can comment on a question without proposing a change, and can mark a question as "looks good". Comments are visible to other reviewers, organisers and administrators.
+- `REVIEW-5` Organisers and administrators see all open proposals in one place. Each shows who proposed it, when and why, and the current wording beside the proposed wording with the differences marked. They can accept it, accept it with their own edits, or decline it with a reason. Accepting applies it to the bank like any edit (`BANK-11`): the version goes up, existing interviews keep their wording, and the audit log records who proposed it and who accepted it. The proposer sees the outcome and the reason.
+- `REVIEW-6` If the question has been changed since a proposal was written, the proposal is marked as out of date and is shown against the current wording before it can be accepted.
+- `REVIEW-7` An organiser or administrator can ask for a review: choose a track, a category or selected questions, choose the reviewers, and add a note and an optional due date. Each reviewer sees what they have been asked to look at and works through it; the organiser sees how far each reviewer has got and what they proposed. The app shows a count of open proposals and review requests in the navigation; it does not send email.
 
 ## Hiring rounds
 
