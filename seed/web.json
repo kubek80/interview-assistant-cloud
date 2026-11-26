@@ -1,0 +1,1631 @@
+{
+  "track": {
+    "id": "web",
+    "name": "Senior Software Engineer (Web Applications)",
+    "version": "2026.11.1"
+  },
+  "categories": [
+    {
+      "id": "web-javascript-typescript",
+      "name": "JavaScript/TypeScript",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "web-react-frontend-architecture",
+      "name": "React & frontend architecture",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "web-browser-performance-accessibility",
+      "name": "Browser, performance & accessibility",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "web-backend-api-design",
+      "name": "Backend & API design",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "web-data-caching",
+      "name": "Data & caching",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "web-auth-security",
+      "name": "Auth & security",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "web-system-design",
+      "name": "System design",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "web-testing-ci-cd-observability",
+      "name": "Testing, CI/CD & observability",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "web-behavioural-leadership",
+      "name": "Behavioural & leadership",
+      "weight": 1,
+      "mustHave": false
+    }
+  ],
+  "questions": [
+    {
+      "id": "web-1",
+      "number": 1,
+      "categoryId": "web-javascript-typescript",
+      "text": "Explain the event loop: microtasks vs macrotasks.",
+      "description": "The event loop is how JavaScript schedules work on a single thread. Explain how it works and the difference between microtasks and macrotasks, including what that means for code running in the browser.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Single thread and call stack: JavaScript runs one piece of code at a time, and the event loop only picks the next job once the call stack is empty.",
+        "Task (macrotask) queue: names sources such as setTimeout, user events and network callbacks, and explains that the loop runs one task at a time.",
+        "Microtasks: promise callbacks, await continuations and queueMicrotask run after the current task, and the whole queue drains before rendering and before the next task.",
+        "Practical impact: long tasks hold the main thread, so clicks, typing and painting wait; they break heavy work into chunks or move it off the main thread.",
+        "Can predict the output order of a mixed snippet (synchronous code, then promise callbacks, then setTimeout) and explain why rather than guessing."
+      ],
+      "redFlags": [
+        "Says JavaScript is multithreaded or that promises and setTimeout run in parallel, confusing asynchronous scheduling with parallel execution.",
+        "Believes setTimeout(fn, 0) runs immediately or before promise callbacks, and cannot explain why it actually runs after them.",
+        "Recites a memorised diagram but cannot connect it to real symptoms such as a frozen page or clicks that respond late.",
+        "Unaware that an endless chain of microtasks can starve rendering and freeze the page just like a long synchronous loop."
+      ],
+      "probes": [
+        "Output order of a mixed snippet?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-2",
+      "number": 2,
+      "categoryId": "web-javascript-typescript",
+      "text": "How do closures cause memory leaks in long-lived SPAs?",
+      "description": "In a single-page application (SPA) that stays open for hours, closures can keep memory alive longer than intended. Explain how that happens and how you would find and fix such a leak.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Retained references: a closure keeps every variable it captures alive, so a long-lived callback can hold large objects or old component data indefinitely.",
+        "Detached DOM: elements removed from the page but still referenced from JavaScript (e.g. in a closure, cache or array), so they are never garbage-collected.",
+        "Common culprits: event listeners, setInterval timers, subscriptions and observers that are never removed when a component unmounts or the route changes.",
+        "Finding it: takes heap snapshots in browser DevTools before and after repeating an action, compares them, and follows the retainer chain back to the code.",
+        "Fixing it: cleanup functions in useEffect, AbortController signals for listeners, bounded caches or WeakMap, then a repeat snapshot to confirm the leak has gone."
+      ],
+      "redFlags": [
+        "Has never profiled memory or used a heap snapshot, and would guess at the cause or simply tell users to refresh the page.",
+        "Thinks garbage collection makes leaks impossible in JavaScript, or that closures themselves are bad and should be avoided.",
+        "Suggests setting variables to null everywhere as the fix, without identifying what is actually holding on to the memory.",
+        "Cannot name a single concrete source of leaks in a long-running single-page app, such as forgotten listeners or ever-growing caches."
+      ],
+      "probes": [
+        "Finding one?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-3",
+      "number": 3,
+      "categoryId": "web-javascript-typescript",
+      "text": "Where does TypeScript help and where does it lie?",
+      "description": "We'd like your honest view of TypeScript: where its type system genuinely protects you, and where it can give a false sense of safety. Concrete examples from your own code are welcome.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Where it helps: safer refactoring, editor autocompletion and catching mismatched data shapes at compile time, illustrated with a real example from their own code.",
+        "Structural typing: types match by shape, not by name, so an object that happens to have the right fields is accepted even if it means something different.",
+        "Generics and narrowing: reusable typed functions, and narrowing with typeof, in checks or discriminated unions so the compiler knows which case it is handling.",
+        "unknown versus any: prefers unknown for untrusted values because it forces a check, and treats any and 'as' casts as switching type checking off.",
+        "Where it lies: types disappear at runtime, so API responses, JSON, storage and user input are validated at the boundary (e.g. with zod) before being trusted."
+      ],
+      "redFlags": [
+        "Trusts declared API response types as if they were guaranteed, with no runtime validation of data from servers, files or third parties.",
+        "Uses any or 'as' casts freely to silence compiler errors and sees no problem with doing so.",
+        "Claims TypeScript makes code bug-free or removes the need for tests, showing no awareness of its limits.",
+        "Only describes syntax such as interfaces and enums, and cannot give one real case where the type system failed to protect them."
+      ],
+      "probes": [
+        "Discriminated unions?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-4",
+      "number": 4,
+      "categoryId": "web-javascript-typescript",
+      "text": "How do you handle async errors and cancellation?",
+      "description": "In asynchronous JavaScript, how do you deal with errors, and with cancelling work that is no longer needed, such as a request for a page the user has already left? Describe the patterns you use.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Error handling with try/catch around await, knowing that an error from a promise that is not awaited escapes the surrounding try block.",
+        "Combining promises: Promise.all fails on the first rejection, while Promise.allSettled waits for every result so partial failures can be handled one by one.",
+        "Cancellation with AbortController: passes the signal to fetch and other APIs, aborts on unmount or a newer search, and handles the resulting AbortError deliberately.",
+        "Unhandled rejections are monitored globally (e.g. an unhandledrejection listener feeding error reporting) so nothing fails silently in production.",
+        "Thinks about the user: a clear error state, retries only where safe, and stale responses never overwriting newer ones (race conditions)."
+      ],
+      "redFlags": [
+        "Swallows errors with empty catch blocks or log-and-continue, leaving users with a spinner that never ends and the team with no alert.",
+        "Believes cancelling means ignoring the result, so requests keep running and a late response can overwrite newer data.",
+        "Mixes .then chains and async/await without knowing which errors are caught where, or forgets to return or await promises.",
+        "Has no strategy for unhandled promise rejections and is unaware that they can crash a Node.js process."
+      ],
+      "probes": [
+        "Cancel fetch on unmount?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-5",
+      "number": 5,
+      "categoryId": "web-javascript-typescript",
+      "text": "What makes code tree-shakeable?",
+      "description": "Tree-shaking is when a bundler removes code your application never uses. Explain what makes a module or library easy or hard to tree-shake, and how you write code with that in mind.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Static ES module imports and exports: bundlers can only drop unused code they can see statically, unlike CommonJS require or dynamic property access.",
+        "Side-effect-free modules: files that do nothing just by being imported (no global patches or top-level registration) can be safely removed when unused.",
+        "The sideEffects field in package.json tells the bundler which files are safe to drop, remembering that CSS imports usually must be listed as side effects.",
+        "Code splitting with dynamic import(): loads rarely used features (e.g. a charting library on one admin page) only when needed, as a separate technique.",
+        "Measures rather than assumes: uses a bundle analyser to see what actually ships and checks that a change really reduced bundle size."
+      ],
+      "redFlags": [
+        "Uses barrel files (index files re-exporting everything) without considering that they can pull whole libraries into the bundle and slow builds.",
+        "Confuses tree-shaking with minification or code splitting, or thinks it happens automatically however the code is written.",
+        "Imports a whole library for one helper (e.g. all of lodash for a single function) and has never looked inside the bundle.",
+        "Marks a package as side-effect-free without checking, so needed code such as polyfills or styles disappears in production."
+      ],
+      "probes": [
+        "Analysing bundle size?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-6",
+      "number": 6,
+      "categoryId": "web-javascript-typescript",
+      "text": "Web Workers vs main thread: when offload?",
+      "description": "Web Workers run JavaScript on a background thread rather than the browser's main thread. When would you move work into a worker, when would you not, and what costs come with doing so?",
+      "difficulty": "expert",
+      "type": "knowledge",
+      "timeMin": 5,
+      "lookFor": [
+        "Good candidates: CPU-heavy work such as parsing large files, image processing, compression, search indexing or complex calculations that would otherwise block the main thread.",
+        "Cost of postMessage: data is copied (structured clone), so sending large objects back and forth can cost more than the work saved.",
+        "Transferables: passes ArrayBuffers and similar objects by transferring ownership instead of copying them, avoiding that cost for large binary data.",
+        "Responsiveness: links offloading to INP (how quickly the page responds to input) and measures long tasks before and after to prove the benefit.",
+        "Limits of workers: no DOM access, separate memory, start-up cost and harder debugging, so small or DOM-related work stays on the main thread."
+      ],
+      "redFlags": [
+        "Believes async/await or promises already run code in parallel, so sees no need for workers or misunderstands what they add.",
+        "Wants to move everything into workers, including DOM updates or tiny tasks, ignoring messaging overhead and added complexity.",
+        "Has no answer for shared state beyond copying data around, and is unaware of transferables or SharedArrayBuffer and its security requirements.",
+        "Offloads work without measuring, so cannot say whether the page actually became more responsive afterwards."
+      ],
+      "probes": [
+        "Shared state?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-7",
+      "number": 7,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "How does React reconciliation work and what causes needless re-renders?",
+      "description": "Explain how React works out what to update on the page when state changes, known as reconciliation, and what typically makes components re-render when they do not need to. How would you spot and fix that?",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Render triggers: a component re-renders when its state changes, its parent re-renders or a context it reads changes; React then compares the new output with the old.",
+        "Identity: new objects, arrays or inline functions created on every render look different to React.memo and dependency arrays, even with identical contents.",
+        "Keys: stable, unique keys let React match list items between renders; random or index keys on reorderable lists cause lost state or extra work.",
+        "Memoisation trade-offs: React.memo, useMemo and useCallback used selectively where measured cost justifies them, knowing they add comparison cost and complexity.",
+        "Measures with the React DevTools Profiler before and after a change, and often fixes the cause by moving state down or splitting components."
+      ],
+      "redFlags": [
+        "Wraps everything in memo, useMemo and useCallback by default without measuring, adding complexity for little or no gain.",
+        "Thinks every re-render rewrites the DOM, not understanding that React only applies the differences it finds.",
+        "Uses random values, or indexes on lists that reorder, as keys and cannot explain the bugs this causes.",
+        "Has never used the Profiler and diagnoses re-render problems purely by guesswork or console.log statements."
+      ],
+      "probes": [
+        "When does useMemo hurt?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-8",
+      "number": 8,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "Server Components and SSR vs CSR vs SSG: how do you choose?",
+      "description": "Compare React Server Components with server-side rendering (SSR), client-side rendering (CSR) and static site generation (SSG). How do you decide which approach to use for a given page or application?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Chooses per page or route, not per app: e.g. static marketing pages as SSG, personalised dashboards with SSR, highly interactive tools as CSR.",
+        "Data locality and bundle size: Server Components fetch data close to the database and send no component JavaScript to the browser for non-interactive parts.",
+        "Hydration cost: SSR still ships and runs JavaScript to make the page interactive, which can delay responsiveness on slower devices.",
+        "Caching and SEO: static or cached server output is fast and easy for search engines to index, while personalised SSR is harder to cache at a CDN.",
+        "Streaming: sends HTML in chunks with Suspense boundaries so users see the page shell early while slower data is still loading."
+      ],
+      "redFlags": [
+        "Applies one approach to everything ('we always use SSR', 'always a SPA') without reference to what the page actually needs.",
+        "Thinks Server Components and SSR are the same thing, or that Server Components remove the need for any client JavaScript.",
+        "Cannot explain a hydration mismatch or its usual causes (e.g. dates, random IDs or browser-only APIs rendering differently on server and client).",
+        "Ignores operational cost: more server compute, harder caching and new failure modes when rendering moves to the server."
+      ],
+      "probes": [
+        "Hydration mismatch?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-9",
+      "number": 9,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "How do you approach state management?",
+      "description": "How do you decide where state should live in a frontend application, and which tools to use for managing it? Talk us through your reasoning with examples.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Separates server state (API data cached and refetched with tools like TanStack Query or SWR) from local UI state such as open menus or form input.",
+        "Keeps state as close as possible to where it is used, lifting it up only when sibling components genuinely need to share it.",
+        "Uses context for rarely changing values (theme, current user) and a store such as Redux or Zustand only when many distant components share frequently changing state.",
+        "Derives values instead of duplicating them (e.g. computes a filtered list rather than storing it), so no two pieces of state can drift out of sync.",
+        "Considers the URL as state for filters, tabs and pagination so views can be shared and survive a page refresh."
+      ],
+      "redFlags": [
+        "Puts everything into one global store by default, including form fields and server data, creating tight coupling and unnecessary re-renders.",
+        "Copies API responses into a global store by hand, then struggles with stale data, loading flags and refetching logic.",
+        "Picks the library first ('we use Redux') and cannot say when it would not be justified.",
+        "Uses context for fast-changing values without realising every consuming component re-renders on each change."
+      ],
+      "probes": [
+        "When is Redux justified?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-10",
+      "number": 10,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "Design a component library for 8 teams.",
+      "description": "Eight product teams need a shared library of UI components. Design how you would build and run it, talking us through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Design tokens: colours, spacing and typography stored as shared named values, so design and code stay consistent and themes (e.g. dark mode, sub-brands) are cheap.",
+        "Accessibility built in: keyboard support, focus handling and correct ARIA inside the components, so eight teams do not each have to get it right.",
+        "Versioning and releases: semantic versioning with changelogs (e.g. Changesets), clear rules on breaking changes, and migration guides or codemods for upgrades.",
+        "Documentation and quality: Storybook as the living catalogue, with visual regression and accessibility tests running in CI for every change.",
+        "Governance: a clear owning team, a contribution model for the other teams, and a rule for what belongs in the library versus staying local."
+      ],
+      "redFlags": [
+        "No versioning or release process, so every change reaches all eight teams at once and can break them without warning.",
+        "Designs only the components and ignores adoption, support, documentation and who owns the library in the long term.",
+        "Treats accessibility as each consuming team's problem rather than building it into the shared components.",
+        "Plans a huge, highly configurable library up front instead of starting from real shared needs and growing it with the teams."
+      ],
+      "probes": [
+        "Breaking changes?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-11",
+      "number": 11,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "Micro-frontends: when are they worth it?",
+      "description": "Micro-frontends split one web frontend into parts that separate teams build and deploy independently. When do you think that approach pays off, and when does it cost more than it gives?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Frames it as a trade-off: independent team deployment and ownership in exchange for runtime cost, build complexity and operational overhead.",
+        "Integration options: knows approaches such as Module Federation, build-time packages or server/edge composition, and how their coupling and performance differ.",
+        "Shared dependencies: duplicate framework copies, version conflicts and bundle size growth when each micro-frontend ships its own React.",
+        "Consistent user experience: a shared design system, routing, authentication and performance budgets so users do not notice the seams.",
+        "Says when it pays off (many teams, separately owned domains, release bottlenecks) and names simpler alternatives such as a modular monolith or monorepo."
+      ],
+      "redFlags": [
+        "Recommends micro-frontends for a single team or small app, where they add cost and bring no autonomy benefit.",
+        "Treats it as a purely technical choice and ignores the team structure and ownership problem it is meant to solve.",
+        "Ignores the cost to users: slower loading, inconsistent look and feel, or several copies of the same library downloaded.",
+        "Cannot suggest any alternative, such as clearer module boundaries within one application or a shared monorepo."
+      ],
+      "probes": [
+        "Alternatives?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-12",
+      "number": 12,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "How do you build forms robustly?",
+      "description": "What do you do to make web forms reliable and pleasant to use, from the moment a user starts typing through to submission? Describe the approach and techniques you rely on.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Controlled versus uncontrolled inputs: knows the trade-off (React state on every keystroke versus reading DOM values) and why large forms often favour uncontrolled.",
+        "Validation on both sides: client-side for fast feedback, server-side as the source of truth, ideally sharing one schema between them.",
+        "Accessible errors: visible labels, messages linked to their fields, focus moved to the first error or an error summary, and never colour alone.",
+        "Double submission prevented by disabling the button while the request is pending and, on the server, an idempotency key or duplicate check.",
+        "Considers the whole journey: input preserved after errors, drafts or autosave for long forms, and sensible keyboard and autocomplete behaviour."
+      ],
+      "redFlags": [
+        "Relies on client-side validation only, not recognising that anyone can bypass it and send any data straight to the server.",
+        "Shows errors only as red borders or placeholder text that screen reader users and colour-blind users cannot perceive.",
+        "Has no plan for double clicks or retries, so a slow submit can create duplicate orders or payments.",
+        "Loses everything the user typed after a failed submission or a server-side validation error."
+      ],
+      "probes": [
+        "A 40-field form?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-13",
+      "number": 13,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "A React page freezes while typing in search. Diagnose.",
+      "description": "Users report that a React page freezes or lags while they type into a search box. Walk us through, step by step, how you would find the cause and what you might do about it.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Measures first: reproduces the lag and records it with the React Profiler and the browser Performance panel to see which components render and for how long.",
+        "Finds the expensive part, e.g. filtering a large list on every keystroke, the whole page re-rendering from state held too high, or a heavy child component.",
+        "Keeps typing responsive with useDeferredValue or startTransition, so the input updates immediately while the results render at lower priority.",
+        "Debounces expensive work such as API calls (not the input itself) and cancels outdated requests so results cannot arrive out of order.",
+        "Virtualises long result lists so only visible rows render, then re-measures with the same scenario to show the fix actually helped."
+      ],
+      "redFlags": [
+        "Starts guessing and changing code (adding memo or debounce everywhere) before measuring where the time actually goes.",
+        "Debounces the input field itself, so characters appear late and typing feels worse rather than better.",
+        "Cannot describe how they would confirm the fix worked, for example by comparing profiles or interaction timings before and after.",
+        "Blames React or the users' devices ('they have slow laptops') instead of investigating the page."
+      ],
+      "probes": [
+        "Measuring the fix?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-14",
+      "number": 14,
+      "categoryId": "web-browser-performance-accessibility",
+      "text": "What happens from typing a URL to first paint?",
+      "description": "Describe, in as much depth as you can, what happens between a user typing a web address into the browser and the first content being drawn on the screen.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Network steps in order: browser cache check, DNS lookup, then a TCP connection plus TLS handshake, or QUIC, which combines connection and encryption set-up.",
+        "Protocol and delivery: the request goes over HTTP/2 or HTTP/3 and is often answered by a nearby CDN edge rather than the origin server.",
+        "Parsing: HTML becomes the DOM and CSS the CSSOM, combined into a render tree, then layout and paint (the critical rendering path).",
+        "Render-blocking resources: CSS and synchronous scripts in the head delay first paint; mentions defer or async scripts, preload and inlining critical CSS.",
+        "Caching at every layer: browser HTTP cache, service worker, DNS cache, CDN cache and connection reuse, which skip steps on repeat visits."
+      ],
+      "redFlags": [
+        "Skips caching entirely, describing every visit as a full round trip to the origin server.",
+        "Gives a vague one-line answer ('the browser asks the server and shows the page') with no detail at any layer.",
+        "Mixes up DNS, TCP and TLS or their order, e.g. claiming the TLS handshake happens before the domain name is resolved.",
+        "Stops at the HTTP response and cannot explain how the browser turns HTML and CSS into pixels on screen."
+      ],
+      "probes": [
+        "Where does a CDN help?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-15",
+      "number": 15,
+      "categoryId": "web-browser-performance-accessibility",
+      "text": "Explain Core Web Vitals and how to improve each.",
+      "description": "Core Web Vitals are Google's set of metrics for real-world page experience. Explain what each one measures and how you would go about improving each of them.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "LCP (Largest Contentful Paint), good at 2.5 s or less: improve by cutting server response time and preloading or prioritising the hero image.",
+        "INP (Interaction to Next Paint), good at 200 ms or less: improve by breaking up long JavaScript tasks and doing less work per interaction.",
+        "CLS (Cumulative Layout Shift), good at 0.1 or less: improve by reserving space for images, ads and embeds and avoiding content inserted late.",
+        "Field data at the 75th percentile: judged on real-user data (e.g. CrUX or their own RUM), not just a Lighthouse lab score on a fast laptop.",
+        "Prioritises by impact: finds which metric and which page templates fail for real users, fixes those first and tracks the result after release."
+      ],
+      "redFlags": [
+        "Still cites FID (First Input Delay) as a Core Web Vital, unaware that INP has replaced it.",
+        "Relies only on Lighthouse lab scores and treats a green score as proof that real users have a good experience.",
+        "Gets the metrics or thresholds wrong, or describes them only as vague 'speed' without saying what each one measures.",
+        "Suggests generic fixes (minify everything, add a CDN) without linking them to a specific metric or measured problem."
+      ],
+      "probes": [
+        "Getting field data?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-16",
+      "number": 16,
+      "categoryId": "web-browser-performance-accessibility",
+      "text": "Describe browser caching and HTTP cache headers.",
+      "description": "Explain how browsers and other caches decide whether they can reuse a stored copy of a resource, and the HTTP response headers you use to control that behaviour.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Cache-Control lifetimes: max-age sets how long a browser may reuse a response, and s-maxage sets it for shared caches such as CDNs.",
+        "no-cache versus no-store: no-cache means store but revalidate before each reuse, while no-store means never store it (e.g. sensitive data).",
+        "Revalidation with ETag: the browser sends If-None-Match and gets a cheap 304 Not Modified response if the content has not changed.",
+        "Fingerprinted assets: file names containing a content hash (e.g. app.3f9a.js) served with a long max-age and immutable, while the HTML stays short-lived.",
+        "Service worker caveats: a service worker cache sits in front of HTTP caching and can keep serving stale files until it is updated correctly."
+      ],
+      "redFlags": [
+        "Believes no-cache means 'do not cache', and so picks the wrong header for sensitive or frequently changing content.",
+        "Busts caches with manual version bumps or by asking users to clear their cache after each release.",
+        "Sets long cache lifetimes on HTML or API responses, so users keep getting old pages that point at deleted assets.",
+        "Forgets shared caches: personalised responses cached at a CDN without private or Vary, risking one user's data being shown to another."
+      ],
+      "probes": [
+        "Cache busting?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-17",
+      "number": 17,
+      "categoryId": "web-browser-performance-accessibility",
+      "text": "How do you ensure accessibility?",
+      "description": "How do you make sure the web applications you build can be used by people with disabilities? Describe what you do during design, development and testing.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Semantic HTML first: real buttons, links, headings, labels and landmarks, which provide keyboard and screen reader support without extra work.",
+        "ARIA only when native elements cannot do the job, knowing that incorrect ARIA can make a page worse than none at all.",
+        "Focus management: visible focus styles, logical tab order, focus moved into and back out of dialogs, and no keyboard traps.",
+        "Targets WCAG 2.2 level AA, including colour contrast, text resizing and never relying on colour alone to convey meaning.",
+        "Tests with automated tools (e.g. axe in CI) plus manual keyboard-only and screen reader checks, since tools catch only part of the issues."
+      ],
+      "redFlags": [
+        "Builds clickable divs with onClick instead of buttons or links, breaking keyboard and screen reader access.",
+        "Treats accessibility as a final checklist or a passing automated score rather than part of design and development.",
+        "Adds ARIA roles and labels everywhere without understanding them, or believes an overlay widget makes a site compliant.",
+        "Has never navigated their own product using only a keyboard or a screen reader."
+      ],
+      "probes": [
+        "Accessible modal checklist?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-18",
+      "number": 18,
+      "categoryId": "web-browser-performance-accessibility",
+      "text": "Explain CORS and preflight.",
+      "description": "CORS, or Cross-Origin Resource Sharing, controls when a web page may call a server on a different origin. Explain how it works, what a preflight request is, and when the browser sends one.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Same-origin policy: the browser stops a page reading responses from another origin (scheme, host and port) unless the server allows it via CORS headers.",
+        "Simple versus preflighted requests: an OPTIONS preflight is sent first for methods such as PUT or DELETE, custom headers, or content types like application/json.",
+        "Credentials: when cookies are included, the server must name the exact origin and allow credentials, because the wildcard * is not permitted.",
+        "CORS is enforced by the browser to protect users; it does not stop server-to-server or command-line calls, so it is not API security.",
+        "Practical configuration: an allow-list of specific origins, preflight caching with Access-Control-Max-Age, and debugging through the browser network panel."
+      ],
+      "redFlags": [
+        "Suggests 'disabling CORS' or using a browser extension to fix errors instead of configuring the server correctly.",
+        "Reflects any incoming Origin header back with credentials allowed, effectively letting every website read users' data.",
+        "Thinks CORS is authentication or access control for the API rather than a browser rule about reading responses.",
+        "Cannot explain why the same request works in Postman or curl but fails in the browser."
+      ],
+      "probes": [
+        "Is CORS a control for your API?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-19",
+      "number": 19,
+      "categoryId": "web-browser-performance-accessibility",
+      "text": "What is CSP and how do you roll it out?",
+      "description": "CSP, or Content Security Policy, is an HTTP header that restricts what a page is allowed to load and run. Explain what it protects against and how you would introduce it on an existing site.",
+      "difficulty": "expert",
+      "type": "knowledge",
+      "timeMin": 5,
+      "lookFor": [
+        "Purpose: CSP limits which scripts and other resources a page may load and run, mainly reducing the damage from cross-site scripting (XSS).",
+        "Nonces or hashes: allows specific scripts via a random per-response nonce or a content hash instead of unsafe-inline.",
+        "strict-dynamic: scripts trusted by nonce or hash may load their own dependencies, avoiding long, fragile allow-lists of domains.",
+        "Rolls out with Content-Security-Policy-Report-Only first, collects violation reports, fixes or allows legitimate sources, then enforces step by step.",
+        "Third-party scripts and tag managers: inventories them, agrees ownership with marketing or analytics teams, and accepts that tag managers make a strict policy harder."
+      ],
+      "redFlags": [
+        "Adds unsafe-inline (or unsafe-eval) everywhere to make violations disappear, which removes most of the XSS protection.",
+        "Switches on an enforcing policy on a live site with no report-only phase, breaking functionality for users.",
+        "Relies on a long allow-list of domains, including large public CDNs, and believes that alone stops injected scripts.",
+        "Sees CSP as a replacement for output encoding and safe templating rather than an extra layer of defence."
+      ],
+      "probes": [
+        "Tag managers?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-20",
+      "number": 20,
+      "categoryId": "web-backend-api-design",
+      "text": "What makes a REST API well designed?",
+      "description": "In your view, what separates a well-designed REST API from a poor one? Tell us the qualities and conventions you look for when designing or reviewing one.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Resource modelling: nouns for resources (e.g. /orders/123/items), consistent naming, and shapes that match the domain rather than internal database tables.",
+        "Correct HTTP methods and status codes: GET is safe, PUT and DELETE are idempotent, 201 for creation, 4xx for client errors, 5xx for server faults.",
+        "Collections handled well: pagination (ideally cursor-based for large data sets), plus filtering and sorting through consistent query parameters.",
+        "Errors in a consistent machine-readable format such as RFC 9457 Problem Details, with useful messages and no internal stack traces.",
+        "Idempotency keys so POST operations such as payments can be retried safely, and a clear versioning and deprecation approach."
+      ],
+      "redFlags": [
+        "Puts verbs in URLs (/getUser, /createOrder) and uses POST for everything, ignoring HTTP semantics.",
+        "Returns 200 OK for errors with the failure described only in the body, which confuses clients, caches and monitoring.",
+        "Returns unbounded lists with no pagination, which works in testing and fails once the data grows.",
+        "Mirrors the database schema directly in the API, so every internal change leaks out and breaks clients."
+      ],
+      "probes": [
+        "Versioning approach?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-21",
+      "number": 21,
+      "categoryId": "web-backend-api-design",
+      "text": "REST vs GraphQL vs gRPC?",
+      "description": "Compare REST, GraphQL and gRPC as styles for building APIs. When would you choose each one, and what are you trading off when you do?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Client flexibility: GraphQL lets clients request exactly the fields they need, useful for many varied front ends, while REST offers simpler fixed resources.",
+        "Caching: REST fits naturally with HTTP and CDN caching; GraphQL usually needs client-side caching or persisted queries; gRPC relies on application-level caching.",
+        "Performance and tooling: gRPC uses HTTP/2, binary Protocol Buffers and generated clients, suiting fast internal calls, but browser support needs extra tooling.",
+        "Internal versus external: often REST for public APIs, gRPC between internal services, GraphQL as a gateway or backend-for-frontend; mixing styles is fine.",
+        "Names the costs of each: GraphQL query cost limits and N+1 resolvers, gRPC debugging and schema management, REST over- and under-fetching."
+      ],
+      "redFlags": [
+        "Chooses on hype or fashion, with no link to the clients, the team's skills or the actual problem.",
+        "Claims one style is simply better in every case, or that GraphQL removes the need for a well-designed back end.",
+        "Unaware of GraphQL security issues such as deeply nested or very expensive queries and per-field authorisation.",
+        "Proposes gRPC for a public browser-facing API without mentioning browser support or the tooling clients would need."
+      ],
+      "probes": [
+        "GraphQL security?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-22",
+      "number": 22,
+      "categoryId": "web-backend-api-design",
+      "text": "How do you make writes idempotent and retry-safe?",
+      "description": "An operation is idempotent if repeating it has the same effect as doing it once. How do you design write operations, such as placing an order, so that clients and systems can safely retry them?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Idempotency keys: the client sends a unique key per operation and the server stores the outcome, so a retry returns the original response, not a duplicate order.",
+        "Deduplication store: keys kept for a set period, with a unique constraint or atomic insert so two simultaneous retries cannot both succeed.",
+        "Upserts and natural keys: writes designed so repeating them gives the same end state (e.g. insert-or-update on the order ID).",
+        "Transactional outbox: the business change and the event to publish are saved in one database transaction, so neither is lost if the other fails.",
+        "Knows end-to-end exactly-once delivery across systems is largely a myth, so designs for at-least-once delivery with consumers that can safely process a message twice."
+      ],
+      "redFlags": [
+        "Adds automatic retries without idempotency, so a timeout after a successful payment leads to charging the customer twice.",
+        "Checks whether a record exists and then inserts in two separate steps, leaving a race condition under concurrent retries.",
+        "Claims a message broker or framework guarantees exactly-once processing, so no extra design is needed.",
+        "Writes to the database and publishes an event separately, without considering what happens when one succeeds and the other fails."
+      ],
+      "probes": [
+        "Exactly-once myths?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-23",
+      "number": 23,
+      "categoryId": "web-backend-api-design",
+      "text": "Design a rate-limited public API.",
+      "description": "Design a public API that limits how many requests each client can make. Talk through your design aloud, including the reasoning and trade-offs; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Algorithm choice: token bucket (allows short bursts) or sliding window (smoother limits), with a reason for picking one over the other.",
+        "Limits per API key, user or tenant, possibly tiered by plan and per endpoint, with IP-based limits for unauthenticated traffic.",
+        "Client experience: 429 Too Many Requests with a Retry-After header, ideally headers showing remaining quota, and limits clearly documented.",
+        "Distributed counters in a shared fast store (e.g. Redis) with atomic updates, plus a decision on whether to fail open or closed if it is unavailable.",
+        "Enforcement at the API gateway or edge so excess traffic is rejected before it reaches services, with monitoring of who is being throttled."
+      ],
+      "redFlags": [
+        "Keeps counters only in each server's memory, so limits break as soon as there are several instances or a restart.",
+        "Returns a generic 500 or 403 when throttling, giving clients no signal on how long to back off.",
+        "Ignores bursts, race conditions on counters, or what happens when the store holding the limits fails.",
+        "Treats rate limiting as the only abuse defence, with no mention of authentication, quotas or DDoS protection at the edge."
+      ],
+      "probes": [
+        "Multi-region counters?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-24",
+      "number": 24,
+      "categoryId": "web-backend-api-design",
+      "text": "Sync vs async between services?",
+      "description": "When one service needs another, it can either call it synchronously and wait for a reply, or communicate asynchronously. How do you choose between the two, and what are the consequences of each?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Coupling: synchronous calls tie availability together, so if the called service is slow or down, the caller is affected too.",
+        "Latency: chains of synchronous calls add up, whereas asynchronous messaging lets the caller reply quickly while work continues in the background.",
+        "Queues or events for work that need not finish before replying (e.g. emails, reporting), keeping synchronous calls where the user needs an immediate answer.",
+        "Eventual consistency: accepts that data across services is briefly out of date and designs the user experience and reconciliation around that.",
+        "Sagas for multi-step processes: a sequence of local steps with compensating actions (e.g. refund if shipping fails) instead of a distributed transaction."
+      ],
+      "redFlags": [
+        "Builds long chains of synchronous calls everywhere, so one slow service makes every request slow or fail.",
+        "Makes everything asynchronous by default, ignoring the debugging, ordering and consistency complexity that brings.",
+        "Unaware of duplicate or out-of-order messages, poison messages and dead-letter queues in asynchronous systems.",
+        "Expects distributed transactions or two-phase commit to keep services in step, without discussing the cost or availability impact."
+      ],
+      "probes": [
+        "When must it be sync?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-25",
+      "number": 25,
+      "categoryId": "web-backend-api-design",
+      "text": "Timeouts and retries calling dependencies?",
+      "description": "When your service calls other services or databases, how do you set up timeouts and retries, and what else do you do to stop a slow or failing dependency from causing wider problems?",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Timeouts on every outbound call (HTTP, database, cache), set from measured latency and within the caller's own overall time budget.",
+        "Retries only for idempotent operations and transient errors, with a small limit and exponential backoff plus random jitter.",
+        "Circuit breakers stop calling a failing dependency for a while, so it can recover and callers fail fast instead of piling up.",
+        "Fallbacks such as cached or default data, or a reduced feature, so users get a partial result rather than an error page.",
+        "Bulkheads: separate connection pools or concurrency limits per dependency, so one slow service cannot exhaust every resource."
+      ],
+      "redFlags": [
+        "Relies on library default timeouts or none at all, unaware that some defaults wait indefinitely.",
+        "Adds retries at every layer without limits or jitter, multiplying load into a retry storm that keeps the dependency down.",
+        "Retries non-idempotent operations such as payments without idempotency keys, risking duplicate side effects.",
+        "Has no monitoring of timeouts, retries or breaker state, so problems go unnoticed until users complain."
+      ],
+      "probes": [
+        "Retry storms?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-26",
+      "number": 26,
+      "categoryId": "web-backend-api-design",
+      "text": "Evolving an API without breaking clients?",
+      "description": "How do you change an API over time, adding and altering features, without breaking the clients that already depend on it? Describe the practices you follow.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Additive changes by default: new optional fields and new endpoints rather than changing or removing existing ones.",
+        "Tolerant readers: clients ignore unknown fields and the server accepts missing optional ones, so both sides can evolve independently.",
+        "Deprecation process: announces changes, sends Deprecation and Sunset headers, documents a timeline, and offers a new version only when a break is unavoidable.",
+        "Contract tests (e.g. consumer-driven with Pact) in CI to catch changes that would break known consumers before release.",
+        "Usage telemetry: tracks which clients still call old fields or versions, and contacts them before anything is removed."
+      ],
+      "redFlags": [
+        "Makes breaking changes silently (renaming fields, changing types or meanings) and relies on clients to notice.",
+        "Creates a new major version for every small change, leaving many versions to run and maintain.",
+        "Removes fields based on assumption, without any data on who still uses them.",
+        "Forgets mobile apps and third-party clients that cannot be updated quickly and may run old versions for years."
+      ],
+      "probes": [
+        "Removing a field?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-27",
+      "number": 27,
+      "categoryId": "web-data-caching",
+      "text": "SQL vs NoSQL for a new service?",
+      "description": "You are building a new service and need to choose between a relational SQL database and a NoSQL one. How would you make that decision, and what would you take into account?",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Starts from access patterns: the queries, read and write volumes and data shapes the service needs, rather than from a favourite database.",
+        "Consistency and transactions: where strong consistency and multi-row transactions matter (e.g. money, stock levels), a relational database is the natural default.",
+        "Relationships: highly related data that is joined often suits SQL; self-contained documents or simple key lookups suit document or key-value stores.",
+        "Scale: realistic volume estimates, knowing SQL scales far with indexes, replicas and partitioning, while NoSQL trades query flexibility for horizontal scale.",
+        "Team skills and operations: existing expertise, managed services, backups and cost, and middle grounds such as PostgreSQL JSONB columns."
+      ],
+      "redFlags": [
+        "States 'NoSQL scales, SQL doesn't' (or the reverse) as a rule, with no reference to the actual workload.",
+        "Picks NoSQL to avoid designing a schema, then pushes data integrity and joins into application code.",
+        "Ignores consistency needs and transaction boundaries for data such as payments or bookings.",
+        "Chooses whatever is fashionable or whatever they used last, without considering operations or the team."
+      ],
+      "probes": [
+        "JSONB middle ground?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-28",
+      "number": 28,
+      "categoryId": "web-data-caching",
+      "text": "A query slowed as data grew. Walk through it.",
+      "description": "A database query that used to be fast has become slow as the amount of data grew. Walk us through, step by step, how you would investigate and fix it.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Measures first: identifies the actual slow query from logs or monitoring, then runs EXPLAIN ANALYZE to see the real plan, row estimates and timings.",
+        "Indexes that match the query: composite indexes with columns in the right order, covering indexes to avoid table lookups, confirmed in the plan.",
+        "Checks the application side for N+1 queries (one extra query per row inside a loop), which get worse as data grows.",
+        "Replaces large OFFSET pagination with keyset (cursor) pagination, which stays fast as tables grow.",
+        "Considers stale table statistics, lock contention and blocking transactions, and re-measures after each change to confirm the improvement."
+      ],
+      "redFlags": [
+        "Adds indexes at random or on every column without reading the query plan.",
+        "Unaware that indexes slow down writes, use storage and may be ignored by the query planner.",
+        "Jumps to caching or a bigger database server before understanding why the query became slow.",
+        "Tests changes only on a small development database where the problem cannot be reproduced."
+      ],
+      "probes": [
+        "When does an index hurt?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-29",
+      "number": 29,
+      "categoryId": "web-data-caching",
+      "text": "Explain isolation levels with a real anomaly.",
+      "description": "Database isolation levels control how concurrent transactions see each other's changes. Explain the main levels and illustrate them with a concrete problem you have seen, or could see, when two transactions overlap.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Main levels: read committed (sees only committed data), repeatable read (rows already read do not change mid-transaction), serializable (as if transactions ran one at a time).",
+        "A concrete anomaly, e.g. a lost update where two users read the same balance, both change it, and one write silently overwrites the other.",
+        "Prevention options: optimistic locking with a version column, SELECT ... FOR UPDATE, atomic updates, or a unique constraint (e.g. against double booking).",
+        "Knows the default isolation level of the database they use, and that the same named level can behave differently between databases.",
+        "Trade-offs: stricter levels cost throughput and cause serialisation failures, so the application must be ready to retry transactions."
+      ],
+      "redFlags": [
+        "Unaware of their database's default isolation level, or assumes wrapping code in a transaction prevents every concurrency problem.",
+        "Can recite the level names but gives no real example of an anomaly or how it showed up in a system.",
+        "Suggests making every transaction serializable to be safe, without mentioning the cost in throughput, retries or deadlocks.",
+        "Relies on application-level 'check then write' logic with no lock or constraint to prevent double booking."
+      ],
+      "probes": [
+        "Preventing double booking?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-30",
+      "number": 30,
+      "categoryId": "web-data-caching",
+      "text": "Caching strategies and invalidation?",
+      "description": "Talk us through the caching strategies you use in web applications, and how you keep cached data correct when the underlying data changes.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Patterns: cache-aside (load on a miss, then store) versus write-through (update the cache on every write), and when each one fits.",
+        "Invalidation plan: TTLs as a safety net plus explicit invalidation or versioned keys when data changes, with an agreed tolerance for stale data.",
+        "Stampede protection: request coalescing, locks or early refresh so an expired popular key does not send a flood of requests to the database.",
+        "Key design: the key includes everything that changes the result (tenant, user, locale, version), so nobody receives someone else's data.",
+        "Layers: CDN, application or distributed cache, and database-level caching, and which kind of data belongs at each layer."
+      ],
+      "redFlags": [
+        "Has no invalidation plan beyond 'it expires eventually', even for data where stale values cause real problems.",
+        "Caches personalised or permission-dependent data under shared keys, risking data leaking between users or tenants.",
+        "Adds a cache to hide a slow query instead of fixing it, with no plan for a cold or failed cache.",
+        "Cannot explain what happens when a heavily used key expires under peak load."
+      ],
+      "probes": [
+        "Stampede handling?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-31",
+      "number": 31,
+      "categoryId": "web-data-caching",
+      "text": "Zero-downtime schema migrations?",
+      "description": "How do you change a database schema on a live system without taking the application offline? Explain the approach you would take for a change such as renaming or splitting a column.",
+      "difficulty": "expert",
+      "type": "knowledge",
+      "timeMin": 5,
+      "lookFor": [
+        "Expand and contract: add the new column first, move reads and writes across, and drop the old column only in a later release (e.g. for a rename).",
+        "Backfills run in small batches in the background, throttled and with progress tracking, rather than one huge locking update.",
+        "Dual writes or a sync mechanism keep old and new columns consistent while both application versions are running.",
+        "Feature flags switch reads to the new structure gradually, with a quick way back if problems appear.",
+        "Online index builds and awareness of locking schema changes (e.g. CREATE INDEX CONCURRENTLY in PostgreSQL) to avoid blocking production traffic."
+      ],
+      "redFlags": [
+        "Does a big-bang rename or drop during the deploy, breaking the old application version that is still serving traffic.",
+        "Runs one huge UPDATE across millions of rows, locking tables and filling transaction logs.",
+        "Has no rollback plan once the schema has changed, assuming every migration will succeed first time.",
+        "Assumes code and database change at exactly the same moment, ignoring rolling deployments where old and new versions overlap."
+      ],
+      "probes": [
+        "Renaming a column?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-32",
+      "number": 32,
+      "categoryId": "web-auth-security",
+      "text": "Explain OAuth 2.0 auth code + PKCE and where OIDC fits.",
+      "description": "OAuth 2.0's authorisation code flow with PKCE, Proof Key for Code Exchange, is the usual way apps obtain access tokens. Walk us through how the flow works and where OpenID Connect (OIDC) fits on top.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Roles: resource owner (the user), client (the app), authorisation server and resource server (the API), and what each one trusts.",
+        "Code exchange: the user signs in at the authorisation server, the app receives a short-lived code, then swaps it at the token endpoint for tokens.",
+        "PKCE: the app sends a hashed code challenge at the start and the original verifier at exchange, so an intercepted code is useless to an attacker.",
+        "OIDC on top: adds an ID token telling the app who the user is, while the access token is for calling APIs, limited by scopes.",
+        "Knows the implicit flow is no longer recommended, and that PKCE is now advised for confidential clients as well as public ones."
+      ],
+      "redFlags": [
+        "Describes plain OAuth 2.0 as an authentication protocol, not knowing that OIDC adds the identity layer.",
+        "Uses the access token to identify the user in the front end, or sends ID tokens to APIs as if they were access tokens.",
+        "Recommends the implicit flow, or tokens returned in the URL, for a new single-page app.",
+        "Can list the steps but cannot explain what PKCE actually protects against (interception of the authorisation code)."
+      ],
+      "probes": [
+        "PKCE for confidential clients?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-33",
+      "number": 33,
+      "categoryId": "web-auth-security",
+      "text": "Where do you store tokens in a SPA?",
+      "description": "In a single-page application (SPA) running in the browser, where should access and refresh tokens be kept? Explain the options and the security trade-offs between them.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Explains the trade-off: tokens readable by JavaScript (localStorage, memory) are exposed to XSS, while cookies are sent automatically and need CSRF protection.",
+        "Backend-for-frontend (BFF): the server keeps the tokens and the browser only gets an httpOnly, Secure, SameSite session cookie that scripts cannot read.",
+        "Short-lived access tokens limit damage if one is stolen, held in memory rather than persistent storage when the SPA must hold them itself.",
+        "Refresh token rotation: each refresh issues a new refresh token, and reuse of an old one is detected and ends the session.",
+        "Recognises that with XSS an attacker can act as the user anyway, so XSS prevention and CSP matter whatever storage is chosen."
+      ],
+      "redFlags": [
+        "Stores long-lived access or refresh tokens in localStorage and sees no risk in doing so.",
+        "Believes httpOnly cookies remove all risk, ignoring CSRF and the need for SameSite settings or anti-CSRF tokens.",
+        "Has no plan for revoking a stolen token or logging a user out of all devices.",
+        "Puts tokens in URLs or query strings, where they leak into logs, browser history and Referer headers."
+      ],
+      "probes": [
+        "BFF and CSRF?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-34",
+      "number": 34,
+      "categoryId": "web-auth-security",
+      "text": "How do you validate a JWT correctly?",
+      "description": "A JWT, or JSON Web Token, is a signed token often used for authentication. Explain everything your server should check before it trusts a JWT it has received.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Verifies the signature with the issuer's public key from its JWKS endpoint, matched by the kid header, before trusting any claim.",
+        "Allow-lists the expected algorithms on the server (e.g. RS256 only) and never trusts the alg value in the token, rejecting 'none'.",
+        "Checks the claims: iss is the expected issuer, aud is this API, exp has not passed and nbf has been reached.",
+        "Allows a small clock skew tolerance for exp and nbf, and separately checks scopes or roles for the requested action.",
+        "Handles key rotation by caching the JWKS and refreshing on an unknown kid, using a well-maintained library rather than hand-written checks."
+      ],
+      "redFlags": [
+        "Decodes the token and trusts its claims without verifying the signature, e.g. reading the user ID straight from the payload.",
+        "Accepts whatever algorithm the token header says, opening the door to alg=none or algorithm confusion attacks.",
+        "Skips the audience check, so a token issued for a different application is accepted by this API.",
+        "Thinks a JWT is encrypted and puts sensitive data in it, or assumes it can be revoked instantly like a server session."
+      ],
+      "probes": [
+        "alg=none?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-35",
+      "number": 35,
+      "categoryId": "web-auth-security",
+      "text": "What changed in OWASP Top 10:2025 and how do you defend?",
+      "description": "The OWASP Top 10 is a widely used list of the most critical web application security risks, and it was updated for 2025. Tell us what changed in that edition and how you defend against those risks.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "A01 Broken Access Control stays at the top and now includes SSRF (server-side request forgery); defended with server-side checks and outbound request allow-lists.",
+        "A02 Security Misconfiguration: defended with hardened defaults, infrastructure as code and automated configuration checks in the pipeline.",
+        "A03 Software Supply Chain Failures is a new category; controls include dependency scanning, lockfiles, SBOMs, signed builds and vetting new packages.",
+        "A05 Injection and the new A10 Mishandling of Exceptional Conditions: parameterised queries, output encoding, and failing safely without leaking internal details.",
+        "Concrete controls they have actually run or built, not just category names (e.g. a dependency scanner that blocks builds, an access control test suite)."
+      ],
+      "redFlags": [
+        "Recites a 2017-era list (e.g. XML External Entities and Cross-Site Scripting as separate entries) and is unaware of the 2025 changes.",
+        "Names categories from memory but cannot describe a single control they have implemented, tested or operated.",
+        "Treats the Top 10 as a complete security standard or compliance checklist rather than an awareness document.",
+        "Thinks a web application firewall or a single scanning tool alone covers these risks, with no secure design work."
+      ],
+      "probes": [
+        "A supply-chain control you've run?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-36",
+      "number": 36,
+      "categoryId": "web-auth-security",
+      "text": "Authorisation in a multi-tenant app?",
+      "description": "In a multi-tenant application, many customer organisations share the same system. How do you make sure each user can only see and change what they are allowed to, especially other tenants' data?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Server-side checks on every object: the API verifies this user may access this specific record, not merely that they are logged in.",
+        "Tenant-scoped data access: tenant ID taken from the authenticated session, never the request, and applied in every query (e.g. a shared data layer or row-level security).",
+        "Access models: role-based (RBAC) for simple permissions, attribute-based (ABAC) for rules such as 'own department only', with a reason for the choice.",
+        "Tests for IDOR (insecure direct object reference): automated tests that try to read or change another tenant's records by swapping IDs.",
+        "Defence in depth: central policy code, audit logs of sensitive actions, and caches, exports and search indexes also separated by tenant."
+      ],
+      "redFlags": [
+        "Relies on hiding buttons or menu items in the UI as the way to stop unauthorised actions.",
+        "Trusts a tenant ID or user ID sent by the client in the URL or request body.",
+        "Scatters permission checks across individual controllers with no central approach, so one missing check is likely.",
+        "Forgets that background jobs, exports, caches and search indexes also need tenant isolation."
+      ],
+      "probes": [
+        "Row-level security?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-37",
+      "number": 37,
+      "categoryId": "web-auth-security",
+      "text": "Managing secrets and dependencies securely?",
+      "description": "How do you handle secrets such as passwords and API keys, and the third-party packages your code depends on, so that neither becomes a security weakness in your applications?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Secrets kept in a managed store such as Azure Key Vault (or an equivalent), with access audited and secrets rotated regularly.",
+        "Managed identities (or similar workload identity) let applications reach cloud services without any stored password or key.",
+        "No secrets in the repository: secret scanning and pre-commit hooks, plus a clear process to revoke and rotate anything that leaks.",
+        "Dependencies: software composition analysis (SCA) for known vulnerabilities, an SBOM recording what ships, and versions pinned through lockfiles.",
+        "Automated updates via Dependabot or similar, reviewed and tested rather than merged blindly, with caution over new or unfamiliar packages."
+      ],
+      "redFlags": [
+        "Commits .env files or keys to the repository, or thinks deleting the file later removes the secret from git history.",
+        "Shares secrets over chat or email, or uses one long-lived key across every environment.",
+        "Has no response to a compromised npm package beyond 'update it', with no thought of assessing impact or rotating secrets.",
+        "Ignores dependency alerts or switches them off because there are too many, with no triage process."
+      ],
+      "probes": [
+        "Compromised npm package?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-38",
+      "number": 38,
+      "categoryId": "web-system-design",
+      "text": "Design a document-sharing service at company scale.",
+      "description": "Design a service that lets people across a large company store and share documents. Talk through your design aloud, including the reasoning and trade-offs; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Starts with requirements: who shares what, file sizes, versioning, search, retention and compliance needs, and the most important use cases.",
+        "Capacity estimates: rough numbers for users, documents, storage growth and read-to-write ratio, used to justify design choices.",
+        "Data model and IDs: metadata in a database and file content in object storage, with unguessable IDs for documents and share links.",
+        "Access control on every read (owners, groups, link sharing), with caching and CDN delivery through short-lived signed URLs that respect permissions.",
+        "Abuse controls and hot spots: malware scanning, size and rate limits, audit logs, and handling very popular documents without overloading one key."
+      ],
+      "redFlags": [
+        "Jumps straight to technologies (Kafka, Kubernetes, a particular database) before understanding requirements or scale.",
+        "Stores large files in the relational database or streams them all through application servers without discussing the cost.",
+        "Treats access control as an afterthought, or uses public links that never expire for shared documents.",
+        "Gives no numbers at all, so cannot justify why the design is the right size."
+      ],
+      "probes": [
+        "Hot keys?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-39",
+      "number": 39,
+      "categoryId": "web-system-design",
+      "text": "Real-time notifications for 100k concurrent users.",
+      "description": "Design a system that delivers real-time notifications to around a hundred thousand users connected at the same time. Talk us through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "expert",
+      "type": "design",
+      "timeMin": 8,
+      "lookFor": [
+        "Transport choice: WebSocket for two-way traffic or Server-Sent Events (SSE) for server-to-client only, with reasons and a fallback for restrictive networks.",
+        "Fan-out through pub/sub (e.g. Redis or a message broker), so any server can deliver to a user connected to a different server.",
+        "Connection scaling: many long-lived connections per node, a load balancer that supports them, and graceful draining of connections during deploys.",
+        "Backpressure and reconnection: limits for slow clients, message IDs, and catching up on missed notifications after reconnecting with backoff and jitter.",
+        "Authentication when the connection opens, re-checked when tokens expire, plus authorisation on which channels each user may receive."
+      ],
+      "redFlags": [
+        "Proposes every client polling once a second (around 100,000 requests a second at this scale) without weighing the alternatives.",
+        "Assumes connections never drop and has no plan for reconnection or missed messages.",
+        "Keeps connection state on one server only, so notifications fail for users connected to any other server.",
+        "Ignores authentication on the socket, letting anyone subscribe to other users' notifications."
+      ],
+      "probes": [
+        "Multi-region?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-40",
+      "number": 40,
+      "categoryId": "web-system-design",
+      "text": "File uploads up to 5 GB.",
+      "description": "Design a way for users of a web application to upload files as large as five gigabytes. Talk through your design, reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Direct-to-storage uploads using short-lived signed URLs, so files go straight to object storage instead of through the application servers.",
+        "Resumable multipart uploads: the file is split into parts that upload in parallel and retry individually, so a dropped connection does not restart 5 GB.",
+        "Malware scanning and file type checks after upload, with files held in quarantine until they pass.",
+        "Asynchronous processing: storage events trigger scanning, thumbnails or indexing in the background, with progress and status shown to the user.",
+        "Limits and security: size and type limits, per-user quotas, URLs scoped to one object that expire quickly, and clean-up of abandoned uploads."
+      ],
+      "redFlags": [
+        "Streams every upload through the application servers, tying up connections and memory for long periods.",
+        "Trusts the file extension or client-supplied content type without checking the actual content.",
+        "Has no plan for failed or interrupted uploads, forcing users to start again from zero.",
+        "Issues long-lived or broadly scoped upload URLs that could be reused to overwrite or upload other files."
+      ],
+      "probes": [
+        "Securing URLs?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-41",
+      "number": 41,
+      "categoryId": "web-system-design",
+      "text": "Design a feature flag service.",
+      "description": "Design a service for managing feature flags, which let teams switch functionality on or off without redeploying. Talk through your design, reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Local SDK evaluation: services download flag rules and evaluate them in memory, with updates streamed or polled, so a check adds no network call.",
+        "Targeting rules by user, tenant, percentage rollout or environment, with consistent bucketing so a user sees the same variant every time.",
+        "Consistency and failure: safe defaults if the flag service is unavailable, and an acceptable delay for changes to reach every service.",
+        "Audit log of who changed which flag and when, with permissions, because a flag change is a production change.",
+        "Kill switches for risky features, plus a lifecycle that removes old flags so they do not pile up as technical debt."
+      ],
+      "redFlags": [
+        "Reads flags from the database on every request, adding latency and making the flag store a single point of failure.",
+        "Has no defaults for when the flag service is down, so an outage there takes the product down with it.",
+        "Never removes flags, leaving code full of dead branches that nobody dares to delete.",
+        "Lets anyone change production flags with no audit trail or approval, so nobody can tell who switched a feature off."
+      ],
+      "probes": [
+        "Edge evaluation?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-42",
+      "number": 42,
+      "categoryId": "web-testing-ci-cd-observability",
+      "text": "Your testing approach as a senior engineer?",
+      "description": "As a senior engineer, how do you approach testing the code you and your team write? Tell us what kinds of tests you write and how you decide what is worth testing.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Balance of layers: many fast unit tests, integration tests at real boundaries such as the database, and a few end-to-end tests for critical journeys.",
+        "Tests behaviour, not implementation: tests check what the user or caller sees, so refactoring the internals does not break them.",
+        "Contract tests between services, or between front end and API, to catch breaking changes without full end-to-end environments.",
+        "Design for testability: pure functions, injected dependencies and clear boundaries, and can say what they deliberately do not unit test and why.",
+        "Treats flaky tests as bugs to fix, and judges test value by risk and confidence rather than chasing a coverage percentage."
+      ],
+      "redFlags": [
+        "Says testing is QA's job, or describes tests as something added after the feature if there is time.",
+        "Chases a coverage number with tests that mirror internal code and break at every refactor.",
+        "Relies mainly on slow end-to-end UI tests for everything, so the suite is flaky and feedback arrives late.",
+        "Mocks so heavily that tests pass while the real integration is broken."
+      ],
+      "probes": [
+        "What don't you unit test?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-43",
+      "number": 43,
+      "categoryId": "web-testing-ci-cd-observability",
+      "text": "Good CI/CD for a web app?",
+      "description": "What does a good continuous integration and continuous delivery (CI/CD) set-up look like for a web application? Describe the path a change takes from commit to production.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Trunk-based development or very short-lived branches, with small changes merged to main frequently rather than long-running feature branches.",
+        "PR checks: build, linting, type checks, unit and integration tests and security scans that must pass before merge, kept fast.",
+        "Preview environments for each pull request so reviewers and product owners can try the change before it is merged.",
+        "Safe releases: one build artifact promoted through environments and signed so its origin can be verified, released by canary or behind feature flags.",
+        "Fast rollback, automated where possible, with database changes kept backward compatible so rolling back the code is safe."
+      ],
+      "redFlags": [
+        "Deploys manually from a developer's machine, or depends on one person who knows the steps.",
+        "Rebuilds the application separately for each environment, so what was tested is not exactly what is released.",
+        "Has no rollback plan beyond 'fix forward', or bundles irreversible database changes into the same deploy.",
+        "Accepts a slow or flaky pipeline as normal, so developers bypass checks or batch up large risky changes."
+      ],
+      "probes": [
+        "DB changes?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-44",
+      "number": 44,
+      "categoryId": "web-testing-ci-cd-observability",
+      "text": "Intermittent 502s with nothing in logs. Approach?",
+      "description": "Users intermittently get HTTP 502 Bad Gateway errors, but your application logs show nothing. Talk us through, step by step, how you would work out what is going on.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Recognises that a 502 is produced by a proxy layer (CDN, gateway or load balancer), so the failing request may never reach the application logs.",
+        "Checks each layer's logs and metrics in turn (CDN, gateway, load balancer, ingress), lining up timestamps to find where the error starts.",
+        "Timeout and keep-alive mismatches, e.g. the app closing idle connections before the load balancer does, causing intermittent 502s on reused connections.",
+        "Correlation IDs and distributed tracing (e.g. OpenTelemetry) to follow a single request across every hop.",
+        "Looks for patterns using percentiles rather than averages, and correlation with deploys, specific instances, pod restarts or traffic peaks."
+      ],
+      "redFlags": [
+        "Only looks at application logs and concludes there is no problem because nothing appears there.",
+        "Starts restarting servers or raising timeouts at random without forming and testing a hypothesis.",
+        "Relies on average latency, which hides the slow outliers that cause intermittent failures.",
+        "Cannot explain what a 502 means or which component typically returns it."
+      ],
+      "probes": [
+        "What would you instrument?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-45",
+      "number": 45,
+      "categoryId": "web-behavioural-leadership",
+      "text": "How do you give and receive code review feedback?",
+      "description": "Code review is when teammates check each other's changes before they are merged. Using a real example, tell us how you give feedback as a reviewer and how you take it as an author.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "Describes a real review they gave or received: what the change was, what was said, how the other person responded, and the candidate's own part.",
+        "Focuses comments on intent and risk (correctness, security, design, maintainability) rather than personal style, and explains the reason behind each one.",
+        "Kind, specific wording: frames comments as questions or suggestions, marks optional points clearly, and acknowledges good work.",
+        "Automates nitpicks with linters and formatters, agrees turnaround norms, and can point to a result (e.g. faster reviews or fewer bugs reaching production).",
+        "As an author, separates ego from code, asks clarifying questions, and can name feedback that changed their mind and what they learned."
+      ],
+      "redFlags": [
+        "Answers in general principles or hypotheticals ('I would always...') and cannot describe an actual review.",
+        "Blames others for review friction ('they were too sensitive') without considering their own tone or approach.",
+        "Uses reviews to enforce personal preferences or blocks changes over formatting that a tool could handle.",
+        "Describes no outcome or change, and cannot say what they learned from a review that went badly."
+      ],
+      "probes": [
+        "A review that went badly?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-46",
+      "number": 46,
+      "categoryId": "web-behavioural-leadership",
+      "text": "A technical decision you drove that others disagreed with.",
+      "description": "Tell us about one particular technical decision you pushed for even though others disagreed. Describe what you yourself did, how the disagreement was handled, and what happened.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific decision with real stakes (e.g. a framework change or architecture shift), with the candidate's own role and who disagreed and why.",
+        "Wrote it up as an RFC or architecture decision record (ADR) setting out options, trade-offs and evidence such as prototypes or benchmarks.",
+        "Listened to objections, changed the proposal where others were right, and reached the decision through an agreed process.",
+        "Understands disagree and commit, and describes the result with evidence (e.g. measured performance, delivery time or incident numbers).",
+        "Reflects honestly on what they would do differently and what evidence would make them reverse the decision."
+      ],
+      "redFlags": [
+        "Describes a hypothetical or a team-level decision with no clear personal role in it.",
+        "Presents the disagreement as others being wrong or obstructive, with no acknowledgement of their valid concerns.",
+        "Won through seniority, persistence or going around people rather than through evidence and discussion.",
+        "Cannot say what happened afterwards or whether the decision turned out to be right."
+      ],
+      "probes": [
+        "What would reverse it?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-47",
+      "number": 47,
+      "categoryId": "web-behavioural-leadership",
+      "text": "Mentoring someone to the next level.",
+      "description": "Describe a real time you helped a colleague grow to the next level in their career, for example from mid-level to senior. What did you personally do, and how did it go?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real person and starting point: their level, the gap holding them back, and how the candidate identified that gap.",
+        "A deliberate plan agreed with the mentee and their manager, with specific goals and regular check-ins rather than ad hoc help.",
+        "Delegation with support: handed over real ownership (e.g. leading a design or an incident) and coached rather than taking the work back.",
+        "Evidence of growth: a promotion, new responsibilities, or visible changes such as the person leading reviews or designs independently.",
+        "Reflection on their own mentoring: what worked, what they would change, and how they adapted to the person's way of learning."
+      ],
+      "redFlags": [
+        "Talks about mentoring in general or hypothetically, with no specific person or example.",
+        "Credits only themselves for the person's success, or blames the mentee when progress stalled.",
+        "Describes mentoring as just answering questions or reviewing code, with no plan, goals or stretch responsibilities.",
+        "Cannot point to any outcome or evidence that the person actually progressed."
+      ],
+      "probes": [
+        "How measured?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-48",
+      "number": 48,
+      "categoryId": "web-behavioural-leadership",
+      "text": "An incident you led or helped fix.",
+      "description": "Think of one production incident that you led or helped resolve. Talk us through what happened, the part you yourself played, and what came of it afterwards.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific incident with its impact (e.g. users affected, duration, money or data at risk) and the candidate's exact role in it.",
+        "Calm triage: stabilised the service first (rollback, feature flag, failover) before hunting the root cause, using dashboards and logs to decide.",
+        "Communication: regular updates to stakeholders and users, a clear incident lead, and tasks shared out so people did not duplicate work.",
+        "Blameless postmortem focused on systems and processes, with the root cause and contributing factors explained in plain terms.",
+        "Follow-through: actions actually completed (alerts, tests, runbooks), evidence the problem has not recurred, and what they personally learned."
+      ],
+      "redFlags": [
+        "Tells a vague or hypothetical story, or one where they mainly watched while others fixed it.",
+        "Blames a colleague, another team or a vendor rather than examining the system and process.",
+        "Dived into debugging alone without communicating, leaving stakeholders and support teams uninformed.",
+        "Has no follow-up actions or measurable outcome; the incident simply ended and nothing changed."
+      ],
+      "probes": [
+        "Most valuable action?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-49",
+      "number": 49,
+      "categoryId": "web-behavioural-leadership",
+      "text": "Balancing tech debt against features.",
+      "description": "Tell us about a real occasion when you had to weigh paying down technical debt against delivering new features. How did you approach it, what did you do, and what was the outcome?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real trade-off: the specific debt, the features competing for the same time, and the candidate's own role in the decision.",
+        "Quantified the cost of the debt in terms the business understood (e.g. hours lost per release, incident counts, slower delivery).",
+        "Negotiated with the product manager, linking the work to goals they cared about and agreeing a share of capacity or a schedule.",
+        "Paid it down incrementally alongside feature work (e.g. refactoring areas already being changed) rather than halting delivery for a big rewrite.",
+        "Measured the result afterwards and reflects on what they would prioritise differently next time."
+      ],
+      "redFlags": [
+        "Speaks in generalities or hypotheticals ('I always set aside time for refactoring') with no actual occasion.",
+        "Blames product managers or leadership for never allowing time, with no attempt to make the case.",
+        "Proposes a large rewrite as the answer, with no incremental path or assessment of risk.",
+        "Cannot describe an outcome or whether paying down the debt actually made a difference."
+      ],
+      "probes": [
+        "Convincing the PM?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-50",
+      "number": 50,
+      "categoryId": "web-behavioural-leadership",
+      "text": "A project that failed or slipped.",
+      "description": "Tell us about a project you were part of that failed or slipped badly. We want to hear what happened, what your own role was, and what you would do differently now.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real project that genuinely failed or slipped, with the size of the slip and its impact on users or the business.",
+        "Takes ownership of their own part, including decisions they made or concerns they did not raise early enough.",
+        "Early warning signs: names the signals that were missed (e.g. unclear scope, growing estimates, untested integrations) and when they first appeared.",
+        "Explains what they did once the problem was clear, such as re-scoping, escalating, or resetting expectations with stakeholders.",
+        "Learning applied: a concrete change they have since made on later projects, and what they would do in week one now."
+      ],
+      "redFlags": [
+        "Picks a trivial or disguised success ('we were a week late but it went great') or answers hypothetically.",
+        "Blames others (management, another team, the client) and takes no personal responsibility for any part of the failure.",
+        "Cannot say how the project ended, what the consequences were, or how the team recovered.",
+        "Lists lessons in generic terms but shows no evidence of having changed how they work since."
+      ],
+      "probes": [
+        "What would you do in week one now?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-51",
+      "number": 51,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "How do you structure and scale CSS in a large application that many developers work on, so styles stay predictable and layouts work across screen sizes?",
+      "description": "Many developers work in the same large web application and need styling to stay consistent without breaking each other's pages. How do you organise CSS, and how do you build layouts that work across different screen sizes?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Scoping strategy: chooses CSS Modules, a utility framework or CSS-in-JS with reasons, so one team's styles cannot leak into another team's components.",
+        "Specificity and the cascade: keeps selectors flat and low-specificity, avoids !important battles, and may use cascade layers (@layer) to order reset, library and app styles.",
+        "Design tokens as CSS custom properties for colour, spacing and typography, which also makes theming such as dark mode cheap to add.",
+        "Modern layout: Flexbox for one dimension, Grid for two, and container queries or fluid sizing so components adapt to the space they are given.",
+        "Keeps styling maintainable with linting (e.g. Stylelint) and visual regression tests, and checks that unused CSS or runtime styling cost is not bloating pages."
+      ],
+      "redFlags": [
+        "Relies on global class names and ever-higher specificity or !important to override styles, so small changes break unrelated pages.",
+        "Uses fixed pixel widths and device-specific breakpoints everywhere, so layouts fail when users zoom, enlarge text or use unusual screens.",
+        "Chooses a styling library purely on preference, without considering runtime cost, server rendering or how teams share tokens.",
+        "Treats CSS as unimportant and has never debugged a layout or cascade problem methodically in the browser DevTools."
+      ],
+      "probes": [
+        "How would you add dark mode to an existing application?"
+      ],
+      "version": 1,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-52",
+      "number": 52,
+      "categoryId": "web-react-frontend-architecture",
+      "text": "Design a task-list screen where users' changes appear instantly (optimistic updates) and keep working offline, then sync when the connection returns. How do you handle failed saves and conflicting edits?",
+      "description": "Users want a task list that reacts immediately when they make changes and keeps working without a network connection. Design how it would show changes straight away, work offline, sync later, and deal with saves that fail or edits that clash.",
+      "difficulty": "expert",
+      "type": "design",
+      "timeMin": 8,
+      "lookFor": [
+        "Optimistic updates: applies the change locally at once, remembers the previous value, and rolls back or clearly flags the item if the server rejects it.",
+        "Offline queue: pending changes stored durably in the browser (e.g. IndexedDB), replayed in order on reconnect, with idempotency keys so replays never create duplicates.",
+        "Service worker caching of the app shell and recent data so the screen loads without a network, with a clear strategy for picking up new releases.",
+        "Conflict handling: a version number per item and an explicit rule such as last-write-wins, field-level merge or asking the user, chosen per type of data.",
+        "User experience: visible sync status, pending and failed markers, retry options, and honest messages so users know what has actually been saved."
+      ],
+      "redFlags": [
+        "Shows changes as saved with no rollback or error path, so users believe work is stored when the server rejected it.",
+        "Keeps the offline queue only in memory, so a refresh or closed tab silently loses the user's changes.",
+        "Ignores conflicts entirely, letting whichever update arrives last overwrite another user's edits without anyone having chosen that rule.",
+        "Assumes navigator.onLine or a single failed request reliably shows whether the user is offline."
+      ],
+      "probes": [
+        "Two users edit the same task while both are offline: what happens when they reconnect?"
+      ],
+      "version": 1,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-53",
+      "number": 53,
+      "categoryId": "web-auth-security",
+      "text": "React escapes text by default, so how can a React application still end up with cross-site scripting (XSS) vulnerabilities, and how do you prevent them?",
+      "description": "React automatically escapes text it renders, which blocks many injection attacks. Explain the ways a React application can still be vulnerable to cross-site scripting, and what you do to prevent it.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Knows React's default protection: values placed in JSX as text are escaped, so ordinary rendering of user input is safe.",
+        "Names the escape hatches: dangerouslySetInnerHTML, user-supplied URLs in href or src (e.g. javascript: links), and direct DOM writes through refs or third-party libraries.",
+        "Sanitises any HTML that must be rendered with a maintained library such as DOMPurify, and allow-lists URL schemes such as https and mailto.",
+        "Watches less obvious paths: server-rendered state embedded in script tags without proper escaping, markdown renderers, and untrusted third-party scripts.",
+        "Adds defence in depth with a Content Security Policy and Trusted Types where the browser supports them, and tests with real attack payloads."
+      ],
+      "redFlags": [
+        "Believes React makes XSS impossible, so sees no need to review dangerouslySetInnerHTML or how URLs are handled.",
+        "Sanitises HTML with hand-written regular expressions or by stripping script tags only, which attackers routinely bypass.",
+        "Relies on validating input on the way in instead of encoding or sanitising at the point where data is output.",
+        "Cannot explain what an attacker gains from XSS, such as acting as the user or reading tokens that scripts can access."
+      ],
+      "probes": [
+        "A product manager wants users to post rich-text comments with formatting: what do you do?"
+      ],
+      "version": 1,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "web-54",
+      "number": 54,
+      "categoryId": "web-testing-ci-cd-observability",
+      "text": "After a release, some users report a blank white screen, but server metrics and logs look normal. How do you find out what is happening, and how would you make sure you hear about it first next time?",
+      "description": "Following a new release, some users see only a blank white page, yet the servers look healthy. Walk us through how you would find the cause, and what you would put in place so the team spots this before users report it.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Suspects the client first: a JavaScript error during start-up, a failed chunk load after deploy, or a browser feature missing on some devices.",
+        "Real-user error monitoring (e.g. Sentry or similar) with source maps, release tags and browser details to find the failing line and affected users.",
+        "Checks deployment causes: cached old HTML requesting asset files that were deleted, CDN or cache headers, and recovers by rolling back or keeping old assets available.",
+        "Adds error boundaries and a global error handler so one failing component shows a fallback message instead of an empty page.",
+        "Prevents a repeat: alerts on client error rates per release, synthetic checks of key journeys, and smoke tests in supported browsers before full rollout."
+      ],
+      "redFlags": [
+        "Concludes there is no problem because the servers are healthy, or asks users to clear their cache and moves on.",
+        "Has no client-side error reporting, so depends on support tickets and cannot see which users or browsers are affected.",
+        "Debugs only in their own up-to-date browser and cannot reproduce issues tied to older browsers, extensions or cached files.",
+        "Relies on manual checks after release rather than automated monitoring that would catch a broken start-up within minutes."
+      ],
+      "probes": [
+        "What exactly would you alert on, and at what point would you roll back?"
+      ],
+      "version": 1,
+      "status": "active",
+      "rubricOverride": null
+    }
+  ]
+}

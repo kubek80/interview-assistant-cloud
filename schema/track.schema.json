@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://interview-assistant.local/schema/track.schema.json",
+  "title": "Interview Assistant track",
+  "description": "One track of the question bank: seed/<trackId>.json (BANK-3, BANK-4). Also used to validate track files imported in the app (BANK-7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["track", "categories", "questions"],
+  "properties": {
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "version"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*$" },
+        "name": { "type": "string", "minLength": 1 },
+        "version": {
+          "description": "Year.month with an optional release number (2026.11, 2026.11.2); compared segment by segment to decide whether to reload the seed (BANK-6).",
+          "type": "string",
+          "pattern": "^[0-9]{4}\\.(0[1-9]|1[0-2])(\\.[1-9][0-9]*)?$"
+        }
+      }
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/category" }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/question" }
+    }
+  },
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "nonEmptyStringList": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/nonEmptyString" }
+    },
+    "category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "weight", "mustHave"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*-[a-z0-9]+(-[a-z0-9]+)*$" },
+        "name": { "$ref": "#/definitions/nonEmptyString" },
+        "weight": { "type": "number", "minimum": 0 },
+        "mustHave": { "type": "boolean" }
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "number",
+        "categoryId",
+        "text",
+        "description",
+        "difficulty",
+        "type",
+        "timeMin",
+        "lookFor",
+        "redFlags",
+        "probes",
+        "version",
+        "status",
+        "rubricOverride"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*-[1-9][0-9]*$" },
+        "number": { "type": "integer", "minimum": 1 },
+        "categoryId": { "type": "string", "pattern": "^[a-z][a-z0-9]*-[a-z0-9]+(-[a-z0-9]+)*$" },
+        "text": { "$ref": "#/definitions/nonEmptyString" },
+        "description": {
+          "description": "BANK-8: plain-language explanation for the interviewer, used to steer a candidate who has not understood the question.",
+          "$ref": "#/definitions/nonEmptyString"
+        },
+        "difficulty": { "enum": ["core", "advanced", "expert"] },
+        "type": { "enum": ["knowledge", "scenario", "design", "behavioural"] },
+        "timeMin": { "type": "integer", "minimum": 1 },
+        "lookFor": { "$ref": "#/definitions/nonEmptyStringList" },
+        "redFlags": { "$ref": "#/definitions/nonEmptyStringList" },
+        "probes": { "$ref": "#/definitions/nonEmptyStringList" },
+        "version": { "type": "integer", "minimum": 1 },
+        "status": { "enum": ["active", "retired"] },
+        "rubricOverride": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "1": { "$ref": "#/definitions/nonEmptyString" },
+                "2": { "$ref": "#/definitions/nonEmptyString" },
+                "3": { "$ref": "#/definitions/nonEmptyString" },
+                "4": { "$ref": "#/definitions/nonEmptyString" }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "behavioural" } } },
+          "then": { "properties": { "difficulty": { "const": "core" } } }
+        }
+      ]
+    }
+  }
+}

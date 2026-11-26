@@ -1,0 +1,1596 @@
+{
+  "track": {
+    "id": "edge",
+    "name": "Senior Platform Engineer (Akamai & Apigee)",
+    "version": "2026.11.1"
+  },
+  "categories": [
+    {
+      "id": "edge-akamai-delivery-caching",
+      "name": "Akamai delivery & caching",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "edge-akamai-security",
+      "name": "Akamai security",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "edge-akamai-operations-as-code",
+      "name": "Akamai operations & as code",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "edge-apigee-core",
+      "name": "Apigee core",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "edge-apigee-security",
+      "name": "Apigee security",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "edge-apigee-operations",
+      "name": "Apigee operations",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "edge-integration-governance-incidents",
+      "name": "Integration, governance & incidents",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "edge-behavioural-leadership",
+      "name": "Behavioural & leadership",
+      "weight": 1,
+      "mustHave": false
+    }
+  ],
+  "questions": [
+    {
+      "id": "edge-1",
+      "number": 1,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "Explain how a request flows through Akamai to origin.",
+      "description": "Akamai is a content delivery network, or CDN. Walk us through the path a user's request takes from their browser, through Akamai's platform, to the origin server and back again.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "DNS step: the site's hostname is a CNAME to an Akamai edge hostname, and Akamai's DNS answers with a nearby, healthy edge server for that user.",
+        "Edge server: terminates the user's connection (including TLS), applies the property's rules, and serves a cached copy straight away on a hit.",
+        "On a miss, the edge asks a parent server first (parent or tiered distribution), so far fewer requests reach the origin and hit ratio improves.",
+        "Origin leg: a separate connection from Akamai to the origin, where SureRoute can pick a faster path across the internet for uncacheable or dynamic requests.",
+        "Return path: the response is cached according to the rules, headers may be changed, and the candidate can say where they would see hit or miss."
+      ],
+      "redFlags": [
+        "Describes Akamai as 'just DNS' or a simple redirect, with no idea that edge servers proxy, cache and apply rules to the traffic.",
+        "Believes the user's browser connects directly to the origin after the DNS lookup, so cannot explain where caching or TLS happens.",
+        "Thinks every miss goes straight to the origin and has never heard of parent or tiered caching reducing origin load.",
+        "Gives a memorised list of terms but cannot say which step they would examine first when a request is slow or fails."
+      ],
+      "probes": [
+        "Where does TLS terminate?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-2",
+      "number": 2,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "How do Property Manager TTLs interact with origin headers?",
+      "description": "In Akamai Property Manager, the tool for configuring delivery, you can set cache lifetimes, known as TTLs. Explain how those settings combine with the caching headers the origin server sends, and how the two interact in practice.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Caching behaviour options: a fixed max-age, honour origin Cache-Control and Expires, no-store, or bypass cache, and when each one suits.",
+        "Precedence: knows whether the Property Manager setting or the origin header wins for a given rule, and that later matching rules can override earlier ones.",
+        "Downstream caching is set separately, so the time browsers keep a copy can differ from how long the edge keeps it.",
+        "A zero-second TTL still lets the edge store the object but revalidate with the origin on every request, unlike no-store or bypass.",
+        "Trade-off judgement: honouring origin is convenient but risky when application teams send wrong headers, so they check real responses before trusting it."
+      ],
+      "redFlags": [
+        "Confuses the edge TTL with the browser TTL, so expects a purge to fix content that is actually stuck in users' browsers.",
+        "Turns on 'honour origin' everywhere without checking what headers the origin actually sends, then caches errors or private pages.",
+        "Treats a zero TTL, no-store and bypass as the same thing and cannot explain their different effects on origin load.",
+        "Sets long TTLs on HTML or API responses with no plan for how fresh content will reach users after a release."
+      ],
+      "probes": [
+        "When is honouring origin risky?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-3",
+      "number": 3,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "What is a cache key and how do you customise it safely?",
+      "description": "A cache key is what a CDN uses to decide whether two requests are for the same cached object. Explain what makes up a cache key and how you would change it without causing problems.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Default make-up: host, path and query string identify the object, and anything else that changes the response must be deliberately added.",
+        "Query parameters: includes only those that change the content and excludes tracking parameters, so marketing tags do not create thousands of copies.",
+        "Cookies and headers: adds them to the key only when the response really varies by them, such as language or device class, never by session.",
+        "Vary awareness: knows how a Vary header from the origin affects caching and that splitting the key too finely lowers the hit ratio.",
+        "Safe rollout: tests key changes on staging, checks the key with debug headers, and watches hit ratio and origin traffic after activation."
+      ],
+      "redFlags": [
+        "Would cache personalised content, such as account pages, under a shared key so one user's data could be served to another.",
+        "Adds session cookies or the full header set to the key, which makes almost every request unique and the cache useless.",
+        "Removes query parameters from the key without checking which ones the application uses to choose content.",
+        "Has never investigated a low hit ratio and cannot describe how to see which key a request actually used."
+      ],
+      "probes": [
+        "Debugging low hit ratio?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-4",
+      "number": 4,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "Users see stale content after a deploy. Fix it.",
+      "description": "After a new release, users still see old versions of pages or files served through Akamai. Walk us through, step by step, how you would confirm the cause and fix it.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Confirms first: uses debug headers to read X-Cache, the cache key and the TTL on a stale response, and checks whether the origin itself serves the new version.",
+        "Locates the layer: separates stale copies at the edge from those in browsers, service workers or another cache in front of the origin.",
+        "Targeted Fast Purge by URL, CP code or cache tag, choosing the narrowest scope that covers the changed content.",
+        "Lasting fix: versioned or fingerprinted asset names, shorter TTLs on HTML, and a purge step that runs after the deploy has fully finished.",
+        "Verifies the result by re-requesting through the edge and checking hit or miss and content, then explains how to stop it happening again."
+      ],
+      "redFlags": [
+        "Reaches for 'purge everything' as the first move, which floods the origin and may not even be where the stale copy lives.",
+        "Purges before the new release is live at the origin, so the edge immediately re-caches the old content.",
+        "Assumes the CDN is at fault without checking browser caching or whether the origin is still serving old files.",
+        "Fixes the incident by hand each release but proposes no change to asset naming or TTLs to prevent a repeat."
+      ],
+      "probes": [
+        "Invalidate vs delete?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-5",
+      "number": 5,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "Which purge strategies exist and when do you use each?",
+      "description": "Purging removes or refreshes content held in Akamai's caches. What different ways of purging are available, and how do you decide which one to use in a given situation?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Fast Purge options: by URL for single objects, by CP code for a whole slice of traffic, and by Edge-Cache-Tag for groups of related objects.",
+        "Invalidate versus delete: invalidate marks content stale so the edge revalidates with the origin, while delete removes it and forces a full fetch.",
+        "Chooses invalidate by default to protect the origin, keeping delete for cases such as content that must legally disappear.",
+        "Automation: purges through the API or CLI as a pipeline step, with credentials scoped to purging, rather than someone clicking in the portal.",
+        "Reduces the need to purge at all through fingerprinted file names, and tags responses at the origin so related pages can be cleared together."
+      ],
+      "redFlags": [
+        "Relies on manual purges in the web portal during releases, which are slow, forgettable and leave no record in the pipeline.",
+        "Uses CP code purges routinely for small changes without considering the sudden load this sends to the origin.",
+        "Does not know the difference between invalidate and delete, or claims they behave the same way.",
+        "Plans to purge on every request or every content edit, instead of designing TTLs and tags so purges are rare."
+      ],
+      "probes": [
+        "Tagging responses?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-6",
+      "number": 6,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "Explain property versions, activation and rule inheritance.",
+      "description": "In Akamai Property Manager, a property is a delivery configuration. Explain how its versions work, how a version is activated, and how rules inherit settings from the rules above them.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Rule tree: each rule has criteria (match conditions) and behaviours (actions), starting from a default rule that applies to every request.",
+        "Inheritance: child rules inherit from their parents and can override settings, and the order of rules matters when several match.",
+        "Versions: changes are made on a new version, activated on the staging network first and then on production once tested.",
+        "Rollback is done by reactivating the previous known-good version, and they know roughly how long activation takes to plan around it.",
+        "Includes: reusable rule fragments shared across properties and activated on their own, useful for common standards but needing careful change control."
+      ],
+      "redFlags": [
+        "Edits and activates production directly without testing a new version on staging first.",
+        "Cannot explain why a behaviour set in the default rule was overridden, showing no grasp of inheritance or rule order.",
+        "Thinks rollback means manually undoing each change rather than reactivating a previous version.",
+        "Changes a shared include without considering every property that uses it and whether they will all be affected."
+      ],
+      "probes": [
+        "Why includes?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-7",
+      "number": 7,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "How do you debug Akamai from outside?",
+      "description": "Without access to Akamai's own servers, how do you investigate what Akamai did with a request and why a response looks the way it does? Describe the tools and techniques you use.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Pragma debug headers such as akamai-x-cache-on, akamai-x-get-cache-key and akamai-x-get-true-cache-key to see cache status and the key used.",
+        "Enhanced Debug: the secure option using the Akamai-Debug header with an auth token, preferred because ordinary Pragma output can be requested by anyone.",
+        "Reads X-Cache values such as TCP_HIT and TCP_MISS, and uses curl with chosen headers rather than relying on what a browser shows.",
+        "Takes the reference ID from an Akamai error page and looks it up, together with Edge Diagnostics, to see what the edge actually did.",
+        "Tests the staging network by pointing a client at it, and compares edge behaviour with a direct request to the origin to isolate the layer."
+      ],
+      "redFlags": [
+        "Debugs only in a browser, where caching, extensions and hidden headers make it hard to see what the edge returned.",
+        "Leaves Pragma debug output open to the public without considering what cache keys and internal details it reveals.",
+        "Cannot say what a reference ID is or how they would use one to investigate a user's error report.",
+        "Raises a vendor ticket immediately rather than gathering evidence with the tools available to them first."
+      ],
+      "probes": [
+        "Why Enhanced Debug over Pragma?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-8",
+      "number": 8,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "EdgeWorkers: when to use or avoid?",
+      "description": "EdgeWorkers is Akamai's service for running your own code on its edge servers. When is it a good choice, and when would you avoid it?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Purpose: EdgeWorkers runs your own JavaScript on Akamai edge servers, for logic the standard Property Manager behaviours cannot express.",
+        "Handlers: knows when onClientRequest, onOriginRequest, onOriginResponse, onClientResponse and responseProvider run, and picks the right one for the job.",
+        "Good uses: request routing, A/B testing, header changes and simple personalisation, with EdgeKV for small data the code needs to look up.",
+        "Limits: resource tiers cap the time and memory available, so code must stay small, and failure behaviour needs deciding when the code errors.",
+        "Testing and release: unit tests, testing on staging before production, versioned bundles and a quick way to disable or roll back the code."
+      ],
+      "redFlags": [
+        "Rebuilds in code what native behaviours already do, such as caching or redirects, adding cost and failure points for no gain.",
+        "Wants to move heavy business logic or a whole application to the edge without considering the resource tiers.",
+        "Treats EdgeKV like a strongly consistent database and relies on a write being visible everywhere immediately.",
+        "Has no plan for testing, observing or rolling back edge code, so a bug would reach every user at once."
+      ],
+      "probes": [
+        "Testing them?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-9",
+      "number": 9,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "Origin failover and load balancing on Akamai?",
+      "description": "How do you set up Akamai so traffic can be spread across several origin servers or data centres, and moved away from one that fails? Explain the options and how you would choose between them.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "GTM (Global Traffic Management) steers traffic between data centres using DNS answers driven by liveness tests against each origin.",
+        "Chooses the mode on purpose: failover for primary and backup, weighted for gradual shifts, and performance-based for routing users to the fastest site.",
+        "Origin failover in the property: retries or switches to a backup origin when the primary returns errors or times out, without waiting for DNS.",
+        "Keeps GTM DNS TTLs short so changes take effect quickly, and understands the extra lookups and cost this trade-off brings.",
+        "Designs liveness tests that check something meaningful, plans fail-back, and makes sure each site has the data it needs to serve traffic."
+      ],
+      "redFlags": [
+        "Relies on ordinary DNS failover with long TTLs, so clients keep sending traffic to a dead site for a long time.",
+        "Uses a health check that only fetches a static page, so a site with a broken database still appears healthy.",
+        "Has no plan for fail-back or for both sites taking writes at once, risking flapping traffic or inconsistent data.",
+        "Cannot explain when GTM is preferable to load balancing within the property, or the reverse."
+      ],
+      "probes": [
+        "GTM vs Application Load Balancer?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-10",
+      "number": 10,
+      "categoryId": "edge-akamai-delivery-caching",
+      "text": "Design delivery for a multi-region app plus APIs with different caching needs.",
+      "description": "Design Akamai delivery for an application running in several regions that also exposes APIs, where different content needs different caching. Talk through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "expert",
+      "type": "design",
+      "timeMin": 8,
+      "lookFor": [
+        "Separate rules for static assets and APIs: long TTLs and fingerprinting for static files, no caching or short, carefully keyed caching for APIs.",
+        "Cache-key design per path, including which query parameters and headers matter, and no shared caching of authenticated responses.",
+        "Regional origins behind GTM or origin failover, with health checks and a clear plan for what users see when a region is down.",
+        "Protocols and certificates: HTTP/2 and HTTP/3 at the edge, certificates covering every hostname, and automated renewal through the pipeline.",
+        "Observability and ownership: separate CP codes, logs streamed out, and dashboards showing hit ratio, errors and latency per path and region."
+      ],
+      "redFlags": [
+        "Proposes one rule that caches everything the same way, which either serves stale API data or wastes the cache on static files.",
+        "Caches authenticated or user-specific API responses without including the user in the key or bypassing the cache.",
+        "Ignores what happens when one region fails, or assumes Akamai will route around it without any configuration.",
+        "Designs in silence or presents one fixed answer, without discussing trade-offs or asking about traffic and data requirements."
+      ],
+      "probes": [
+        "Authenticated API responses?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-11",
+      "number": 11,
+      "categoryId": "edge-akamai-security",
+      "text": "What does App & API Protector provide and how is it tuned?",
+      "description": "App & API Protector is Akamai's web application and API security product. Describe what protection it provides and how you tune it so it stops attacks without disrupting legitimate users.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Protection layers: a web application firewall (WAF) with the Adaptive Security Engine, rate controls, bot visibility and API discovery.",
+        "Rollout: new protections start in alert mode, logs are reviewed for false positives, and rules move to deny once the impact is understood.",
+        "Tuning: applies Akamai's tuning recommendations and narrow exceptions for specific paths or parameters, rather than disabling whole rule groups.",
+        "Knows what the Advanced Security Management option adds for their setup and when that extra control is worth paying for.",
+        "Ongoing care: regular review of attack data, tuning after application releases, and a fast route for teams to report blocked legitimate traffic."
+      ],
+      "redFlags": [
+        "Never tunes false positives, so legitimate users are blocked or the team quietly switches rules off to make complaints stop.",
+        "Switches straight to deny on day one without an alert period, causing an outage for real customers.",
+        "Creates broad exceptions, such as excluding a whole hostname from inspection, to fix one false positive.",
+        "Treats the WAF as a complete defence and sees no need for secure coding or API authentication behind it."
+      ],
+      "probes": [
+        "Alert to deny?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-12",
+      "number": 12,
+      "categoryId": "edge-akamai-security",
+      "text": "Rate controls for login and search?",
+      "description": "Login and search endpoints are common targets for abuse. How would you set up Akamai rate controls, which limit how often clients can make requests, to protect those endpoints?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Separate rate policies by path and method, so login POSTs and search requests get limits suited to their normal traffic.",
+        "Client identity: knows that many users can share an IP behind corporate NAT or mobile networks, and counts by token or session where possible.",
+        "Starts in alert mode, measures real traffic, then sets burst and average thresholds based on evidence before switching to deny.",
+        "Pairs login limits with other defences such as bot detection and account lockout policies, since credential stuffing spreads across many IPs.",
+        "Aligns edge limits with Apigee quotas so the two layers do not contradict each other and clients get consistent responses."
+      ],
+      "redFlags": [
+        "Sets limits per IP that block a whole office or mobile network behind one shared corporate NAT address.",
+        "Picks thresholds by guesswork and enforces them immediately without looking at real traffic first.",
+        "Believes a simple per-IP limit is enough to stop credential stuffing from distributed botnets.",
+        "Configures Akamai and Apigee limits independently, so clients hit unexplained 429 errors from one layer or the other."
+      ],
+      "probes": [
+        "Shared IPs?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-13",
+      "number": 13,
+      "categoryId": "edge-akamai-security",
+      "text": "Bot Manager vs basic bot visibility?",
+      "description": "Akamai offers basic bot visibility and a fuller Bot Manager product for dealing with automated traffic. Explain the difference between them and when the full product is worth having.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Known bots: recognises categories such as search engines and monitoring services, and lets the good ones through deliberately.",
+        "Unknown bots: the fuller product scores traffic for automation that is not on any known list, which basic visibility cannot do.",
+        "Graduated actions: monitor, slow, tarpit, challenge and deny, chosen according to the risk of the endpoint and the confidence of detection.",
+        "Focuses protection on transactional endpoints such as login, checkout and account creation, where bots cause real business harm.",
+        "Considers partner impact: allowlists legitimate partner integrations and tests changes so business automation is not blocked by mistake."
+      ],
+      "redFlags": [
+        "Blocks all bots including search engines, damaging search visibility and breaking legitimate integrations.",
+        "Uses deny for everything rather than quieter actions, which tells attackers exactly when they have been detected.",
+        "Cannot explain what the full Bot Manager adds over basic visibility, so cannot justify the cost either way.",
+        "Ignores partners and monitoring tools until they complain that their traffic has been blocked."
+      ],
+      "probes": [
+        "Allowing partners?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-14",
+      "number": 14,
+      "categoryId": "edge-akamai-security",
+      "text": "DDoS mitigation by layer?",
+      "description": "DDoS means distributed denial-of-service, an attack that floods a service with traffic. Explain how you would protect a site against it at each layer, from the network up to the application.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Network-layer floods aimed at sites served through Akamai are absorbed by the edge, so they never reach the origin.",
+        "Application-layer attacks need L7 controls: rate controls, WAF rules and bot defences on expensive endpoints.",
+        "Prolexic protects origin infrastructure and data centres that are not fronted by the edge, such as other services sharing the network.",
+        "Origin lock-down with Site Shield or access control lists (ACLs), so attackers cannot bypass the edge by hitting the origin IP directly.",
+        "Readiness: a tested runbook, known contacts at the vendor, and checks that origin IP addresses are not exposed in DNS history or headers."
+      ],
+      "redFlags": [
+        "Assumes the origin is protected simply because the site uses Akamai, without blocking direct traffic to it.",
+        "Treats every DDoS attack as the same, with no distinction between volumetric floods and slow application-layer attacks.",
+        "Leaves old DNS records or mail servers pointing at the origin's IP addresses, which tells attackers where to aim.",
+        "Has no plan for who to call or what to switch on until an attack is already under way."
+      ],
+      "probes": [
+        "Verifying no bypass?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-15",
+      "number": 15,
+      "categoryId": "edge-akamai-security",
+      "text": "Site Shield and other origin lock-down options?",
+      "description": "Locking down an origin means stopping attackers from bypassing Akamai and reaching your servers directly. Explain what Akamai's Site Shield does and what other ways exist to protect the origin.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Site Shield: Akamai fetches from the origin only through a restricted map of edge IP addresses, which the origin firewall allowlists.",
+        "Map changes: acknowledges Site Shield map updates promptly and updates the firewall first, so new edge addresses are not blocked.",
+        "Stronger options: mutual TLS between Akamai and the origin, signed tokens the origin verifies, or private connectivity where available.",
+        "Layers more than one control, because an IP allowlist alone does not prove the request came through your own configuration.",
+        "Cloud origins: maps these controls onto GCP or Azure firewall rules and load balancers, and tests that direct requests are actually refused."
+      ],
+      "redFlags": [
+        "Relies only on a secret header to protect the origin, which leaks through logs or misconfiguration and is rarely rotated.",
+        "Ignores Site Shield map update notices until the firewall starts blocking legitimate edge traffic.",
+        "Locks down the main hostname but forgets other paths to the origin, such as direct IPs or test hostnames.",
+        "Never verifies the lock-down by trying to reach the origin directly from outside Akamai."
+      ],
+      "probes": [
+        "Origin on GCP/Azure?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-16",
+      "number": 16,
+      "categoryId": "edge-akamai-security",
+      "text": "Certificate management (CPS) and mTLS?",
+      "description": "CPS is Akamai's Certificate Provisioning System for TLS certificates, and mTLS is mutual TLS, where both sides present certificates. Explain how you manage certificates on Akamai and where mTLS comes in.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Certificate types: DV, OV and EV certificates through CPS, plus third-party certificates when the organisation must use a particular certificate authority.",
+        "SAN versus wildcard: weighs how many hostnames a certificate covers against the impact if that certificate or its key is compromised.",
+        "Enhanced TLS: knows when traffic needs it, such as sensitive or regulated data, and how it differs from the standard option.",
+        "Renewal automation and expiry monitoring, so certificates renew in time and failures alert someone well before users see errors.",
+        "Separates client mTLS at the edge, verifying callers' certificates, from mTLS to the origin, where Akamai proves its identity to the backend."
+      ],
+      "redFlags": [
+        "Tracks certificates in a spreadsheet with manual reminders, which is how expiry outages happen.",
+        "Has let a certificate expire in production and cannot describe what changed afterwards to stop it recurring.",
+        "Shares private keys for origin or third-party certificates by email or chat, or keeps them in source control.",
+        "Mixes up client mTLS at the edge with mTLS to the origin, so cannot say which certificate goes where."
+      ],
+      "probes": [
+        "Zero-downtime rotation?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-17",
+      "number": 17,
+      "categoryId": "edge-akamai-operations-as-code",
+      "text": "How do you manage Akamai as code?",
+      "description": "Rather than changing Akamai configuration by hand in the web console, how do you manage it as code? Describe the tools and the workflow you would use.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Uses the Akamai Terraform provider, with akamai_property driven by JSON rule templates or the akamai_property_rules_builder data source in HCL.",
+        "Brings existing properties under code with a CLI export (--rules-as-hcl) rather than rewriting configuration by hand.",
+        "Pipeline: changes reviewed as pull requests, then activated to staging and to production through code, not the portal.",
+        "Manages security configuration through the appsec resources as well, so WAF and rate controls are versioned alongside delivery rules.",
+        "Drift control: detects changes made in the portal through plan output, limits write access there, and reconciles differences back into code."
+      ],
+      "redFlags": [
+        "Makes routine changes by clicking in Control Center, so there is no review, history or easy way to repeat a change.",
+        "Stores API credentials in the repository, or shares one credential with full account rights across every pipeline.",
+        "Ignores drift, so the next Terraform run silently overwrites a hotfix someone made by hand.",
+        "Puts every property in one huge state file, making plans slow and risky for unrelated teams."
+      ],
+      "probes": [
+        "Drift?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-18",
+      "number": 18,
+      "categoryId": "edge-akamai-operations-as-code",
+      "text": "CI/CD for Akamai config changes.",
+      "description": "Design a continuous integration and delivery (CI/CD) process for making Akamai configuration changes safely. Talk through the steps, your reasoning and the trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Review: changes arrive as pull requests with terraform plan output attached, so reviewers see exactly what will change.",
+        "Staging activation, then automated tests against the staging network covering cache headers, redirects, origins and security rules.",
+        "Approval gate before production, with a named owner and a change window that suits the traffic pattern.",
+        "Production activation from the same tested version, followed by checks of error rates and hit ratio.",
+        "Rollback: a scripted reactivation of the previous version, rehearsed in advance, with clear criteria for when to use it."
+      ],
+      "redFlags": [
+        "Skips verification on staging and goes straight to production, so problems are found by users.",
+        "Relies on manual clicks or local scripts on someone's laptop, giving no audit trail or repeatable process.",
+        "Has no automated tests at all, only a quick look in a browser after activation.",
+        "Cannot say how they would roll back or how long it would take while traffic is affected."
+      ],
+      "probes": [
+        "Testing against staging?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-19",
+      "number": 19,
+      "categoryId": "edge-akamai-operations-as-code",
+      "text": "Uses of DataStream, mPulse and logs?",
+      "description": "DataStream streams Akamai's delivery logs and mPulse measures real users' experience. What do you use these, and Akamai's other logs, for, and how do you get value from them?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "DataStream: near-real-time edge logs sent to a SIEM or storage, used for troubleshooting, security investigation and traffic analysis.",
+        "Field choice: selects only the fields needed, such as status, cache status, path, client IP and reference ID, to control volume.",
+        "Sampling and cost: decides what can be sampled and what must be complete, and estimates the cost of storage and ingestion.",
+        "Correlation: links edge logs to origin and Apigee logs through reference IDs or request IDs to follow a single request end to end.",
+        "mPulse: measures real users' experience, such as page load times by region or device, to show the effect of delivery changes."
+      ],
+      "redFlags": [
+        "Has no edge observability and depends on the origin's logs, so cannot see errors or attacks handled at the edge.",
+        "Streams every field for every request without considering cost, retention rules or personal data in the logs.",
+        "Collects logs but builds no alerts or dashboards, so the data is only looked at after a complaint.",
+        "Confuses real user measurement with synthetic tests and cannot say what each tells them."
+      ],
+      "probes": [
+        "Alerting on 5xx?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-20",
+      "number": 20,
+      "categoryId": "edge-akamai-operations-as-code",
+      "text": "After activation, 30% of requests get origin 503s. Act.",
+      "description": "Just after you activate a new Akamai configuration, about thirty per cent of requests start getting 503 errors from the origin. Talk us through, step by step, what you would do.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Rolls back fast by reactivating the previous version, because users are failing now and the cause can be found afterwards.",
+        "Compares the two versions to find exactly what changed, using the diff in the portal or in source control.",
+        "Checks likely causes: origin hostname, forwarded Host header, certificate and SNI, Site Shield ACL and GTM settings.",
+        "Reads the 30 per cent as a clue, such as one origin, region, path rule or edge map failing while others work.",
+        "Communication: tells stakeholders early, posts updates, then prevents a repeat with staging tests and a post-incident review."
+      ],
+      "redFlags": [
+        "Starts debugging in production while users keep failing, instead of rolling back first.",
+        "Assumes the origin team is at fault because the error says 503, without checking what the new configuration changed.",
+        "Makes several untested fixes at once, so the real cause is never known.",
+        "Communicates nothing until it is fixed, leaving support and other teams guessing."
+      ],
+      "probes": [
+        "Preventing recurrence?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-21",
+      "number": 21,
+      "categoryId": "edge-akamai-operations-as-code",
+      "text": "How do CP codes support reporting and chargeback?",
+      "description": "CP codes, short for content provider codes, are identifiers Akamai attaches to traffic. Explain how you use them for reporting, and for charging costs back to the right teams.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Purpose: CP codes (content provider codes) tag traffic so reports and bills can be split by application, team or business unit.",
+        "Assigns CP codes per application or traffic type, such as static assets versus APIs, so each team sees its own usage.",
+        "Uses CP codes for operations too, such as purging by CP code or filtering logs and reports during an incident.",
+        "Agrees a naming convention and an owner for each CP code, so reports stay meaningful as teams and products change.",
+        "Chargeback: maps CP code usage to cost centres in a way finance accepts, and reviews it regularly."
+      ],
+      "redFlags": [
+        "Uses one CP code for everything, so nobody can tell which team or application drives traffic and cost.",
+        "Creates CP codes ad hoc with no naming scheme, leaving reports full of codes nobody can identify.",
+        "Does not realise that a CP code purge affects everything under that code, not just one application.",
+        "Treats chargeback as finance's problem and has never checked reports against actual usage."
+      ],
+      "probes": [
+        "Naming conventions?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-22",
+      "number": 22,
+      "categoryId": "edge-apigee-core",
+      "text": "Anatomy of an Apigee API proxy?",
+      "description": "Apigee is Google's API management platform. Describe how an Apigee API proxy is put together: its main parts, and how a request and its response move through it.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "ProxyEndpoint faces the client and defines the base path, while the TargetEndpoint defines how Apigee calls the backend.",
+        "Flow order: PreFlow runs first, then whichever conditional flow matches the request, then PostFlow, on both the request and response sides.",
+        "Route rules decide which TargetEndpoint a request goes to, or that no backend is called at all.",
+        "Policies are attached to the request or response part of a flow, and the candidate can say where they would put authentication or transformation.",
+        "Fault rules handle errors raised anywhere in the flow, so the candidate can trace what happens when a policy or the backend fails."
+      ],
+      "redFlags": [
+        "Confuses the proxy endpoint with the target endpoint, so cannot say where client-facing and backend settings belong.",
+        "Puts every policy in PreFlow regardless of purpose, showing no understanding of conditional flows.",
+        "Cannot describe the order in which request and response policies run, which makes debugging guesswork.",
+        "Has only edited proxies in the UI and never read or worked with the proxy bundle as files."
+      ],
+      "probes": [
+        "Multiple targets?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-23",
+      "number": 23,
+      "categoryId": "edge-apigee-core",
+      "text": "Explain orgs, environments, environment groups and instances in Apigee X.",
+      "description": "Apigee X is the Google Cloud-hosted version of Apigee. Explain what organisations, environments, environment groups and instances are, and how they relate to each other.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Organisation: the top-level container holding proxies, products, developers and apps, normally tied to one Google Cloud project.",
+        "Proxies are deployed to environments, such as dev, test and prod, each with its own configuration and deployed revisions.",
+        "Hostnames live on environment groups, which group environments and decide which environment serves a request for a given hostname.",
+        "Environments are attached to regional instances, the runtime that actually processes traffic, so region choice affects latency and residency.",
+        "Under pay-as-you-go, environment types Base, Intermediate and Comprehensive differ in capability and price, so the type is chosen per workload."
+      ],
+      "redFlags": [
+        "Believes hostnames are configured on environments, so cannot explain how requests reach the right environment.",
+        "Mixes up instances and environments, treating an instance as just another name for a deployment stage.",
+        "Has no view on how dev, test and prod should be separated, such as separate environments or separate organisations.",
+        "Is unaware that environment types differ under pay-as-you-go, so would pick one without checking cost or features."
+      ],
+      "probes": [
+        "Promoting dev to prod?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-24",
+      "number": 24,
+      "categoryId": "edge-apigee-core",
+      "text": "Shared flows and flow hooks for governance?",
+      "description": "In Apigee, shared flows are reusable pieces of proxy logic and flow hooks attach them automatically. Explain how you would use these to apply consistent standards across many API proxies.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Shared flows: reusable sequences of policies for common needs such as security checks, logging and CORS, called from many proxies.",
+        "Flow hooks attach a shared flow to every proxy in an environment at fixed points, so standards apply without each team opting in.",
+        "Versioning: shared flows have their own revisions and pipeline, and changes are tested in lower environments before reaching production.",
+        "Knows that under pay-as-you-go some of these features need Intermediate or higher environment types, and checks before designing around them.",
+        "Balance: keeps shared logic small and well-documented, with a way for teams to see and test what runs before their own policies."
+      ],
+      "redFlags": [
+        "Copies and pastes the same policies into every proxy, so a security fix means editing dozens of proxies.",
+        "Changes a flow hook in production without testing, which can break every proxy in that environment at once.",
+        "Hides large amounts of business logic in shared flows, so teams cannot understand why their proxies behave as they do.",
+        "Has no versioning or rollback plan for shared flows and treats them as untracked configuration."
+      ],
+      "probes": [
+        "Safely testing a shared-flow change?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-25",
+      "number": 25,
+      "categoryId": "edge-apigee-core",
+      "text": "Why target servers?",
+      "description": "In Apigee, a target server is a named definition of a backend that proxies call. Explain why you would use target servers rather than writing backend addresses directly into each proxy.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Decoupling: proxies refer to a named target server, and each environment defines its real backend host, so the same bundle moves from dev to prod unchanged.",
+        "Load balancing across several target servers from one TargetEndpoint, with an algorithm chosen for the backend's behaviour.",
+        "Health monitors take failing servers out of rotation and bring them back once they recover.",
+        "TLS settings, keystores and truststores are attached through references, so certificates can rotate without editing every proxy.",
+        "Southbound mTLS: the client certificate Apigee presents to the backend is held in a keystore and managed per environment."
+      ],
+      "redFlags": [
+        "Hard-codes backend URLs in each proxy, so promotion between environments means editing the bundle.",
+        "Has no health checking, so a dead backend server keeps receiving a share of traffic.",
+        "Disables TLS verification towards the backend to get things working and never turns it back on.",
+        "Updates certificates by editing and redeploying every proxy instead of using references."
+      ],
+      "probes": [
+        "Southbound mTLS?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-26",
+      "number": 26,
+      "categoryId": "edge-apigee-core",
+      "text": "What belongs in KVMs and property sets?",
+      "description": "Apigee offers key value maps (KVMs) and property sets for holding data a proxy needs at runtime. What kind of information belongs in each, and what should not go in either?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "KVM scopes: organisation, environment or proxy, chosen by who needs the data and how widely a change should apply.",
+        "Encrypted KVMs for sensitive values, read at runtime so they are not stored in the proxy bundle.",
+        "Property sets for static, non-secret configuration deployed with the proxy or environment, such as feature switches or default values.",
+        "Secrets: separates configuration from credentials, and uses Secret Manager or a similar store where that suits better than a KVM.",
+        "Caching of KVM reads to reduce lookups, with an understanding of how long a changed value takes to be picked up."
+      ],
+      "redFlags": [
+        "Stores passwords or keys in plaintext in property sets, proxy files or source control.",
+        "Uses KVMs as a general database for business data, ignoring their purpose and limits.",
+        "Updates KVM values by hand in each environment with no record of who changed what.",
+        "Does not realise that cached KVM values may stay old for a while after an update."
+      ],
+      "probes": [
+        "KVM updates via CI?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-27",
+      "number": 27,
+      "categoryId": "edge-apigee-core",
+      "text": "API products, developer apps and keys?",
+      "description": "Explain how API products, developer apps and API keys work together in Apigee to control which consumers can use which APIs.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "API products bundle proxies and resource paths together with quotas, OAuth scopes and permitted environments, forming the unit consumers subscribe to.",
+        "Developers register apps, and each app gets credentials (a key and secret) that grant access to the products it is approved for.",
+        "Approval: chooses automatic approval for low-risk products and manual review for sensitive or partner products.",
+        "Portal: a developer portal lets consumers find APIs, sign up and manage their own keys without raising tickets.",
+        "Product tiers: offers different products for different limits or audiences, such as internal, partner and public, rather than one product for everything."
+      ],
+      "redFlags": [
+        "Thinks API keys are tied directly to proxies, missing that access is granted through products.",
+        "Creates one product containing every API, so any approved app can call anything.",
+        "Has no process for rotating or revoking app credentials when a partner relationship ends.",
+        "Approves every app automatically, including for sensitive data, without considering who is asking."
+      ],
+      "probes": [
+        "Product tiers?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-28",
+      "number": 28,
+      "categoryId": "edge-apigee-core",
+      "text": "Quota vs SpikeArrest vs ConcurrentRateLimit?",
+      "description": "Quota, SpikeArrest and ConcurrentRateLimit are Apigee policies that limit traffic. Explain how they differ from one another and when you would use each.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Quota counts calls over business windows, such as per minute, day or month, usually per app or product, to enforce contracts and plans.",
+        "SpikeArrest smooths bursts to protect backends and spreads the allowed rate over short intervals, rather than counting a business allowance.",
+        "ConcurrentRateLimit limits how many requests are in flight to a backend at once, and they check whether it is available on their Apigee version.",
+        "Placement in the flow: SpikeArrest early to protect everything behind it, Quota after authentication so it counts against the right app.",
+        "Synchronisation caveats: distributed quota counters across runtime nodes or regions may let a few extra calls through, so exact limits need care."
+      ],
+      "redFlags": [
+        "Uses SpikeArrest as a business quota, then wonders why clients are rejected well below their daily allowance.",
+        "Places Quota before authentication, so counts are kept against the wrong identity or none at all.",
+        "Expects quota counts to be exact to the single request across regions and builds contracts on that assumption.",
+        "Cannot explain which policy protects the backend and which enforces the commercial limit."
+      ],
+      "probes": [
+        "Placement vs auth?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-29",
+      "number": 29,
+      "categoryId": "edge-apigee-core",
+      "text": "Consistent error handling in Apigee?",
+      "description": "How do you make sure that, when something goes wrong in an Apigee proxy, clients receive errors in a consistent and safe way? Describe how you would set that up.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "FaultRules catch specific errors with conditions, while the DefaultFaultRule handles anything not matched, giving a single safety net.",
+        "RaiseFault is used deliberately to stop processing and return a defined error, such as for failed validation.",
+        "Standard error payload across all proxies, with a consistent format, an error code, a clear message and a correlation ID.",
+        "No backend leakage: target errors are mapped to safe client responses, hiding internal hostnames, stack traces and server versions.",
+        "Shares the error handling as a shared flow and tests error paths, not only successful calls."
+      ],
+      "redFlags": [
+        "Lets backend stack traces or internal error messages pass straight through to clients.",
+        "Gives every proxy its own error format, so clients must handle errors differently for each API.",
+        "Maps every failure to 500, losing the difference between client mistakes and server problems.",
+        "Has never tested what clients receive when a policy fails or the backend times out."
+      ],
+      "probes": [
+        "Mapping a target 500?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-30",
+      "number": 30,
+      "categoryId": "edge-apigee-core",
+      "text": "JavaScript, Java callouts and ServiceCallout: when and limits?",
+      "description": "Apigee lets you add custom logic with JavaScript or Java callouts, and call other services with the ServiceCallout policy. When do you reach for these, and what limits or downsides do they have?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Prefers built-in policies first, because they are tested, efficient and easy for others to read.",
+        "Uses JavaScript callouts for modest custom logic and Java callouts for complex needs, such as a library the policies cannot replace.",
+        "Performance and security cost: custom code adds latency, needs review and patching, and runs inside the gateway's resource limits.",
+        "ServiceCallout with explicit timeouts and error handling, aware that each callout adds a network call to the request path.",
+        "Tests and measures custom code, using unit tests and Debug timings to find a slow callout."
+      ],
+      "redFlags": [
+        "Builds whole applications or business logic inside JavaScript policies, turning the gateway into an unmaintainable service.",
+        "Calls other services with no timeout, so one slow dependency hangs every request through the proxy.",
+        "Chains several ServiceCallouts on every request without considering the added latency or what happens when one of them fails.",
+        "Writes custom code for something a standard policy already does, such as basic transformation or verification."
+      ],
+      "probes": [
+        "Debugging a slow callout?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-31",
+      "number": 31,
+      "categoryId": "edge-apigee-core",
+      "text": "Debugging a proxy in Apigee X?",
+      "description": "A proxy in Apigee X is not behaving as expected. Describe the tools and steps you would use to find out what is happening to requests as they pass through it.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Debug sessions with filters, so only matching requests, such as one app or header, are captured in a busy environment.",
+        "Debug masks hide tokens, passwords and personal data in captured traffic, set up before the session starts.",
+        "Flow variables: inspects their values at each step to see which condition matched and which policy changed the message.",
+        "Analytics show patterns over time, such as error codes, latency and which apps are affected.",
+        "Cloud Logging via MessageLogging for persistent request logs, correlated with backend logs using a request ID."
+      ],
+      "redFlags": [
+        "Relies only on what the client reports, without looking inside the proxy at all.",
+        "Runs Debug sessions in production without masks, exposing tokens and personal data to anyone with access.",
+        "Cannot read a Debug trace well enough to say which policy failed or why.",
+        "Adds logging policies that write full payloads, creating a data protection problem while fixing a bug."
+      ],
+      "probes": [
+        "Masking tokens?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-32",
+      "number": 32,
+      "categoryId": "edge-apigee-core",
+      "text": "Apigee X northbound/southbound networking options?",
+      "description": "In Apigee X, northbound means traffic from clients into Apigee and southbound means traffic from Apigee to backends. Describe the networking options for each direction and how you would choose.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Northbound through an external Application Load Balancer with a PSC NEG (the recommended route) or the older managed instance group (MIG) bridge.",
+        "Southbound to backends through VPC peering or Private Service Connect (PSC) endpoint attachments.",
+        "Knows that the non-peering setup supports PSC only, which affects how the organisation must be designed from the start.",
+        "Chooses based on IP ranges, other networks such as on-premises or other clouds, and who owns the load balancer.",
+        "Security at the edge of the network: TLS at the load balancer, Cloud Armor or Akamai in front, and firewall rules checked end to end."
+      ],
+      "redFlags": [
+        "Is unaware of PSC, so cannot describe how backends in other VPCs are reached.",
+        "Exposes the Apigee runtime publicly without a load balancer or any protective layer in front.",
+        "Assumes peering works for any backend without checking address range overlaps or transitive routing limits.",
+        "Cannot explain where TLS is terminated or how client certificates would be checked northbound."
+      ],
+      "probes": [
+        "Where is northbound mTLS terminated?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-33",
+      "number": 33,
+      "categoryId": "edge-apigee-security",
+      "text": "OAuth 2.0 client credentials in Apigee?",
+      "description": "The OAuth 2.0 client credentials grant lets one application get a token to call an API as itself, with no user involved. Explain how you would implement it with Apigee.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Token endpoint using OAuthV2 GenerateAccessToken, checking the app's client ID and secret, and VerifyAccessToken on each protected API.",
+        "Products and scopes control which APIs and operations a token allows, linked to the app's approved products.",
+        "Expiry: short-lived tokens, no refresh tokens for this grant, and clients told to cache tokens instead of requesting one per call.",
+        "External identity provider option: VerifyJWT checks tokens issued elsewhere, such as Entra ID, against that provider's JWKS keys.",
+        "Operational details: client secrets sent in the Authorization header, secret rotation, and revoking a compromised app's credentials."
+      ],
+      "redFlags": [
+        "Invents a homemade token format or signing scheme instead of using the standard policies.",
+        "Issues long-lived tokens that never expire, so a leaked token is useful to an attacker indefinitely.",
+        "Passes client secrets in query strings where they end up in logs.",
+        "Cannot explain the difference between issuing tokens in Apigee and validating tokens from an external provider."
+      ],
+      "probes": [
+        "Entra ID as IdP?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-34",
+      "number": 34,
+      "categoryId": "edge-apigee-security",
+      "text": "API keys vs OAuth vs JWT vs mTLS?",
+      "description": "Compare API keys, OAuth tokens, JSON Web Tokens (JWTs) and mutual TLS (mTLS) as ways of securing APIs. How do they differ, and when would you use which?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Identification versus authentication: an API key identifies the calling app but is weak proof, as anyone holding it can use it.",
+        "OAuth tokens add expiry and scopes, and JWTs are signed tokens that can be checked locally but are hard to revoke early.",
+        "mTLS proves the client's identity at the connection level, which suits partners and service-to-service traffic but needs certificate management.",
+        "Matches the choice to the consumer: internal services, partners and public clients get different mechanisms and different rotation plans.",
+        "Layered controls: combines mechanisms, such as mTLS plus OAuth for a sensitive partner API, and explains why."
+      ],
+      "redFlags": [
+        "Uses an API key alone to protect sensitive data, treating it as a password that proves identity.",
+        "Believes JWTs are encrypted by default and puts sensitive data in them.",
+        "Has no plan for rotating keys or certificates, or for revoking access when one is compromised.",
+        "Picks one mechanism for every case without considering who the caller is or what the data is."
+      ],
+      "probes": [
+        "Revoking a compromised app?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-35",
+      "number": 35,
+      "categoryId": "edge-apigee-security",
+      "text": "Threat-protection policies and Advanced API Security?",
+      "description": "Apigee has threat-protection policies and a separate add-on called Advanced API Security. Explain what each one does and how you would use them to protect your APIs.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "JSONThreatProtection and XMLThreatProtection set limits such as nesting depth, array size and string length to stop oversized or malicious payloads.",
+        "RegularExpressionProtection checks requests against patterns such as injection attempts, tuned to avoid false positives and slow expressions.",
+        "Advanced API Security adds risk assessment of proxy configuration, abuse detection on traffic, and security actions against suspicious clients.",
+        "Multi-gateway view via API hub, so APIs on other gateways are also catalogued and assessed.",
+        "Placement and tuning: threat checks run early in the flow, limits match real payloads, and results are reviewed before enforcement."
+      ],
+      "redFlags": [
+        "Assumes the WAF at the edge covers every API risk, ignoring abuse of valid-looking calls and business logic attacks.",
+        "Writes broad regular expressions that block legitimate data, such as names with apostrophes, or that slow every request.",
+        "Sets threat-protection limits without checking real payload sizes, then breaks large but valid requests.",
+        "Cannot describe a concrete abuse pattern, such as scraping or credential testing through an API, that they would look for."
+      ],
+      "probes": [
+        "An abuse pattern you'd detect?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-36",
+      "number": 36,
+      "categoryId": "edge-apigee-security",
+      "text": "A partner gets 429s but says they're within contract. Investigate.",
+      "description": "A partner says they are getting HTTP 429 Too Many Requests errors from your API even though they are staying within their agreed limits. Walk us through, step by step, how you would investigate.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Which policy: finds whether the 429 comes from Quota, SpikeArrest or an Akamai rate control, using response details, Debug and edge logs.",
+        "Counted identifier: checks whether limits count per app, key, product or IP, and whether several of the partner's systems share one allowance.",
+        "Window: compares the contract's wording with the configured window, such as per minute versus per day, and calendar versus rolling periods.",
+        "Distributed counters: considers how counts across regions or processors behave, and whether bursts trip SpikeArrest while totals stay within contract.",
+        "Evidence: uses analytics to compare the partner's actual traffic with the limits, including their retries, and shares the findings with them."
+      ],
+      "redFlags": [
+        "Simply raises the limits to make the complaint go away, without finding which limit fired or why.",
+        "Assumes the partner is wrong without looking at the data on either side.",
+        "Forgets the edge layer, so never discovers that Akamai rate controls are returning the 429s.",
+        "Fixes it quietly for this partner but leaves contracts and configured limits out of step for everyone else."
+      ],
+      "probes": [
+        "Preventing confusion?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-37",
+      "number": 37,
+      "categoryId": "edge-apigee-security",
+      "text": "Preventing sensitive data leaks through Apigee?",
+      "description": "Sensitive data such as personal details or credentials can leak out through an API gateway. How would you stop that happening with Apigee? Tell us where the risks lie and what you would do.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Debug masking of tokens, passwords and personal data, so Debug sessions do not expose them to support staff.",
+        "Scrubbed logging: logs only what is needed and removes or masks sensitive fields before they leave the gateway.",
+        "Response filtering strips internal fields and backend details that clients should not see.",
+        "CORS limited to approved origins, and TLS enforced on every connection, including towards backends.",
+        "Data residency: knows which region processes and stores data, including analytics, and checks it meets legal requirements."
+      ],
+      "redFlags": [
+        "Logs full request and response payloads by default, copying personal data into log systems.",
+        "Allows any origin in CORS settings, including with credentials, to make front-end problems go away.",
+        "Puts personal data into analytics custom dimensions, where it spreads into reports and exports.",
+        "Has never checked where gateway data is stored or who can access it."
+      ],
+      "probes": [
+        "PII in custom dimensions?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-38",
+      "number": 38,
+      "categoryId": "edge-apigee-operations",
+      "text": "CI/CD for Apigee proxies.",
+      "description": "Design a continuous integration and delivery (CI/CD) pipeline for building, testing and deploying Apigee API proxies. Talk through the stages, reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Source control: every proxy and shared flow lives in Git, with pull requests and reviews before anything is deployed.",
+        "Static checks and unit tests: apigeelint for policy and style problems, and unit tests for JavaScript code.",
+        "Deployment via the Apigee API, Maven or apigeecli, followed by integration tests against the deployed proxy in each environment.",
+        "Environment configuration as code, including target servers, KVMs and products, with Terraform for the underlying Apigee infrastructure.",
+        "Promotion: the same tested revision moves through environments, and rollback means redeploying the previous revision."
+      ],
+      "redFlags": [
+        "Allows UI edits in production, so the deployed proxy no longer matches anything in source control.",
+        "Rebuilds the bundle separately for each environment, so what reaches production was never tested.",
+        "Has no automated tests, relying on someone calling the API by hand after deployment.",
+        "Keeps environment configuration, such as KVM values and target servers, outside the pipeline as manual steps."
+      ],
+      "probes": [
+        "Rolling back a revision?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-39",
+      "number": 39,
+      "categoryId": "edge-apigee-operations",
+      "text": "Apigee analytics and monitoring?",
+      "description": "How do you use Apigee's analytics and monitoring features to understand how your APIs are performing and to spot problems early? Describe what you would set up and watch.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "API Monitoring for alerts and quick investigation of error and latency changes across proxies.",
+        "Separates proxy latency from target latency, so the gateway's own processing time can be told apart from slow backends.",
+        "Custom reports and error code breakdowns show which apps, proxies and fault types drive problems.",
+        "Alerts tied to agreed service level objectives (SLOs), such as error rate and latency for key APIs, rather than raw thresholds.",
+        "Exports to BigQuery or Cloud Monitoring for longer analysis and for joining with other platform data."
+      ],
+      "redFlags": [
+        "Has no SLOs, so alerts are either too noisy to trust or so quiet they miss real problems.",
+        "Looks only at total response time and cannot tell whether Apigee or the backend is slow.",
+        "Checks dashboards only after customers complain, with no alerting at all, so problems are found by users first.",
+        "Collects metrics without owners, so nobody acts when a proxy's error rate climbs."
+      ],
+      "probes": [
+        "Detecting rising target latency?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-40",
+      "number": 40,
+      "categoryId": "edge-apigee-operations",
+      "text": "Apigee X vs hybrid: when hybrid?",
+      "description": "Apigee comes as the Google-hosted Apigee X or as Apigee hybrid, where you operate part of the platform yourself. Explain how they differ and the circumstances in which you would choose hybrid.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Apigee X: Google hosts and runs both control and runtime planes, so the team manages APIs rather than infrastructure.",
+        "Hybrid: the runtime runs on your own Kubernetes clusters, chosen for data locality or latency close to backends.",
+        "The control plane stays hosted by Google in hybrid, so connectivity to it is still needed.",
+        "Operational burden: hybrid means owning upgrades, cluster capacity and the Cassandra data store, with staff who can run them.",
+        "Decision based on concrete requirements, such as regulations or on-premises backends, and a cost comparison including people."
+      ],
+      "redFlags": [
+        "Chooses hybrid for no clear reason, or because it sounds more flexible, without weighing the work it brings.",
+        "Underestimates upgrades and Cassandra operations, assuming hybrid runs itself once installed and needs no dedicated Kubernetes skills.",
+        "Believes hybrid removes any dependency on Google Cloud, forgetting that the control plane stays hosted by Google.",
+        "Cannot name a concrete requirement, such as data that must stay on premises, that would make Apigee X unsuitable."
+      ],
+      "probes": [
+        "Upgrade cadence?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-41",
+      "number": 41,
+      "categoryId": "edge-apigee-operations",
+      "text": "API hub for governance?",
+      "description": "API hub is Google's catalogue for keeping track of an organisation's APIs. Explain how you would use it to support API governance, meaning consistent standards and oversight across teams.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Catalogue across gateways, so APIs on Apigee and other platforms appear in one place.",
+        "Specs and versions: each API has its current specification and version history, kept up to date from pipelines.",
+        "Lint and style checks run on specifications, so design standards are checked automatically.",
+        "Ownership: every API has a named owning team and contact, making incidents and deprecation easier.",
+        "Shadow API discovery finds APIs receiving traffic that nobody registered, so they can be documented, secured or retired."
+      ],
+      "redFlags": [
+        "Keeps the API catalogue in a spreadsheet that is out of date as soon as it is written.",
+        "Registers APIs once by hand with no link to pipelines, so specs drift away from what is deployed.",
+        "Treats the catalogue as documentation only, with no ownership, standards or lifecycle information.",
+        "Sees governance as a review meeting rather than automated checks built into delivery."
+      ],
+      "probes": [
+        "Enforcing specs in CI?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-42",
+      "number": 42,
+      "categoryId": "edge-integration-governance-incidents",
+      "text": "Design Akamai to Apigee X to backends on GCP and Azure.",
+      "description": "Design an architecture where traffic passes through Akamai, then Apigee X, to backend services hosted on both Google Cloud and Azure. Talk it through aloud with your reasoning and trade-offs; there is no single right answer.",
+      "difficulty": "expert",
+      "type": "design",
+      "timeMin": 8,
+      "lookFor": [
+        "Clear roles: Akamai handles caching, WAF and bot defence at the edge, while Apigee X handles authentication, quotas and mediation.",
+        "Origin lock-down: the Apigee load balancer only accepts traffic from Akamai, using an allowlist, mTLS or a signed header the gateway checks.",
+        "Client IP propagation through True-Client-IP or X-Forwarded-For, so rate limits, logs and fraud checks see the real caller.",
+        "API cache rules at the edge that never cache authenticated or user-specific responses, with a deliberate choice of what is safe to cache.",
+        "End-to-end correlation ID passed through Akamai, Apigee and backends on both clouds, plus private connectivity to the GCP and Azure backends."
+      ],
+      "redFlags": [
+        "Duplicates rate limits and security checks in both layers without design, so clients hit confusing limits and nobody knows which layer owns what.",
+        "Leaves the Apigee entry point reachable directly from the internet, bypassing Akamai's protections.",
+        "Trusts any X-Forwarded-For value from the client, letting attackers spoof their IP address to dodge limits.",
+        "Sends traffic to Azure backends over the public internet without considering encryption, latency or egress costs."
+      ],
+      "probes": [
+        "Which layer owns which control?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-43",
+      "number": 43,
+      "categoryId": "edge-integration-governance-incidents",
+      "text": "API governance standards for 30 teams.",
+      "description": "Thirty teams build APIs across the organisation. Design the standards and processes you would put in place so their APIs are consistent and secure, talking through your reasoning aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "An OpenAPI style guide with naming and versioning rules, agreed with the teams rather than imposed from above.",
+        "Security baseline delivered through shared flows, so authentication, threat checks and logging are applied consistently by default.",
+        "Automated linting of specifications and proxies in every pipeline, so most standards are checked without a meeting.",
+        "Deprecation policy: notice periods, communication to consumers and analytics to find who still uses an old version.",
+        "Scorecards that show each team's compliance over time, used to target help rather than to shame teams."
+      ],
+      "redFlags": [
+        "Creates a central review board that every change must pass, which becomes a bottleneck and is soon bypassed.",
+        "Writes a long standards document but builds no tooling, so compliance depends on people remembering it.",
+        "Applies identical rules to internal prototypes and public partner APIs, with no tiering by risk.",
+        "Measures compliance only by counting documents, not by checking what is actually deployed."
+      ],
+      "probes": [
+        "Measuring compliance?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-44",
+      "number": 44,
+      "categoryId": "edge-integration-governance-incidents",
+      "text": "API latency spikes; Akamai and Apigee dashboards both red. Lead the response.",
+      "description": "API response times are spiking and both the Akamai and Apigee monitoring dashboards are showing red. You are leading the response: walk us through, step by step, what you would do.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Incident roles first: an incident lead, someone on communications and named investigators, so effort is coordinated from the start.",
+        "Isolates the layer using Akamai debug headers and the Apigee breakdown of proxy versus target latency, rather than guessing.",
+        "Recent changes: checks deployments, configuration activations and certificate or network changes on both platforms and the backends.",
+        "Mitigation before root cause: rollback, bypassing a failing component, or scaling, chosen by what restores service fastest with least risk.",
+        "Regular status updates to stakeholders, then a blameless postmortem with actions that have owners and dates."
+      ],
+      "redFlags": [
+        "Lets everyone debug at once in a shared channel with no lead, so work is duplicated and changes collide.",
+        "Assumes the problem is in their own platform or in the vendor's without evidence from both dashboards.",
+        "Makes several changes at once during the incident, so nobody knows which one helped or hurt.",
+        "Stops once service recovers, with no postmortem or follow-up actions, so the same failure can happen again."
+      ],
+      "probes": [
+        "First 10 minutes?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-45",
+      "number": 45,
+      "categoryId": "edge-behavioural-leadership",
+      "text": "A platform change that affected many teams.",
+      "description": "Tell us about a real change you made to a shared platform that affected many teams. How did you carry it out, what did you personally do, and how did it go?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real change with its scope, such as a new gateway standard or edge configuration model, how many teams it touched, and the candidate's own role.",
+        "Communication plan: early notice, clear reasons, timelines and channels, adjusted for teams that would be hit hardest.",
+        "Migration tooling such as scripts, templates or automated checks that made the change easy for teams rather than a burden.",
+        "Deprecation timeline with milestones, support for teams that fell behind, and a feedback loop that shaped the plan.",
+        "Measured outcome, such as the share of teams migrated on time or incidents avoided, and honest reflection on what they would change."
+      ],
+      "redFlags": [
+        "Talks hypothetically ('I would announce it…') rather than describing an actual change and what they personally did.",
+        "Blames other teams for being slow or resistant without examining whether the plan made sense for them.",
+        "Forced the change through with no tooling or support, leaving teams to absorb the work.",
+        "Cannot say how the change ended, how many teams moved, or what the result was."
+      ],
+      "probes": [
+        "Laggards?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-46",
+      "number": 46,
+      "categoryId": "edge-behavioural-leadership",
+      "text": "Saying no to a team's platform request.",
+      "description": "Describe one particular time a team asked your platform team for something and you said no. How did you handle it, and what happened afterwards?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real request and its context: what the team wanted, why it mattered to them, and the candidate's own part in the decision.",
+        "Principled reasoning for the refusal, such as security, supportability or cost to other teams, explained in terms the team understood.",
+        "Alternative offered: a different way to meet the underlying need, a later date or a self-service route.",
+        "Relationship kept: followed up afterwards and checked whether the team's problem was actually solved.",
+        "Outcome and reflection: what happened next, whether the decision held up, and whether they would decide differently now."
+      ],
+      "redFlags": [
+        "Gives a hypothetical answer or a general policy rather than a specific occasion when they said no.",
+        "Blames the requesting team for asking for the wrong thing, showing little interest in their actual need.",
+        "Said no without explanation or alternative, relying on the platform team's authority.",
+        "Has no idea what happened afterwards, or whether the team simply built a workaround elsewhere."
+      ],
+      "probes": [
+        "Revisited?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-47",
+      "number": 47,
+      "categoryId": "edge-behavioural-leadership",
+      "text": "A security incident or near miss at edge or gateway.",
+      "description": "Tell us about a real security incident, or a near miss, involving your edge network or API gateway. Talk us through what happened, what you yourself did, and what changed afterwards.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific incident or near miss at the edge or gateway, with its impact and exactly what the candidate did.",
+        "Response: contained the problem quickly, such as blocking traffic, rotating credentials or rolling back, and kept stakeholders informed.",
+        "Root cause explained plainly, including the contributing factors that allowed it, not only the immediate trigger.",
+        "Hardening afterwards: concrete changes such as new rules, removed exposure or automated checks, with evidence they worked.",
+        "Reflection on how it could have been detected earlier and what they changed in monitoring as a result."
+      ],
+      "redFlags": [
+        "Describes a hypothetical or a news story rather than an incident they were involved in.",
+        "Blames another team, a vendor or an individual and examines nothing about their own systems.",
+        "Has no outcome to report, or the incident closed without any lasting change.",
+        "Downplays a near miss as harmless luck instead of treating it as a warning to act on."
+      ],
+      "probes": [
+        "Earlier detection?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-48",
+      "number": 48,
+      "categoryId": "edge-behavioural-leadership",
+      "text": "Reducing toil for your platform team.",
+      "description": "Toil is repetitive manual operational work that adds no lasting value. Tell us about a specific time you cut it down for your platform team, what you did, and the difference it made.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific source of toil, such as manual purges, certificate renewals or key requests, and the candidate's own role in removing it.",
+        "Measured the toil before acting, such as hours per week or tickets per month, to choose what to fix first.",
+        "Automation or self-service that removed the work, such as pipeline steps, a portal or scripts teams can run safely.",
+        "Result shown with numbers afterwards, such as fewer tickets or faster lead times, and what the team did with the time saved.",
+        "Reflection on adoption problems, maintenance cost of the automation, and what they would do differently."
+      ],
+      "redFlags": [
+        "Talks in hypotheticals or generalities about automation without a real example of their own.",
+        "Blames other teams for creating the toil and did nothing to make the right path easier for them.",
+        "Has no measure of the toil before or after, so cannot show the change made any difference.",
+        "Built automation that nobody adopted or that now needs more care than the original manual task."
+      ],
+      "probes": [
+        "What did you measure?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-49",
+      "number": 49,
+      "categoryId": "edge-behavioural-leadership",
+      "text": "A vendor escalation with Akamai or Google.",
+      "description": "Describe a real occasion when you had to escalate a problem to a vendor such as Akamai or Google. Tell us what the problem was, how you handled the escalation, and how it ended.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real problem that needed the vendor, such as a platform defect, why internal options were exhausted, and the candidate's own role in escalating it.",
+        "Evidence gathered first: reference IDs, timestamps, traces and reproduction steps, so the vendor could act quickly.",
+        "Clear ask: stated the impact, the urgency and what outcome was needed, and used the right support level and contacts.",
+        "Managed the escalation: kept internal stakeholders informed, applied a workaround meanwhile, and pushed politely when progress stalled.",
+        "Outcome and reflection: how it ended, what changed in their own monitoring or relationships, and what they would do differently."
+      ],
+      "redFlags": [
+        "Answers in generalities or hypotheticals ('I would open a ticket…') rather than describing one actual escalation.",
+        "Blames the vendor for everything without showing what evidence or clarity they provided.",
+        "Escalated with no evidence or reproduction, then waited passively for an answer.",
+        "Cannot say how the escalation ended or whether the underlying problem was ever fixed."
+      ],
+      "probes": [
+        "Differently now?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-50",
+      "number": 50,
+      "categoryId": "edge-behavioural-leadership",
+      "text": "Growing platform skills in others.",
+      "description": "Tell us about a time you helped other engineers build their skills with the platforms you look after. What did you personally do, and what difference did it make?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real example, with who they helped, the skill gap involved and the candidate's own actions.",
+        "Documentation and runbooks that others actually use, kept up to date as the platforms change.",
+        "Pairing on real work, such as a configuration change or incident, rather than only giving presentations.",
+        "Communities of practice or regular sessions that spread knowledge beyond one team.",
+        "Evidence of impact, such as fewer escalations to the platform team or others handling changes alone, plus reflection on what worked."
+      ],
+      "redFlags": [
+        "Talks about knowledge sharing in general or hypothetically, with no specific example of their own.",
+        "Blames other engineers for lacking interest or ability, rather than considering how the help was offered.",
+        "Shows no outcome or evidence that anyone's skills actually improved, such as people handling changes or incidents without help.",
+        "Remains the single expert everyone depends on, and seems comfortable keeping it that way."
+      ],
+      "probes": [
+        "Evidence?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-51",
+      "number": 51,
+      "categoryId": "edge-apigee-core",
+      "text": "A reference-data API behind Apigee is slow and expensive to call, but its data changes only a few times a day. How would you add caching in Apigee, and how would you keep it correct?",
+      "description": "An API that serves reference data is slow and costly, yet the data rarely changes. Explain how you would cache its responses in Apigee, and how you would make sure clients never get wrong or out-of-date data.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Chooses what is safe to cache: shared, non-personal responses only, with authenticated or user-specific data excluded or keyed per user.",
+        "Cache key design: builds the key from the parts of the request that change the answer, such as path and selected query parameters, and nothing else.",
+        "Uses the ResponseCache policy or the PopulateCache and LookupCache pair, explaining where each sits in the request and response flow.",
+        "Freshness plan: an expiry that matches how often the data changes, plus explicit invalidation with InvalidateCache when the source publishes an update.",
+        "Verification: measures hit rate, target latency and backend calls before and after, and decides how this interacts with any Akamai caching in front."
+      ],
+      "redFlags": [
+        "Caches responses without considering authorisation, so one consumer could receive data meant for another.",
+        "Builds the key from the full URL including irrelevant parameters, so the cache rarely hits.",
+        "Sets a long expiry with no invalidation route, so corrections take hours to reach clients.",
+        "Adds caching in both Akamai and Apigee without working out the combined staleness clients will see."
+      ],
+      "probes": [
+        "The data owner needs a change to appear within one minute: what do you do?"
+      ],
+      "version": 1,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-52",
+      "number": 52,
+      "categoryId": "edge-apigee-core",
+      "text": "A legacy backend returns XML with internal field names and error codes, and the business wants a clean JSON REST API for mobile apps. How would you build this in Apigee, and where would you stop putting logic in the gateway?",
+      "description": "An old backend system speaks XML with internal naming, but mobile apps need a tidy JSON API. Describe how you would use Apigee to present the new API, and how you decide what logic belongs in the gateway and what does not.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Contract first: designs the JSON API in an OpenAPI specification for the mobile clients, rather than mirroring the backend's structure.",
+        "Mediation with standard policies such as XMLToJSON, ExtractVariables and AssignMessage, keeping custom JavaScript for the parts policies cannot handle.",
+        "Error translation: maps the backend's internal error codes to clear HTTP statuses and a standard error body, without exposing internal details.",
+        "Boundary judgement: keeps the gateway to mapping and protection, and moves business rules or multi-backend orchestration into a service with its own tests.",
+        "Testing and performance: contract tests for the mapping, checks on payload size and latency added, and a plan for when the backend changes."
+      ],
+      "redFlags": [
+        "Exposes the backend's XML structure and field names directly, tying mobile apps to a system the business wants to replace.",
+        "Writes large JavaScript transformations for everything, creating gateway code that is hard to test and maintain.",
+        "Moves business logic and data aggregation into the proxy because it is convenient, without considering ownership or testing.",
+        "Passes backend error messages through unchanged, leaking internal codes and confusing client developers."
+      ],
+      "probes": [
+        "The mobile team now wants data from three backends combined into one response: still in Apigee?"
+      ],
+      "version": 1,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "edge-53",
+      "number": 53,
+      "categoryId": "edge-apigee-operations",
+      "text": "You must release a breaking v2 of a widely used API on Apigee while v1 consumers keep working, then retire v1. How would you run the rollout and the retirement?",
+      "description": "An API that many consumers rely on needs a new version that is not backwards compatible. Walk us through how you would release version two in Apigee alongside version one, move consumers across and eventually switch version one off.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Parallel running: v1 and v2 deployed side by side, for example under separate base paths, so existing clients are untouched.",
+        "Access through API products: v2 offered as its own product or added to existing ones, with a clear plan for which apps get it.",
+        "Finds who still calls v1 using analytics broken down by developer app, and contacts those owners directly rather than only publishing a notice.",
+        "Retirement plan: dated milestones, deprecation notices in documentation and responses, and staged steps such as warnings before switching v1 off.",
+        "Decision on stragglers: agrees exceptions with the business for key partners, and checks traffic has reached zero before removing v1."
+      ],
+      "redFlags": [
+        "Changes the existing API in place and expects every consumer to update at the same moment.",
+        "Announces a deprecation by email or on a portal and assumes everyone has read it, with no traffic evidence.",
+        "Switches v1 off on the deadline regardless of who is still calling it, causing an avoidable outage.",
+        "Keeps v1 running forever because nobody owns the retirement, doubling maintenance and security work."
+      ],
+      "probes": [
+        "Three months after the deadline, one large partner is still on v1: what now?"
+      ],
+      "version": 1,
+      "status": "active",
+      "rubricOverride": null
+    }
+  ]
+}

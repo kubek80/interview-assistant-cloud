@@ -1,0 +1,1515 @@
+{
+  "track": {
+    "id": "qa",
+    "name": "Senior QA Engineer",
+    "version": "2026.11.1"
+  },
+  "categories": [
+    {
+      "id": "qa-strategy-risk",
+      "name": "Strategy & risk",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "qa-automation-frameworks",
+      "name": "Automation frameworks",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "qa-api-contract-testing",
+      "name": "API & contract testing",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "qa-performance",
+      "name": "Performance",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "qa-ci-cd-flaky-tests",
+      "name": "CI/CD & flaky tests",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "qa-test-data-environments",
+      "name": "Test data & environments",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "qa-non-functional-quality",
+      "name": "Non-functional quality",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "qa-metrics-communication",
+      "name": "Metrics & communication",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "qa-behavioural-leadership",
+      "name": "Behavioural & leadership",
+      "weight": 1,
+      "mustHave": false
+    }
+  ],
+  "questions": [
+    {
+      "id": "qa-1",
+      "number": 1,
+      "categoryId": "qa-strategy-risk",
+      "text": "How do you build a test strategy for a new product team?",
+      "description": "We'd like to hear how you would put together the overall testing approach for a product team that is just starting out: what you would decide, write down and agree with the team, and how you would go about it.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Risk-driven: starts by learning the product, users and architecture, then ranks what could go wrong by impact and likelihood to decide where testing effort goes.",
+        "Layer mix: agrees with developers which checks sit at unit, integration, contract and end-to-end level, and explains why for this product rather than a fixed ratio.",
+        "Entry and exit criteria: what must be true before testing of a change starts and before release (e.g. no open critical bugs, smoke tests green).",
+        "Practicalities covered: environments, test data, tooling and who owns each, plus how results are reported and where testing fits in the team's workflow.",
+        "Treats the strategy as a short living document, agreed with the team, reviewed as the product changes, and explicit about what will deliberately not be tested."
+      ],
+      "redFlags": [
+        "Produces a generic template copied from a previous company or a standard that could apply to any product and ignores this team's real risks.",
+        "Proposes end-to-end UI tests for everything, ignoring how slow, flaky and expensive that becomes as the suite grows.",
+        "Writes the strategy alone and hands it over, so developers and the product owner never agree to it or share ownership of quality.",
+        "Cannot say what they would leave untested or why, implying everything gets equal attention regardless of risk."
+      ],
+      "probes": [
+        "What would you deliberately not test?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-2",
+      "number": 2,
+      "categoryId": "qa-strategy-risk",
+      "text": "Release is in 3 days and 40% of regression hasn't run. What do you do?",
+      "description": "Imagine a release is due in three days and four in ten of your regression tests have not yet been run. Talk us through, step by step, how you would handle the situation and the decisions involved.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Prioritises the remaining tests by business impact and likelihood of failure, running checks on payments, security and high-traffic journeys first.",
+        "Change analysis: looks at what actually changed in this release (code diffs, touched services, recent bug history) to focus testing on the riskiest areas.",
+        "Adds capacity where it helps: pulls developers in to test, runs automated suites in parallel, and drops low-value checks rather than rushing everything.",
+        "States the residual risk plainly: what has and has not been tested, what could fail, and mitigations such as feature flags or a staged rollout.",
+        "Leaves the go or no-go decision with the business owner, giving them the data to decide and recording the accepted risk in writing."
+      ],
+      "redFlags": [
+        "Silently skips the untested areas and lets the release go, so nobody knows what risk has been accepted.",
+        "Blocks the release on principle without data, insisting every test must run regardless of what changed or what is at stake.",
+        "Treats all regression tests as equally important and simply works through them in order until time runs out.",
+        "Believes QA alone owns the release decision, or hides the testing gap from stakeholders until after release."
+      ],
+      "probes": [
+        "How do you record accepted risk?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-3",
+      "number": 3,
+      "categoryId": "qa-strategy-risk",
+      "text": "Explain shift-left and shift-right with examples you implemented.",
+      "description": "Shift-left means bringing testing earlier in development; shift-right means testing and learning from production. Explain both ideas and give examples of practices you have actually put in place yourself.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Clear definitions: shift-left finds problems earlier and more cheaply during design and coding; shift-right learns from real production use and failures.",
+        "Shift-left examples they ran: three amigos sessions (product, development and testing agree examples before build), static analysis, and unit or contract tests on every pull request.",
+        "Shift-right examples they ran: production monitoring and alerts, canary releases to a small share of users, feature flags, and synthetic checks running key journeys continuously.",
+        "Explains how the two connect, for example production incidents and monitoring data feeding back into new tests and updated risk priorities.",
+        "Can say which practice gave the best return and how they knew (e.g. fewer escaped defects, faster detection or less rework)."
+      ],
+      "redFlags": [
+        "Uses buzzwords only: defines the terms but cannot describe a single practice they personally put in place or what effect it had.",
+        "Thinks shift-right means skipping pre-release testing and letting users find the bugs in production.",
+        "Treats shift-left as testers doing more work earlier, rather than the whole team building quality in from the start.",
+        "Proposes testing in production with no safeguards such as feature flags, monitoring, rollback or protection of real customer data."
+      ],
+      "probes": [
+        "Which gave best ROI?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-4",
+      "number": 4,
+      "categoryId": "qa-strategy-risk",
+      "text": "Test pyramid vs trophy vs honeycomb: when does each fit?",
+      "description": "The test pyramid, testing trophy and test honeycomb are different models for balancing unit, integration and end-to-end tests. Compare them and tell us which kinds of system or situation each one suits.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Describes each model correctly: the pyramid favours many fast unit tests, the trophy puts most weight on integration tests, the honeycomb centres on service-level integration tests.",
+        "Cost, speed and confidence trade-off: lower-level tests are cheap and fast but prove less, while broader tests give more confidence but are slower and flakier.",
+        "Matches model to context: integration-heavy (honeycomb) for microservices where most risk is in the interactions, pyramid for logic-heavy code, trophy for front-end applications.",
+        "Gives their current team's actual balance of test types and explains why it suits that system, including what they would change.",
+        "Treats the shapes as guides for discussion, judging the mix by outcomes such as escaped defects, feedback time and flakiness."
+      ],
+      "redFlags": [
+        "Dogmatic about one shape, insisting on a fixed percentage of unit tests whatever the architecture or risk.",
+        "Confuses the models, or cannot explain what an integration test actually means in their own system.",
+        "Measures the balance only by test counts, ignoring how long tests take, how often they flake and what they actually catch.",
+        "Argues for an 'ice-cream cone' of mostly manual and end-to-end UI tests as a normal target."
+      ],
+      "probes": [
+        "Your current ratio and why?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-5",
+      "number": 5,
+      "categoryId": "qa-strategy-risk",
+      "text": "How do you make acceptance criteria testable with POs?",
+      "description": "When a product owner (PO) writes acceptance criteria for a story, how do you work with them so the criteria are clear and precise enough to test against? Describe what you actually do in practice.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Concrete examples: rewrites vague criteria as Given/When/Then scenarios with real values (e.g. 'Given a basket worth £49.99, when…') that everyone can check.",
+        "Engages before build: refines stories with the product owner and developers in backlog refinement or three amigos sessions, not after code is written.",
+        "Brings out edge cases and error paths the product owner had not considered, such as empty states, limits, permissions and invalid input.",
+        "Includes non-functional requirements where they matter, such as response time, accessibility or security, stated in measurable terms rather than 'fast' or 'secure'.",
+        "Can describe a real criterion they rewrote, what was wrong with it, and how the rewrite prevented a defect or a misunderstanding."
+      ],
+      "redFlags": [
+        "Engages only after development is finished, then reports gaps in the criteria as bugs.",
+        "Writes the criteria for the product owner instead of with them, so the owner no longer understands or owns them.",
+        "Accepts vague words such as 'user-friendly', 'quick' or 'works correctly' as testable without asking what they mean.",
+        "Uses Given/When/Then as a format exercise, producing long scripted UI steps instead of clear business rules."
+      ],
+      "probes": [
+        "A criterion you rewrote?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-6",
+      "number": 6,
+      "categoryId": "qa-strategy-risk",
+      "text": "Design quality for 10 microservice teams on one release train.",
+      "description": "Ten microservice teams ship together on a single scheduled release cadence, known as a release train. Design how you would organise quality across them, talking through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Team-owned quality: each team tests its own services, with QA acting as coaches and enablers rather than a separate gate at the end.",
+        "Contract tests between services so teams can change and release independently, finding breaking API changes before the release train rather than during it.",
+        "Ephemeral environments per change and automated quality gates in each pipeline, so problems are caught per team instead of in a shared integration phase.",
+        "Observability after release: monitoring, alerts, tracing and feature flags so a faulty service can be found and switched off or rolled back quickly.",
+        "Handles one team blocking the train: decoupled deployments, flags to hide unfinished work, and clear rules for dropping a change from the train."
+      ],
+      "redFlags": [
+        "Creates a central QA team that tests every service before each release, becoming the bottleneck the whole train waits for.",
+        "Relies on a long end-to-end regression run in shared staging as the main safety net for all ten teams.",
+        "Sets identical heavy processes for every team regardless of their risk, maturity or how critical their service is.",
+        "Has no plan for measuring whether the approach works, such as change failure rate, escaped defects or release delays."
+      ],
+      "probes": [
+        "Stop one team blocking the train?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-7",
+      "number": 7,
+      "categoryId": "qa-strategy-risk",
+      "text": "How do you structure and report exploratory testing?",
+      "description": "Exploratory testing is unscripted testing where the tester learns and designs tests as they go. How do you organise that work so it stays focused, and how do you report what came out of it?",
+      "difficulty": "expert",
+      "type": "knowledge",
+      "timeMin": 5,
+      "lookFor": [
+        "Charters: each session has a written mission, such as 'explore refunds with partial payments to find calculation errors', so the work stays focused.",
+        "Timeboxed sessions (e.g. 60 to 90 minutes), with a short debrief afterwards to agree what was covered and what needs another session.",
+        "Heuristics and test ideas guide the exploration, such as boundaries, interruptions, steps done in the wrong order, or mnemonics like SFDPOT.",
+        "Notes taken during the session record what was tried, bugs, questions and coverage, so results can be reviewed and repeated by others.",
+        "Findings feed back into the team: bugs raised, new automated checks added, and risk areas reported in a short summary that shows its value."
+      ],
+      "redFlags": [
+        "Describes it as random clicking around the application with no goal, structure or record of what was covered.",
+        "Cannot explain how they would report coverage or show the value of exploratory work to stakeholders.",
+        "Treats exploratory testing as a replacement for automation, or as something done only once scripted tests are finished.",
+        "Keeps findings in their head or a private file, so nothing is reproducible and the team learns nothing from it."
+      ],
+      "probes": [
+        "Showing its value?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-8",
+      "number": 8,
+      "categoryId": "qa-automation-frameworks",
+      "text": "Compare Playwright, Cypress and Selenium for a new web project.",
+      "description": "If you were starting a new web application project, how would you choose between the Playwright, Cypress and Selenium browser automation tools? Compare their strengths and weaknesses and explain how you would reach a decision.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Playwright: drives Chromium, Firefox and WebKit engines, with auto-waiting, built-in parallel runs, multiple tabs and origins, and traces for debugging.",
+        "Cypress: runs inside the browser with a strong developer experience, time-travel debugging and component testing, noting its limits with multiple tabs and windows.",
+        "Selenium: built on the W3C WebDriver standard, supports many programming languages and real branded browsers, and scales through Selenium Grid or cloud providers.",
+        "Explicit criteria for the decision: team language skills, browsers to support, existing tests, CI speed, debugging tools, community, licence and cost.",
+        "Proposes a short proof of concept on real application flows before committing, and explains when keeping an existing Selenium suite makes sense."
+      ],
+      "redFlags": [
+        "Fandom: picks the tool they like best and dismisses the others without weighing them against the project's needs.",
+        "Repeats outdated claims (e.g. that Selenium cannot wait for elements or Cypress only runs in Chrome) without checking current versions.",
+        "Recommends rewriting a large, working Selenium suite simply because a newer tool exists, with no estimate of cost or benefit.",
+        "Judges tools only on demo speed, ignoring maintenance, debugging, CI integration and the skills the team already has."
+      ],
+      "probes": [
+        "When keep Selenium?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-9",
+      "number": 9,
+      "categoryId": "qa-automation-frameworks",
+      "text": "How do auto-waiting and web-first assertions reduce flakiness?",
+      "description": "Explain what auto-waiting and web-first assertions are in browser test tools, and how they help reduce flaky tests, meaning tests that pass or fail inconsistently without any change to the code.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Actionability checks: before clicking or typing, the tool waits until the element is attached, visible, stable, enabled and able to receive the action.",
+        "Web-first assertions keep retrying until the expected state appears or a timeout is reached (e.g. expect(locator).toBeVisible() or toHaveText()).",
+        "No fixed sleeps: explains why hard waits are both slow and still flaky, because the right delay changes between machines and runs.",
+        "Knows when auto-wait still fails: elements visible but not yet usable, animations, data still loading, or assertions on a value read once instead of the locator.",
+        "Handles those cases by waiting for a meaningful signal, such as a specific network response, a loading indicator disappearing or the final text appearing."
+      ],
+      "redFlags": [
+        "Puts waitForTimeout or other fixed sleeps everywhere to make tests pass, treating longer waits as the fix for flakiness.",
+        "Reads a value once and asserts on it (e.g. awaiting textContent() and then comparing), losing the automatic retry.",
+        "Believes auto-waiting removes all flakiness, ignoring test data, environment and test-order problems.",
+        "Raises global timeouts to very high values to hide slow or unstable steps instead of investigating them."
+      ],
+      "probes": [
+        "When does auto-wait still fail?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-10",
+      "number": 10,
+      "categoryId": "qa-automation-frameworks",
+      "text": "What is your locator strategy?",
+      "description": "Locators are how automated UI tests find elements on a page. Tell us how you decide which kind of locator to use, and why, so that tests stay reliable as the interface changes.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "User-facing locators first: finds elements by role and accessible name (e.g. getByRole('button', { name: 'Save' })), label or visible text, as a user would.",
+        "Test ids as a fallback for elements with no stable accessible name, agreed with developers as a deliberate contract (e.g. data-testid attributes).",
+        "Avoids brittle XPath and long CSS chains tied to page structure or styling classes, which break whenever the layout changes.",
+        "Accessibility benefit: when a role-based locator cannot find a control, that often reveals a missing label or role that also affects screen-reader users.",
+        "Getting developers on board: explains the cost of broken tests, adds test ids in their own pull requests, and agrees a naming convention or lint rule."
+      ],
+      "redFlags": [
+        "Uses absolute XPath (e.g. /html/body/div[3]/div[2]/button) copied from browser tools, which breaks with almost any layout change.",
+        "Relies on generated class names, element positions or index-based selectors that change between builds.",
+        "Adds test ids to everything by default, without considering accessible locators that test what users actually see.",
+        "Cannot explain why one locator is more stable than another, only that it worked when the test was written."
+      ],
+      "probes": [
+        "Getting devs to add test ids?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-11",
+      "number": 11,
+      "categoryId": "qa-automation-frameworks",
+      "text": "Design a UI framework that scales to 2,000 tests.",
+      "description": "Design an automated UI test framework that will still be fast, reliable and maintainable when it grows to around two thousand tests. Talk through its structure, your reasoning and the trade-offs; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Fixtures for setup and teardown (e.g. Playwright fixtures), so each test declares what it needs rather than relying on long shared before-hooks.",
+        "Page objects used judiciously: small page or component helpers built around user actions, not giant classes holding every selector in the application.",
+        "Data builders or factories create unique test data through APIs, with environment configuration kept outside the tests so one suite runs anywhere.",
+        "Parallel-safe isolation: no test depends on another's data or order, so the suite can run across many workers and shards without collisions.",
+        "Debuggability and speed: traces, screenshots and video on failure, TypeScript typing, tags for running subsets, and API shortcuts for setup to keep runs fast."
+      ],
+      "redFlags": [
+        "God page objects: huge classes with hundreds of methods and assertions that every test depends on and nobody can safely change.",
+        "Shared state between tests, such as one user account for everything or a test that creates data the next one needs.",
+        "Builds layers of custom abstraction or a keyword framework on top of the tool before the team actually needs it.",
+        "Has no plan for run time, ownership or failure triage as the suite grows towards two thousand tests."
+      ],
+      "probes": [
+        "Keeping it fast?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-12",
+      "number": 12,
+      "categoryId": "qa-automation-frameworks",
+      "text": "How do you handle login efficiently in E2E?",
+      "description": "Most end-to-end (E2E) tests need a signed-in user, and logging in through the UI every time is slow. How do you handle authentication in your E2E suites so it is quick, reliable and secure?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Reuses saved session state: logs in once in a setup step and loads the stored cookies and storage (e.g. Playwright storageState) in each test.",
+        "Logs in through the API or a token endpoint rather than the UI, keeping one dedicated UI test for the login journey itself.",
+        "Per-worker accounts, so parallel tests never share a user, avoiding session clashes, locked accounts and tests changing each other's data.",
+        "Handles MFA and SSO (e.g. Entra ID): an MFA-free test tenant or policy for automation accounts, or codes generated from a stored secret, agreed with security.",
+        "Credentials kept in a vault or CI secret store, never in the repository, with low-privilege test accounts and saved session files excluded from version control."
+      ],
+      "redFlags": [
+        "Logs in through the UI in every test, adding minutes to each run and making the whole suite fail whenever login is slow.",
+        "Hard-codes usernames and passwords in test code or configuration files committed to the repository.",
+        "Turns off MFA or other security controls on real production accounts to make automation easier.",
+        "Shares one admin account across all tests, so parallel runs clash and failures cannot be traced to a cause."
+      ],
+      "probes": [
+        "Entra ID SSO?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-13",
+      "number": 13,
+      "categoryId": "qa-automation-frameworks",
+      "text": "When do you stub the network vs hit real backends?",
+      "description": "In browser or API tests you can either fake the backend's network responses or call the real services. How do you decide which to do, and how do you balance the two across a suite?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Route interception (e.g. page.route) to create hard-to-reach cases quickly: server errors, timeouts, empty lists, slow responses and unusual data.",
+        "Keeps real integration coverage for critical journeys, so some tests still prove the front end and the real backends work together.",
+        "Contract tests or schema checks keep mocks honest, so faked responses are updated when the real API changes.",
+        "Clear rule for the split: stub what you do not own or cannot control, and use real services for what your team is responsible for.",
+        "Detects mock drift by recording real responses regularly, validating fixtures against the API schema, or failing when a mocked endpoint no longer exists."
+      ],
+      "redFlags": [
+        "Mocks everything, so the suite stays green while the real system is broken by API changes.",
+        "Never stubs anything, leaving error and edge cases untested because they are hard to trigger on real systems.",
+        "Hand-writes mock responses once and never updates them, unaware that they drift away from the real API over time.",
+        "Calls real third-party services such as payment providers in every run, adding cost, rate limits and flakiness."
+      ],
+      "probes": [
+        "Detecting mock drift?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-14",
+      "number": 14,
+      "categoryId": "qa-automation-frameworks",
+      "text": "Visual regression: approach and pitfalls?",
+      "description": "Visual regression testing compares screenshots to catch unintended changes in how the UI looks. Describe how you would set it up and the practical problems you have seen, or would expect, with it.",
+      "difficulty": "expert",
+      "type": "knowledge",
+      "timeMin": 5,
+      "lookFor": [
+        "Comparison thresholds: allows a small pixel or percentage difference to absorb anti-aliasing noise, tuned per component rather than set loosely everywhere.",
+        "Masks or hides dynamic regions such as dates, adverts, animations and user-specific data, so they do not cause false failures.",
+        "Containerised rendering: takes screenshots in the same Docker image with fixed fonts, browser version and viewport, so results are consistent between runs.",
+        "Baseline review: changes are approved deliberately in a pull request by someone who understands the design, not updated in bulk to make the build pass.",
+        "Scopes it sensibly, for example component-level snapshots or a few key pages, because full-page screenshots of everything become slow and noisy."
+      ],
+      "redFlags": [
+        "Expects pixel-perfect matches across different operating systems and browsers, then fights constant failures caused by font rendering.",
+        "Accepts all baseline changes automatically whenever tests fail, so real visual bugs get approved into the baseline.",
+        "Sets thresholds so loose that genuine layout breakages, such as overlapping text or missing buttons, pass unnoticed.",
+        "Uses visual tests in place of functional assertions, so a screenshot is the only check that a feature works."
+      ],
+      "probes": [
+        "Who approves baselines?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-15",
+      "number": 15,
+      "categoryId": "qa-automation-frameworks",
+      "text": "Component vs E2E tests for a React app?",
+      "description": "For a React application, how do you decide what to cover with component tests, which render pieces of the UI in isolation, versus end-to-end tests that drive the whole app in a real browser?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Testing Library principles: tests interact with components the way users do, by role and text, rather than checking internal state or implementation details.",
+        "Component tests for speed and breadth: states, validation, edge cases and error displays, running in seconds with mocked data.",
+        "End-to-end tests reserved for a small set of critical journeys (e.g. sign-up, checkout) that prove the whole system works together in a real browser.",
+        "Gives a concrete split for one feature, such as form validation in component tests and the successful submission journey end to end.",
+        "Considers cost and confidence: what each layer catches, how long it takes, and how often it fails for reasons unrelated to the change."
+      ],
+      "redFlags": [
+        "Duplicates the same checks at every layer, so one change breaks many tests and the whole suite gets slow.",
+        "Tests implementation details such as component state or internal function calls, so tests break on harmless refactoring.",
+        "Puts every scenario into end-to-end tests, including simple validation messages that a component test would cover faster.",
+        "Relies only on shallow snapshot tests and calls that sufficient coverage of the user interface."
+      ],
+      "probes": [
+        "An example split?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-16",
+      "number": 16,
+      "categoryId": "qa-automation-frameworks",
+      "text": "How would you evaluate AI aids like Playwright's planner/generator/healer agents?",
+      "description": "Playwright now offers AI agents that plan tests, generate test code and heal broken tests. How would you assess whether tools like these are worth adopting in your team, and what would you weigh up?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Understands the three roles: the planner explores the app and writes a test plan, the generator turns it into test code, the healer repairs failing tests.",
+        "Pilot with metrics: tries the agents on a bounded area and measures time saved, quality of generated tests, false fixes and maintenance cost against a baseline.",
+        "Human review of all generated and healed code through normal pull requests, held to the same standards as code written by people.",
+        "Knows that healing can mask real bugs, for example by changing a locator or assertion so a genuinely broken feature passes.",
+        "Data rules: checks what application data, code and credentials the agents send to the AI model, and agrees this with security and legal teams."
+      ],
+      "redFlags": [
+        "Trusts the agents blindly, merging generated or healed tests without review because the build turned green.",
+        "Dismisses the tools outright without having tried them, or bases the view on headlines rather than evidence.",
+        "Allows automatic healing to change assertions, so tests are rewritten to match broken behaviour instead of reporting it.",
+        "Ignores data protection, letting tools send production data, secrets or customer information to external services."
+      ],
+      "probes": [
+        "A guardrail for healing?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-17",
+      "number": 17,
+      "categoryId": "qa-automation-frameworks",
+      "text": "How do you decide browser/device coverage?",
+      "description": "You cannot test on every browser, operating system and device. How do you decide which ones your testing should cover, and how would you justify that choice to the team?",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Analytics-driven matrix: uses real traffic data on browsers, devices, operating systems and screen sizes to choose what to cover and how deeply.",
+        "Tiers coverage: full testing on the main browsers, lighter smoke checks on less common ones, plus any browser key customers or markets depend on.",
+        "Emulation versus real devices: emulators and device modes are cheap for layout checks, but touch, performance and hardware behaviour need real devices or a device cloud.",
+        "Knows that Playwright's WebKit build is not the same as real Safari on macOS or iOS, so key journeys are also checked on real Safari.",
+        "Revisits the matrix on a regular schedule or when analytics shift, and explains the choice to the team in terms of risk to users."
+      ],
+      "redFlags": [
+        "Tests all browsers and devices equally, spreading effort thinly instead of focusing on what users actually use.",
+        "Chooses the matrix from personal preference or habit, with no usage data to back it up.",
+        "Assumes desktop Chrome testing covers mobile users because the browser engine is similar.",
+        "Treats device emulation in Chrome DevTools as equivalent to testing on real phones and tablets."
+      ],
+      "probes": [
+        "How often revisited?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-18",
+      "number": 18,
+      "categoryId": "qa-api-contract-testing",
+      "text": "How do you test a REST API beyond the happy path?",
+      "description": "Beyond checking that a REST API works with valid input, what else do you test? Walk us through the kinds of tests you would add to cover the less obvious behaviour and the failure cases.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Status codes and schema: checks the right code for each case (e.g. 400, 401, 403, 404, 409) and validates response bodies against the API schema.",
+        "Object-level authorisation (BOLA): requests another user's resource by changing its ID and expects refusal, the top risk in the OWASP API Security Top 10.",
+        "Idempotency: repeating a request (e.g. a retried payment with the same idempotency key) must not create duplicates or change the result.",
+        "Pagination and negative cases: limits, empty pages, invalid parameters, missing fields, wrong types, oversized payloads and unexpected content types.",
+        "Rate limits: confirms the API returns 429 with sensible retry information when limits are exceeded, and covers authorisation at scale with data-driven tests across roles."
+      ],
+      "redFlags": [
+        "Only asserts that the response is 200, without checking the body, headers or what happens on failure.",
+        "Tests only with an admin account, so permission and ownership bugs between users are never exercised.",
+        "Ignores side effects, never checking what was actually stored or changed after a request.",
+        "Treats a 500 error on bad input as acceptable, rather than expecting a clear 4xx validation response."
+      ],
+      "probes": [
+        "Authorisation at scale?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-19",
+      "number": 19,
+      "categoryId": "qa-api-contract-testing",
+      "text": "Explain consumer-driven contract testing and when it isn't worth it.",
+      "description": "Consumer-driven contract testing checks that services agree on the requests and responses they exchange. Explain how it works in practice and the situations where you would decide it is not worth the effort.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Consumer expectations: each consumer records the requests it makes and the parts of the responses it relies on, as a contract (e.g. with Pact).",
+        "Provider verification: the provider runs those contracts against its real code in its own pipeline, so breaking changes fail before release.",
+        "A broker stores contracts and verification results, and a can-i-deploy check confirms a version is compatible with what is already deployed.",
+        "Poor fit for third-party or public APIs with unknown consumers, and for teams that cannot both commit to maintaining contracts.",
+        "Ownership of a broken contract: provider and consumer teams talk it through; the failing build shows exactly which consumer and interaction is affected."
+      ],
+      "redFlags": [
+        "Confuses contract testing with schema validation, missing that contracts check only what real consumers actually use.",
+        "Thinks contract tests replace all integration or end-to-end tests, rather than covering only the agreement between services.",
+        "Recommends it everywhere, including stable external APIs or single-team monoliths where the cost outweighs the benefit.",
+        "Describes contracts written by the provider alone, which defeats the point of consumer-driven testing."
+      ],
+      "probes": [
+        "Who owns a broken contract?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-20",
+      "number": 20,
+      "categoryId": "qa-api-contract-testing",
+      "text": "How does testing GraphQL differ from REST?",
+      "description": "GraphQL is a query language where clients ask a single endpoint for exactly the data they need. How does your approach to testing a GraphQL API differ from the way you test a REST API?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Schema-focused testing: checks the schema for breaking changes, nullability and types, and whether introspection is disabled where it should be.",
+        "Depth and complexity limits: sends deeply nested or very large queries to confirm the server rejects them instead of becoming overloaded.",
+        "Field-level authorisation: one query can mix fields with different permissions, so tests check each sensitive field and nested object, not just the endpoint.",
+        "N+1 problem: knows a nested query can trigger one database call per item, and checks query counts or response times as lists grow.",
+        "Errors with HTTP 200: GraphQL often returns errors inside the response body with a 200 status, so tests assert on the errors field and partial data."
+      ],
+      "redFlags": [
+        "Treats GraphQL like REST, testing one query per operation and checking only the status code.",
+        "Assumes the single endpoint is secured as a whole, so field-level permission gaps are never tested.",
+        "Unaware that a single crafted query can be expensive enough to overload the server or database.",
+        "Load tests with one fixed query, ignoring the real mix of query shapes and sizes that clients send."
+      ],
+      "probes": [
+        "Load testing it?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-21",
+      "number": 21,
+      "categoryId": "qa-api-contract-testing",
+      "text": "API tests pass locally but get intermittent 401s in CI. Diagnose.",
+      "description": "Your API tests pass on your own machine but sometimes fail in the continuous integration (CI) pipeline with HTTP 401 errors. Walk us through, step by step, how you would track down the cause.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Token expiry and clock skew: a token fetched once may expire during a long CI run, or CI machine clocks may differ from the identity server's.",
+        "Tokens shared across parallel workers: one worker refreshing or revoking a token can invalidate it for others, which never happens in a single local run.",
+        "Environment secrets: checks CI has the right client IDs, secrets and audiences for that environment, and that none have been rotated or expired.",
+        "Gateway limits: CI's shared IP addresses or higher request volume may trip gateway or identity-provider rules that local runs never reach.",
+        "Proves the cause: logs token issue and expiry times, matches failing requests to gateway logs, reproduces with parallel runs, then confirms the fix across many runs."
+      ],
+      "redFlags": [
+        "Reruns the pipeline until it goes green and moves on, leaving the real cause in place.",
+        "Adds automatic retries on 401 responses inside the tests, hiding a genuine authentication bug or misconfiguration.",
+        "Prints tokens or secrets into CI logs while debugging, exposing credentials to anyone who can read the pipeline output.",
+        "Guesses at causes without collecting evidence such as timestamps, worker IDs and response headers from failing runs."
+      ],
+      "probes": [
+        "Proving the cause?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-22",
+      "number": 22,
+      "categoryId": "qa-api-contract-testing",
+      "text": "How do you test async, queue-based flows?",
+      "description": "Some systems process work asynchronously, passing messages through queues rather than responding straight away. How do you write reliable tests for flows like that, where the outcome only appears some time later?",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Polling with timeouts: repeatedly checks for the expected outcome until it appears or a sensible deadline passes, rather than waiting a fixed time.",
+        "Correlation IDs: tags each test message so it can be traced through queues, logs and services and matched to its own result.",
+        "Idempotency: sends the same message twice and checks the outcome happens only once, because most queues deliver at least once.",
+        "Dead-letter queues: tests that bad or repeatedly failing messages are moved aside, alerted on, and can be replayed safely.",
+        "Ordering: checks behaviour when messages arrive late or out of order, and treats exactly-once claims sceptically, asking how duplicates are actually handled."
+      ],
+      "redFlags": [
+        "Uses sleep(10s) or similar fixed waits, making tests slow when the system is fast and flaky when it is slow.",
+        "Believes the queue guarantees exactly-once delivery, so never tests duplicate or retried messages.",
+        "Tests only the happy path and never checks what happens to messages that fail processing.",
+        "Shares one queue across parallel tests without correlation, so tests pick up each other's messages."
+      ],
+      "probes": [
+        "Exactly-once claims?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-23",
+      "number": 23,
+      "categoryId": "qa-api-contract-testing",
+      "text": "What changes when APIs sit behind Apigee and Akamai?",
+      "description": "Apigee is Google's API management gateway and Akamai is a content delivery network and edge security platform. When the APIs you test sit behind these layers, what changes about how you test them?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Gateway policies: tests authentication, quota and spike arrest policies in Apigee, including the error responses clients see when limits are hit.",
+        "Caching at the edge: checks cache headers, what Akamai caches and for how long, and that personalised or private responses are never cached.",
+        "Header rewrites and routing: verifies headers, paths and CORS rules that the gateway or CDN adds, removes or changes before requests reach the backend.",
+        "Gateway configuration tested as code: proxy and policy definitions kept in version control and tested in a pipeline before promotion.",
+        "Testing cache invalidation: changes content, purges it, then confirms fresh content is served from the edge within the expected time."
+      ],
+      "redFlags": [
+        "Ignores the gateway and CDN layers, testing only the backend directly and missing faults introduced in between.",
+        "Treats gateway configuration as someone else's problem, so policy changes go live without any testing.",
+        "Never considers that a wrongly cached response could show one user's data to another.",
+        "Assumes test environments have the same gateway and CDN settings as production without checking, so limits and caching behave differently."
+      ],
+      "probes": [
+        "Testing cache invalidation?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-24",
+      "number": 24,
+      "categoryId": "qa-performance",
+      "text": "Differentiate load, stress, soak and spike tests.",
+      "description": "Explain the difference between load, stress, soak and spike testing: what each of these kinds of performance test is designed to tell you, and when you would run it.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Load test: expected normal and peak traffic, to confirm the system meets its targets for response time and error rate.",
+        "Stress test: pushes beyond expected levels to find the breaking point and see how the system fails and recovers.",
+        "Soak test: runs a realistic load for hours to expose problems that build up over time, such as memory leaks or connection exhaustion.",
+        "Spike test: sudden large jumps in traffic to check that autoscaling, queues and caches cope, and that the system recovers afterwards.",
+        "Sets goals from service level objectives (SLOs), such as a p95 response time and error rate, and chooses which tests to run before launch based on risk."
+      ],
+      "redFlags": [
+        "Mixes up the terms, for example describing a soak test as a very heavy load or a stress test as normal traffic.",
+        "Runs tests with no pass or fail criteria, so the results are just graphs nobody can act on.",
+        "Uses averages as the main measure, hiding the slow responses that users actually notice.",
+        "Thinks one short load test before launch is enough, never considering long runs or sudden surges."
+      ],
+      "probes": [
+        "Which before launch?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-25",
+      "number": 25,
+      "categoryId": "qa-performance",
+      "text": "Plan performance testing for a checkout launch at 5x traffic.",
+      "description": "A new checkout is launching and must cope with five times today's traffic. Design the performance testing you would do beforehand, talking through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Workload model from production analytics: the real mix of journeys (browse, basket, payment), with realistic think time and arrival rates scaled to 5x.",
+        "Realistic data volume and environment parity: production-sized databases, catalogues and caches, on infrastructure close enough to production to trust the results.",
+        "Chooses a suitable tool (e.g. k6, JMeter, Gatling or Azure Load Testing) and stubs payment providers or agrees tests with them in advance.",
+        "Measures p95 and p99 response times and error rates against agreed targets, while monitoring backends, databases and the CDN to find bottlenecks.",
+        "Without a production-sized environment: tests scaled down and extrapolates carefully, runs controlled off-peak tests in production, or tests components in isolation, stating the limits."
+      ],
+      "redFlags": [
+        "Hammers one URL with requests, ignoring real user journeys, caching effects and the mix of operations.",
+        "Uses tiny or repeated test data, so caches hide the real load on databases and services.",
+        "Reports only average response time and throughput, with no percentiles, errors or system metrics.",
+        "Sends load at third-party payment or fraud services without agreement, risking blocked accounts or charges."
+      ],
+      "probes": [
+        "No prod-sized env?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-26",
+      "number": 26,
+      "categoryId": "qa-performance",
+      "text": "After a release p99 doubled but p50 didn't. Investigate.",
+      "description": "After a release, the 99th-percentile response time (the slowest one per cent of requests) doubled while the median stayed the same. Walk us through, step by step, how you would investigate.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Recognises a tail problem: something badly affects a small share of requests while typical requests are unaffected.",
+        "Breaks percentiles down per endpoint, host and customer type to find where the slow requests are concentrated before forming theories.",
+        "Considers tail causes: garbage-collection pauses, lock contention, cache misses, slow dependencies, retries, cold starts or a few very large requests.",
+        "Uses distributed traces and profiles of slow requests, comparing them with fast ones to find where the extra time is spent.",
+        "Links the regression to the release by reviewing what shipped and which feature flags changed, then confirms the fix brings p99 back down."
+      ],
+      "redFlags": [
+        "Looks only at averages, concluding there is no problem because the mean barely changed.",
+        "Jumps straight to adding servers or caching without finding which requests are slow and why.",
+        "Dismisses the slowest one per cent as unimportant, unaware that busy users and pages hit the tail often.",
+        "Cannot name a sensible first check, such as which endpoints regressed or what changed in the release."
+      ],
+      "probes": [
+        "First check?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-27",
+      "number": 27,
+      "categoryId": "qa-performance",
+      "text": "What are coordinated omission and open vs closed workload models?",
+      "description": "These are two load-testing concepts about how test tools generate traffic and measure response times. Explain what each term means and why it matters when deciding whether to trust a performance test's results.",
+      "difficulty": "expert",
+      "type": "knowledge",
+      "timeMin": 5,
+      "lookFor": [
+        "Closed model: a fixed number of virtual users each wait for a response before sending the next request, so traffic falls when the system slows.",
+        "Open model: new requests arrive at a set rate regardless of responses, which is how real users behave on most public websites.",
+        "Coordinated omission: while the tool waits on slow responses it skips requests that should have been sent, so recorded latency looks better than reality.",
+        "Arrival-rate executors fix this (e.g. k6 constant or ramping arrival rate, Gatling open injection), and they know how their own tool handles it.",
+        "Uses this to judge whether results can be trusted, for example checking that the achieved request rate matched the target throughout the test."
+      ],
+      "redFlags": [
+        "Has never considered how the load tool generates traffic, so takes its latency figures at face value.",
+        "Thinks adding more virtual users is always the same as increasing the request rate.",
+        "Cannot explain why a closed-model test might under-report latency when the system is overloaded.",
+        "Reports high throughput results without checking whether the tool kept up with the planned arrival rate."
+      ],
+      "probes": [
+        "How does your tool handle it?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-28",
+      "number": 28,
+      "categoryId": "qa-performance",
+      "text": "How do you test front-end performance?",
+      "description": "How do you test the performance of a website as the user experiences it in their browser, rather than just server response times? Describe the techniques and measures you would use.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Lab versus field: Lighthouse or WebPageTest give repeatable lab results, while real user monitoring (RUM) shows what actual visitors experience.",
+        "Core Web Vitals 'good' thresholds at the 75th percentile: Largest Contentful Paint 2.5 s, Interaction to Next Paint 200 ms, Cumulative Layout Shift 0.1.",
+        "Performance budgets in CI: fails or warns on regressions in bundle size, request counts or lab metrics before changes merge.",
+        "Explains why lab and field disagree: real devices, networks, caches, locations and interactions differ, and INP depends on real user interactions that a page-load lab run never makes.",
+        "Connects findings to fixes, such as correctly sized images for LCP, reserved space for CLS, or less main-thread JavaScript for INP."
+      ],
+      "redFlags": [
+        "Chases the Lighthouse score as the goal, rather than what real users experience in field data.",
+        "Measures only server response times and ignores what happens in the browser after the response arrives.",
+        "Tests only on a fast laptop and network, never throttling or checking mid-range mobile devices.",
+        "Quotes outdated metrics such as First Input Delay as a current Core Web Vital, unaware that INP replaced it."
+      ],
+      "probes": [
+        "Why can lab and field disagree?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-29",
+      "number": 29,
+      "categoryId": "qa-ci-cd-flaky-tests",
+      "text": "Where do tests run in a pipeline and what does each stage gate?",
+      "description": "Describe how tests are spread across the stages of a delivery pipeline, from a code change to production, and what each stage should be allowed to stop or approve before work moves on.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Fast pull request suite: unit, component and key API tests that finish within an agreed time budget, in minutes not hours, and block merging on failure.",
+        "Merge checks on the main branch: broader integration and contract tests confirming the combined code still works before deployment.",
+        "Nightly or scheduled runs for slow suites, such as full regression, cross-browser and performance tests, with results triaged the next morning.",
+        "Deploy smoke tests that gate promotion between environments, and post-deploy synthetic checks in production that alert the team if key journeys break.",
+        "Knows what each stage may block and who acts on its failures, and reviews time budgets as the suite grows."
+      ],
+      "redFlags": [
+        "Runs a two-hour end-to-end suite on every commit, so developers wait, batch up changes or ignore the results.",
+        "Puts every test at one stage, with no thought for feedback speed or what each gate is for.",
+        "Lets nightly failures sit unread for days, so the scheduled runs give no real protection.",
+        "Has no checks after deployment, assuming that passing pipeline tests mean production works."
+      ],
+      "probes": [
+        "Your PR time budget?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-30",
+      "number": 30,
+      "categoryId": "qa-ci-cd-flaky-tests",
+      "text": "15% of E2E runs fail randomly. Your plan?",
+      "description": "About fifteen per cent of your end-to-end test runs fail at random with no code change. Tell us, step by step, how you would tackle this and make the suite trustworthy again.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Measures flakiness per test from CI history (e.g. pass rate on unchanged code), so the worst offenders are fixed first.",
+        "Quarantine with owner and deadline: flaky tests move out of the blocking suite, each with a named owner and an agreed time to fix or delete.",
+        "Classifies causes: timing and waits, shared test data, environment instability, test-order dependencies, or genuine product bugs such as race conditions.",
+        "Uses traces, screenshots, logs and repeated runs to find the real cause rather than guessing from the error message.",
+        "Treats retries as a signal, not a fix: a test that passes on retry is tracked as flaky, and quarantine size is reported to avoid a graveyard."
+      ],
+      "redFlags": [
+        "Sets retries to five and moves on, hiding the problem and any real intermittent bugs in the product.",
+        "Quarantines tests with no owner or deadline, so the quarantine becomes a graveyard of permanently skipped tests.",
+        "Assumes every flaky failure is a test problem, never considering that the application itself might have a race condition.",
+        "Deletes or disables failing tests quietly, without checking what coverage is lost or telling the owning team."
+      ],
+      "probes": [
+        "Preventing a quarantine graveyard?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-31",
+      "number": 31,
+      "categoryId": "qa-ci-cd-flaky-tests",
+      "text": "How do you parallelise and shard safely?",
+      "description": "To speed up large test suites you can run tests in parallel or split them across machines, known as sharding. How do you do that without tests interfering with each other or giving misleading results?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Isolation: each test creates its own data and state and cleans up, so it can run in any order and on any worker.",
+        "Partitioned data: unique accounts, IDs or prefixes per worker (e.g. using the worker index), so parallel tests never modify the same records.",
+        "Duration-balanced shards: splits tests by past run time rather than file count, so all machines finish at roughly the same time.",
+        "Merged reports: combines results, traces and artefacts from every shard into one report, so failures are easy to find.",
+        "Finds hidden dependencies by running tests in random order, alone and repeatedly, and fixes those that only pass after another test."
+      ],
+      "redFlags": [
+        "Writes order-dependent tests, such as one test creating a user that the next test then logs in with.",
+        "Shares global state such as one database record, feature flag or configuration that tests change while others run.",
+        "Shards by file count alone, leaving one machine running far longer than the rest.",
+        "Turns parallelism off whenever failures appear, instead of finding the shared state that causes them."
+      ],
+      "probes": [
+        "Finding hidden dependencies?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-32",
+      "number": 32,
+      "categoryId": "qa-ci-cd-flaky-tests",
+      "text": "How do you use ephemeral preview environments?",
+      "description": "Ephemeral preview environments are short-lived copies of the application created for a particular change. How have you used them, or how would you, and what do you need to get right for them to work well?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Per pull request environment created automatically through infrastructure as code or a Kubernetes namespace, so each change is tested in isolation.",
+        "Seeded data: each environment starts with known, realistic test data, so automated tests and manual reviews are repeatable.",
+        "Automatic teardown after a time limit (TTL) or when the pull request closes, so environments do not pile up.",
+        "Cost limits: caps on the number, size and lifetime of environments, with shared or scaled-down services where full copies are too expensive.",
+        "External dependencies: uses stubs, service virtualisation or shared sandbox accounts for third parties, and is clear about what a preview cannot prove."
+      ],
+      "redFlags": [
+        "Relies on one shared staging environment for everyone, so changes queue, clash and break each other's testing.",
+        "Creates environments by hand or with manual steps, so they drift from production and take hours to set up.",
+        "Never tears environments down, leading to large cloud bills and stale environments nobody owns.",
+        "Treats a passing preview as proof the change works in production, ignoring differences in data, scale and integrations."
+      ],
+      "probes": [
+        "External dependencies?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-33",
+      "number": 33,
+      "categoryId": "qa-ci-cd-flaky-tests",
+      "text": "Which quality gates should block a merge?",
+      "description": "Which automated checks do you think should be able to stop a code change from being merged, and which should not? Explain the reasoning behind your choices.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Blocking tests: fast unit, component and API tests must pass, because they give reliable answers within the pull request.",
+        "Coverage on changed code rather than an absolute target, so new work is tested without forcing pointless tests onto old code.",
+        "Security checks: static analysis (SAST) and dependency scans block merges for serious new findings, with a clear process for false positives.",
+        "Contract verification blocks a merge that would break the expectations of known consumers of an API, before it reaches a shared environment.",
+        "Avoids vanity thresholds, explains which checks only warn (e.g. slow or flaky suites), and says when and by whom a gate may be overridden."
+      ],
+      "redFlags": [
+        "Mandates 90% absolute line coverage for every repository, encouraging tests that run code without asserting anything useful.",
+        "Makes flaky or slow suites blocking, so developers learn to rerun or bypass the gates.",
+        "Allows anyone to bypass any gate at any time, with no record or follow-up.",
+        "Blocks merges on every low-severity scanner warning, causing alert fatigue and pressure to switch the scans off."
+      ],
+      "probes": [
+        "When override a gate?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-34",
+      "number": 34,
+      "categoryId": "qa-ci-cd-flaky-tests",
+      "text": "How does test impact analysis work and what are its risks?",
+      "description": "Test impact analysis means running only the tests affected by a given code change. Explain how it works and what could go wrong if a team relies on it.",
+      "difficulty": "expert",
+      "type": "knowledge",
+      "timeMin": 5,
+      "lookFor": [
+        "Code-to-test mapping: records which code each test exercises (e.g. from coverage data or the build dependency graph) and selects tests that touch the changed code.",
+        "Risk-based selection: always runs smoke and critical tests regardless of the mapping, adding extra tests for high-risk areas.",
+        "Nightly full run as a backstop: the whole suite still runs regularly to catch anything the selection missed.",
+        "Knows the blind spots: configuration, data, database schema, infrastructure and dependency changes often do not appear in a code-to-test map.",
+        "Validates the mapping by comparing selected runs with full runs, tracking failures that selection missed, and adjusting the rules."
+      ],
+      "redFlags": [
+        "Assumes test impact analysis is always safe and stops running the full suite, so missed failures go unnoticed.",
+        "Cannot explain how the tool decides which tests are affected, treating it as a black box that must be right.",
+        "Ignores that the mapping goes stale as code changes, so selection quietly becomes less accurate.",
+        "Uses it to hide a slow, poorly structured suite rather than fixing the suite itself."
+      ],
+      "probes": [
+        "Validating the mapping?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-35",
+      "number": 35,
+      "categoryId": "qa-test-data-environments",
+      "text": "Your test data management strategy?",
+      "description": "Tell us how you manage test data: where it comes from, how each test gets the data it needs, and how you keep it reliable across environments and repeated runs.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Synthetic data and factories: generates the data each test needs through code or APIs, with realistic values and relationships.",
+        "Masked production data only after a privacy review, with anonymisation that cannot be reversed and sign-off from data protection or security.",
+        "Per-test data ownership: each test creates or reserves its own records, so tests do not fight over the same data.",
+        "Reset and cleanup: databases or environments are returned to a known state, or tests clean up after themselves, so repeated runs behave the same.",
+        "Complex relationships: builders create linked records (e.g. a customer with orders and payments) in one call, keeping tests short and readable."
+      ],
+      "redFlags": [
+        "Copies production databases into test environments, exposing personal data and risking breaches of privacy law such as GDPR.",
+        "Relies on a fixed shared data set that tests change, so results depend on what ran before.",
+        "Hand-crafts data through the UI before each test run, which is slow, error-prone and impossible to scale.",
+        "Treats masking as removing names only, ignoring that other fields combined can still identify people."
+      ],
+      "probes": [
+        "Complex relationships?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-36",
+      "number": 36,
+      "categoryId": "qa-test-data-environments",
+      "text": "A shared test env keeps breaking due to other teams. What do you do?",
+      "description": "A test environment you share with other teams keeps breaking because of their changes, and it is blocking your testing. Talk us through, step by step, what you would do, both straight away and longer term.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Short term: gathers evidence of each breakage and its cost to delivery, and talks to the teams involved rather than escalating straight away.",
+        "Service virtualisation: replaces unstable dependencies with simulated services, so their own testing can continue regardless of other teams' changes.",
+        "Moves day-to-day testing to ephemeral environments for their own service, keeping the shared environment for final integration checks.",
+        "Health monitoring: automated checks show when the environment or a dependency is broken, so no time is wasted on false failures.",
+        "Agreed ownership and rules: who owns the environment, how deployments are announced, and what a service must pass before deploying there."
+      ],
+      "redFlags": [
+        "Complains about other teams without a plan, data or proposal for fixing the underlying problem.",
+        "Waits for the environment to be fixed while testing stalls, rather than finding ways to keep working.",
+        "Blames individual teams publicly instead of treating it as a shared process problem.",
+        "Proposes locking the environment so only their team can deploy, which simply shifts the problem to others."
+      ],
+      "probes": [
+        "Getting buy-in?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-37",
+      "number": 37,
+      "categoryId": "qa-test-data-environments",
+      "text": "Stubs vs mocks vs fakes vs service virtualisation?",
+      "description": "Stubs, mocks, fakes and service virtualisation are all ways of standing in for real dependencies during testing. Explain what each one is, how they differ, and when you would use each.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Stub: returns fixed, canned answers to calls so the code under test can run, without checking how it was called.",
+        "Mock: is set up with expectations and verifies the interactions, such as whether a method was called with the right arguments.",
+        "Fake: a simple working implementation, such as an in-memory database or email service, used where the real one is slow or awkward.",
+        "Service virtualisation: simulates a whole dependent service over the network (e.g. WireMock or Hoverfly), often shared across teams and test environments.",
+        "Scope and maintenance cost: each double must be kept in line with the real dependency, so they pick the simplest one that answers the question."
+      ],
+      "redFlags": [
+        "Uses the terms interchangeably, calling every replacement a mock and unable to explain the differences.",
+        "Overuses mocks that verify exact internal calls, so tests break whenever code is refactored even when behaviour is unchanged.",
+        "Never updates test doubles when the real service changes, so tests pass against behaviour that no longer exists.",
+        "Cannot give a real example of when they used service virtualisation or why it was worth the setup effort."
+      ],
+      "probes": [
+        "Last use of virtualisation?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-38",
+      "number": 38,
+      "categoryId": "qa-non-functional-quality",
+      "text": "How do you test accessibility?",
+      "description": "Accessibility means making sure people with disabilities, including those using assistive technology, can use the product. Describe how you test for it and how that fits into the team's normal way of working.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Tests against WCAG 2.2 level AA as the target, and can explain a few of its success criteria in plain terms (e.g. visible focus, minimum target size).",
+        "Automated scans such as axe run in CI, knowing they catch only part of the issues (e.g. contrast and missing labels, not meaningful wording or reading order).",
+        "Manual keyboard checks: every control reachable with Tab, a visible focus indicator, a sensible focus order and no keyboard traps.",
+        "Screen-reader testing with realistic pairs, such as NVDA with Firefox or Chrome, JAWS with Chrome, VoiceOver with Safari, and TalkBack with Chrome.",
+        "Accessibility is part of the definition of done and of design reviews, not a separate audit at the end of a project."
+      ],
+      "redFlags": [
+        "Relies on automated scans only and treats a clean axe or Lighthouse report as proof the product is accessible.",
+        "Has never used a screen reader or tried navigating the product with a keyboard alone, so cannot judge real usability.",
+        "Leaves accessibility to an external audit just before launch, when fixes are late and expensive.",
+        "Thinks adding ARIA attributes everywhere fixes accessibility, unaware that incorrect ARIA often makes things worse."
+      ],
+      "probes": [
+        "Which screen reader/browser pairs?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-39",
+      "number": 39,
+      "categoryId": "qa-non-functional-quality",
+      "text": "What security testing should QA own?",
+      "description": "Thinking about the split between testers and dedicated security specialists, which kinds of security testing do you believe a QA engineer or QA team should own, and why?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Knows the OWASP Top 10:2025, with Broken Access Control at A01, and how its categories turn into everyday functional test cases.",
+        "Authorisation negative tests: tries to read or change other users' data and use functions above the user's role, expecting to be refused.",
+        "Testing for IDOR (insecure direct object references): changes IDs in URLs and requests to reach another user's records, across roles and tenants.",
+        "DAST and dependency scans in CI: dynamic scanning of running test environments and checks for known vulnerable libraries, with findings triaged quickly.",
+        "AppSec partnership: works with security specialists on threat models and penetration tests, and leaves deep exploitation and specialist testing to them."
+      ],
+      "redFlags": [
+        "Says security is the security team's job, so QA tests nothing beyond functional behaviour.",
+        "Believes running a scanner is enough, unaware that tools find few access control and business logic flaws.",
+        "Tests permissions only through the UI, never calling the API directly, where hidden buttons protect nothing.",
+        "Runs aggressive security tools against production or shared systems without approval or coordination with the security team."
+      ],
+      "probes": [
+        "Testing for IDOR?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-40",
+      "number": 40,
+      "categoryId": "qa-non-functional-quality",
+      "text": "How do you test feature flags and configuration?",
+      "description": "Feature flags let teams switch functionality on or off without redeploying, and configuration settings change behaviour in a similar way. How do you test software whose behaviour depends on flags and configuration?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Tests both states of each flag that matters, on and off, including switching it while users are part-way through a journey.",
+        "Risk-based combinations: tests flags that interact and the combinations actually live in production, rather than every possible combination.",
+        "Pairwise or targeted selection to control combinatorial explosion, alongside configuration validation that rejects invalid settings before they deploy.",
+        "Testing in production behind flags: releases to internal users or a small percentage first, with monitoring and a fast way to switch off.",
+        "Stale-flag cleanup: flags have owners and expiry dates, and old flags are removed along with their dead code and tests."
+      ],
+      "redFlags": [
+        "Tests only the default state, so the other path reaches users untested when the flag is switched.",
+        "Lets flags pile up indefinitely, creating untested code paths and confusion about what is actually live.",
+        "Treats configuration changes as safe because no code changed, so they skip review and testing.",
+        "Tries to test every combination of every flag, which is impossible, rather than choosing by risk."
+      ],
+      "probes": [
+        "Combinatorial explosion?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-41",
+      "number": 41,
+      "categoryId": "qa-non-functional-quality",
+      "text": "QA's role in resilience/chaos testing?",
+      "description": "Resilience or chaos testing deliberately introduces failures to see how a system copes. What role should QA play in that work, and what would you personally contribute to it?",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Fault injection: introduces failures such as slow or failing dependencies, killed instances and network loss, in a controlled way.",
+        "Timeouts and retries: checks they are set, that retries back off rather than overloading a struggling service, and that circuit breakers trip.",
+        "Graceful degradation: defines and tests what users should see when a dependency fails, such as cached data or a clear message.",
+        "Game days with SRE: helps plan scenarios, writes hypotheses and observes results, then turns findings into tests and fixes.",
+        "Starts small with a clear first experiment (e.g. one dependency timing out in a test environment) and a defined way to stop it."
+      ],
+      "redFlags": [
+        "Says resilience is out of scope for QA and belongs only to operations or SRE.",
+        "Proposes breaking production systems without a hypothesis, limited scope, monitoring or a way to stop the experiment.",
+        "Thinks resilience testing means only load testing, missing failures of dependencies, networks and infrastructure.",
+        "Runs experiments but records no findings, so nothing is fixed or turned into regression checks."
+      ],
+      "probes": [
+        "Your first experiment?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-42",
+      "number": 42,
+      "categoryId": "qa-metrics-communication",
+      "text": "Which quality metrics do you report and avoid?",
+      "description": "Which measures of quality do you report to teams and leadership, and which commonly used ones do you deliberately avoid? Explain your reasoning for each.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Escaped defects: bugs found in production, by severity and by where they could have been caught, as the main measure of testing effectiveness.",
+        "DORA delivery measures: change failure rate and time to recover from failed deployments, showing stability alongside speed.",
+        "Flake rate and lead time: how often tests fail without a real problem, and how long changes take from commit to production.",
+        "Avoids bugs per developer and raw test counts, because they invite gaming, blame, and more tests rather than better ones.",
+        "Presents trends with context to executives: a few measures linked to business risk and decisions, rather than a dashboard of everything."
+      ],
+      "redFlags": [
+        "Reports vanity metrics such as number of test cases, bugs raised or pass percentage without context.",
+        "Uses metrics to rank or blame individual developers or testers, damaging trust and encouraging people to hide problems.",
+        "Reports numbers with no action attached, so nobody knows what to do differently.",
+        "Cannot explain what behaviour a metric would encourage, unaware of how targets can be gamed."
+      ],
+      "probes": [
+        "Presenting to executives?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-43",
+      "number": 43,
+      "categoryId": "qa-metrics-communication",
+      "text": "Leadership asks why prod bugs happen with 2,000 tests. Respond.",
+      "description": "Senior leaders ask why bugs still reach production when the team has two thousand automated tests. How would you answer them, and what would you do afterwards? Take us through your approach.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Responds calmly and openly, acknowledging the concern and explaining that test count does not measure how well risks are covered.",
+        "Escape analysis by root cause: reviews recent production bugs to see where each could have been caught and why it was not.",
+        "Risk coverage, not lines: maps tests to critical journeys and risks, showing gaps such as integrations, data, configuration or untested areas.",
+        "Data-driven plan: specific changes for next quarter (e.g. contract tests, better monitoring, fewer duplicated UI tests), each linked to an escape pattern.",
+        "Agrees how progress will be measured, such as escaped defects by severity or change failure rate, and reports back to leadership."
+      ],
+      "redFlags": [
+        "Becomes defensive, arguing that bugs are inevitable or that development or product caused them.",
+        "Promises zero production bugs, or more tests as the answer, without analysing why bugs escaped.",
+        "Answers with opinions and anecdotes only, with no data on which bugs escaped or why.",
+        "Treats it as a testing team problem only, rather than also looking at design, review, release and monitoring practices."
+      ],
+      "probes": [
+        "What changes next quarter?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-44",
+      "number": 44,
+      "categoryId": "qa-metrics-communication",
+      "text": "What makes a good bug report, and how do you triage?",
+      "description": "Describe what a good bug report contains, and how you run triage, the regular process of reviewing newly reported bugs and deciding what happens to each of them.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Reproduction steps that someone else can follow exactly, with test data, starting state and how often the bug occurs.",
+        "Expected versus actual behaviour stated clearly and briefly, with screenshots or a short video where that makes the problem obvious.",
+        "Environment details plus evidence: build version, browser or device, logs, trace or correlation IDs, and timestamps to find the request.",
+        "Severity versus priority: severity is the impact on users or systems, priority is how soon to fix it, with an example where they differ.",
+        "Triage cadence: regular sessions with product and development to agree priority, owner and next step for every new bug."
+      ],
+      "redFlags": [
+        "Accepts or writes reports like 'it doesn't work' with no steps, evidence or expected result.",
+        "Confuses severity and priority, or sets everything to critical so the labels mean nothing.",
+        "Runs triage alone or irregularly, so bugs pile up unowned and decisions are not shared with product.",
+        "Writes reports that blame a developer or are full of opinion, damaging working relationships instead of describing facts."
+      ],
+      "probes": [
+        "Severity vs priority example?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-45",
+      "number": 45,
+      "categoryId": "qa-behavioural-leadership",
+      "text": "A time you changed a team's approach to quality.",
+      "description": "Tell us about one particular time you changed how a team approached quality. We want the real story: what you yourself did to bring the change about, and how it turned out.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific, real situation: the team, the quality problem (e.g. late testing, frequent escapes) and why it mattered to the business.",
+        "Own actions clearly separated from the team's: what they personally proposed, built or changed, saying 'I' where it was their work.",
+        "Influence without authority: persuaded developers and managers with data, small trials and practical support rather than rules or escalation.",
+        "A measurable result, such as fewer escaped defects, faster releases or developers writing tests unprompted, and whether the change lasted.",
+        "Reflection on the resistance they met, how they handled it, and what they would do differently next time."
+      ],
+      "redFlags": [
+        "Gives a hypothetical answer or a general philosophy about quality culture instead of describing one real example.",
+        "Blames developers or management for poor quality and presents themselves as the only one who cared.",
+        "Describes the change but cannot say what result it had or whether the team kept it up.",
+        "Forced the change through mandates or gatekeeping, leaving the team resentful or dependent on QA."
+      ],
+      "probes": [
+        "Resistance met?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-46",
+      "number": 46,
+      "categoryId": "qa-behavioural-leadership",
+      "text": "A disagreement with a PM or dev lead on release readiness.",
+      "description": "Describe a real occasion when you disagreed with a product manager or development lead about whether a release was ready to go out. What did you personally do, and what happened in the end?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real release decision: what was at stake, who they disagreed with, and their specific concern about readiness.",
+        "Data and risk framing: presented evidence (e.g. open defects, untested areas, likely user impact) rather than personal opinion or gut feeling.",
+        "Listened to the other side's reasons, such as commercial deadlines, and offered options like a staged rollout, feature flags or a fix-forward plan.",
+        "Respectful escalation: when needed, took it openly to the right decision-maker together with the other person, and accepted the business owner's call.",
+        "Describes the outcome, what happened after release, and what they would decide or do differently now."
+      ],
+      "redFlags": [
+        "Offers a hypothetical or generic answer about how releases should work, with no real occasion behind it.",
+        "Blames the product manager or developer for pushing it out, with no recognition of the pressures they faced.",
+        "Treats QA as the gatekeeper who must win, or went around people instead of escalating openly.",
+        "Cannot say what the outcome was or whether their concern turned out to be justified."
+      ],
+      "probes": [
+        "Decide differently now?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-47",
+      "number": 47,
+      "categoryId": "qa-behavioural-leadership",
+      "text": "How have you mentored testers or upskilled developers in testing?",
+      "description": "Give us a concrete example of mentoring a tester, or of helping developers get better at testing. Tell us who it was, what you yourself did, and what changed for them as a result.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific person or group: who they were, their starting skills, and the gap the candidate identified (e.g. developers not writing integration tests).",
+        "Concrete plan: pairing, workshops, reviews or goals agreed with them and their manager, rather than occasional ad hoc help.",
+        "The candidate's own role: what they personally taught, demonstrated or handed over, and how they adapted to the person's way of learning.",
+        "Growth evidence: a visible change such as the person owning a test framework, developers adding tests unprompted, or fewer review comments.",
+        "Reflection on what did not work and what they changed in their approach as a result."
+      ],
+      "redFlags": [
+        "Talks about mentoring in general or hypothetically, with no named person or real example.",
+        "Blames the mentee or developers for not caring about testing when progress stalled.",
+        "Did the work for others instead of teaching them, so nothing changed once they stepped away.",
+        "Cannot point to any outcome showing that the people they helped actually improved."
+      ],
+      "probes": [
+        "What didn't work?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-48",
+      "number": 48,
+      "categoryId": "qa-behavioural-leadership",
+      "text": "A production defect you missed.",
+      "description": "Tell us about a defect that reached production which you, or your testing, should have caught. Walk us through what happened, what you did about it, and what you took from it.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real defect they or their testing missed, with its user or business impact explained honestly and without minimising it.",
+        "Ownership: accepts their part openly and explains what they did straight away to contain the issue and support the fix.",
+        "Root cause: why it escaped (e.g. untested configuration, a missing data case, a gap between test and production), found through analysis rather than guesswork.",
+        "Systemic fix: a change to process or tests that prevents the whole class of defect, not just one new test for that bug.",
+        "Evidence the change worked, such as no recurrence or fewer similar escapes, and what they personally do differently now."
+      ],
+      "redFlags": [
+        "Picks a trivial or hypothetical example to avoid discussing a real failure with consequences.",
+        "Blames developers, the environment or tight deadlines, accepting no responsibility for the testing gap.",
+        "Stops at adding one test case for that bug, with no look at why the gap existed.",
+        "Cannot describe the outcome, what the team changed afterwards, or whether similar defects have escaped since."
+      ],
+      "probes": [
+        "What changed?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-49",
+      "number": 49,
+      "categoryId": "qa-behavioural-leadership",
+      "text": "Introducing a new tool or framework.",
+      "description": "Tell us about a specific time you brought a new testing tool or framework into a team. Explain why, what you personally did to introduce it, and how it worked out.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific tool and team: the problem it was meant to solve and why the existing approach was not good enough.",
+        "Selection criteria: compared options against agreed needs such as language, browsers, CI fit, cost and team skills, not personal preference.",
+        "Pilot first: tried it on a small, real area with clear success measures before asking the wider team to commit.",
+        "Migration and adoption: their own role in planning the move from the old tool, training people, and tracking adoption metrics such as tests migrated or run time.",
+        "Honest result and reflection: whether it delivered, what went wrong, and whether they would choose it again."
+      ],
+      "redFlags": [
+        "Describes a hypothetical rollout, or a tool someone else chose and introduced, with no clear personal role.",
+        "Chose the tool because it was new or popular, with no criteria or comparison.",
+        "Blames the team for poor adoption instead of looking at training, fit or how the change was introduced.",
+        "Cannot say what the outcome was, or left two half-used tools running side by side with no plan."
+      ],
+      "probes": [
+        "Choose it again?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "qa-50",
+      "number": 50,
+      "categoryId": "qa-behavioural-leadership",
+      "text": "Prioritising automation vs manual effort with limited capacity.",
+      "description": "Describe a real time when capacity was tight and you had to decide how much effort went into automation versus manual testing. How did you decide, what did you do, and what was the outcome?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real situation with tight capacity: the team, the release or product, and what made the trade-off necessary.",
+        "ROI and risk reasoning: automated stable, frequently repeated, high-risk checks, and kept manual or exploratory testing for changing or one-off areas.",
+        "Stakeholder alignment: agreed the plan, and what would not be covered, with product and engineering rather than deciding alone.",
+        "The candidate's own decisions and actions, including what they chose to drop and why that was acceptable.",
+        "A measurable outcome (e.g. regression time cut, release frequency, escaped defects) and reflection on whether the balance was right."
+      ],
+      "redFlags": [
+        "Answers hypothetically or with a general rule such as 'automate everything', rather than describing a real decision.",
+        "Automated whatever was easiest or most interesting rather than what gave the best return for the risk.",
+        "Blames management or lack of time for poor quality without describing their own choices.",
+        "Cannot say what was dropped, what happened as a result, or how the outcome was measured."
+      ],
+      "probes": [
+        "What did you drop?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    }
+  ]
+}

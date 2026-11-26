@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # BANK-3: schema, unique question ids and numbers, every categoryId exists
+      # and every category is used. The seed files are the source of truth (BANK-4).
+      - name: Validate seed
+        run: npm run validate:seed
+
+      - name: Typecheck
+        run: npm run typecheck --if-present
+
+      - name: Test
+        run: npm test --if-present
+
+      # Local AI helper (docs/11 AI-1, AI-4) against the fake Claude Code CLI in server/test/.
+      - name: Helper tests
+        run: npm run test:server
+
+      - name: Build
+        run: npm run build --if-present
+
+      # End-to-end checks against the production build (docs/10-verification.md).
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run e2e
+
+      - name: Upload end-to-end results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: test-results/
+          retention-days: 7

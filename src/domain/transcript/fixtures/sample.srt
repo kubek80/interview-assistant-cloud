@@ -1,0 +1,13 @@
+1
+00:00:01,000 --> 00:00:04,000
+Priya: How do you report a bug
+that only happens in production?
+
+2
+00:00:04,500 --> 00:00:09,250
+Sam: I collect the logs, the request id
+and the exact build first.
+
+3
+00:01:10,000 --> 00:01:12,000
+<i>Priya: Thanks.</i>

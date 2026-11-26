@@ -1,0 +1,23 @@
+/* Print-friendly layout for "Save as PDF" (FLOW-31). Mark screen-only UI with .no-print and
+   print-only content (e.g. a header with candidate key and date) with .print-only. */
+@media print {
+  :root {
+    --color-bg: #fff;
+    --color-surface: #fff;
+    --color-surface-2: #f2f2f2;
+    --color-text: #000;
+    --color-text-muted: #333;
+    --color-heading: #000;
+    --color-border: #999;
+  }
+  body { background: #fff; font-size: 10.5pt; }
+  .no-print, .skip-link, .app-header, .offline-banner, .toast-region, .docs-nav { display: none !important; }
+  .print-only { display: block !important; }
+  .app-main { max-width: none; padding: 0; }
+  .card { box-shadow: none; break-inside: avoid; }
+  .table-wrap { overflow: visible; border: 0; }
+  .table tr, .doc-content tr { break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+  .badge { border: 1px solid #000 !important; }
+}

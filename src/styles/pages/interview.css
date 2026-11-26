@@ -1,0 +1,625 @@
+/* Live interview (FLOW-10..23, UX-4, UX-5) and candidate window (FLOW-11). Tokens only; both themes are automatic. */
+
+/* The live screen uses the standard page width (UX-9). The top bar sits flush under the app
+   header; the bottom bar is fixed to the window and the page leaves room for it (--dock-h). */
+.app-main:has(> .live--in_progress),
+.app-main:has(> .live--paused),
+.app-main:has(> .live--submitted) {
+  padding-top: 0;
+  padding-bottom: calc(var(--dock-h, 6rem) + var(--space-3));
+}
+
+.live { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* ---------- Top bar (UX-5): who, overall time, progress, pause, More, Finish ---------- */
+.live-bar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-5);
+  padding: var(--space-2) 0;
+  /* Full-bleed background and bottom rule, while the content keeps the page's width (the border
+     image paints outside the box without widening the page). */
+  border-image: linear-gradient(to top, var(--color-border) 1px, var(--color-surface) 1px) fill 0 / 0 / 0 100vmax;
+}
+@media (min-width: 64rem) {
+  .live-bar {
+    position: sticky;
+    top: 0;
+    display: grid;
+    grid-template-columns: minmax(9rem, 16rem) auto minmax(0, 1fr) auto;
+    grid-template-areas: 'who timer progress actions';
+  }
+  .live-bar__who { grid-area: who; }
+  .live-bar > .timer, .live-bar__submitted { grid-area: timer; }
+  .live-bar .progress { grid-area: progress; }
+  .live-bar__actions { grid-area: actions; flex-wrap: nowrap; }
+}
+@media (min-width: 64rem) and (max-width: 75rem) {
+  /* Not enough width for every chip beside the rest: the strip gets its own row. */
+  .live-bar { grid-template-columns: minmax(9rem, 1fr) auto auto; grid-template-areas: 'who timer actions' 'progress progress progress'; }
+  .live-bar .progress { flex-direction: row; align-items: center; gap: var(--space-3); }
+}
+.live-bar__who { flex: 0 1 18rem; min-width: 0; display: flex; flex-direction: column; }
+.live-bar__line { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.live-bar__title { margin: 0; flex: none; font-size: var(--text-lg); font-family: var(--font-mono); letter-spacing: 0.03em; line-height: 1.25; }
+.live-bar__role { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-text); }
+.live-bar__people { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.35; }
+.live-bar__submitted { display: inline-flex; align-items: center; gap: var(--space-1); margin: 0; font-size: var(--text-sm); font-weight: 600; color: var(--color-success); }
+.live-bar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-left: auto; }
+
+/* ---------- Timers (FLOW-19, A11Y-3: text + icon, never colour alone) ---------- */
+.timer {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: 'label status' 'time time';
+  align-items: center;
+  gap: 0 var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  min-width: 11rem;
+}
+.timer__label { grid-area: label; font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
+.timer__time { grid-area: time; font-size: var(--text-xl); font-weight: 650; color: var(--color-heading); line-height: 1.2; }
+.timer__limit { font-size: var(--text-sm); font-weight: 500; color: var(--color-text-muted); }
+.timer__status { grid-area: status; justify-self: end; display: inline-flex; align-items: center; gap: 0.3em; font-size: var(--text-xs); font-weight: 650; color: var(--color-text-muted); }
+.timer--normal { border-left-color: var(--color-success-solid); }
+.timer--amber { border-color: var(--color-warning-solid); background: var(--color-warning-bg); }
+.timer--amber .timer__status, .timer--amber .timer__time { color: var(--color-warning); }
+.timer--red { border-color: var(--color-danger-solid); background: var(--color-danger-bg); }
+.timer--red .timer__status, .timer--red .timer__time { color: var(--color-danger); }
+.timer--paused { border-left-color: var(--color-border-strong); border-style: dashed; border-left-style: solid; }
+.timer--paused .timer__time { color: var(--color-text-muted); }
+.timer--compact { min-width: 0; }
+.timer--compact .timer__time { font-size: var(--text-md); }
+/* In a bar: label above the digits, no box; the status words only when they need attention. */
+.timer--inline {
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  grid-template-areas: 'label label' 'time status';
+  justify-content: start;
+  gap: 0 var(--space-2);
+}
+.timer--inline .timer__label { font-size: 0.6875rem; }
+.timer--inline .timer__time { font-size: var(--text-md); white-space: nowrap; }
+.timer--inline .timer__status { justify-self: start; font-size: var(--text-sm); }
+.timer--inline.timer--amber { background: var(--color-warning-bg); box-shadow: inset 0 0 0 1px var(--color-warning-solid); }
+.timer--inline.timer--red { background: var(--color-danger-bg); box-shadow: inset 0 0 0 1px var(--color-danger-solid); }
+
+/* ---------- Progress strip (FLOW-20) ---------- */
+.progress { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.progress__summary { display: flex; gap: var(--space-2); margin: 0; font-size: var(--text-xs); line-height: 1.3; white-space: nowrap; }
+.progress__pos { color: var(--color-heading); }
+.progress__done { color: var(--color-text-muted); }
+.progress__warn { color: var(--color-danger); font-weight: 600; }
+.progress__warn .icon { vertical-align: -0.2em; }
+.progress__list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.progress__item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.progress__item:hover { border-color: var(--color-heading); color: var(--color-heading); }
+/* Scored: filled. Skipped: struck through and dashed. Never colour alone (A11Y-3). */
+.progress__item--scored { background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success); }
+.progress__item--skipped { border-style: dashed; text-decoration: line-through; color: var(--color-text-muted); background: var(--color-surface-2); }
+.progress__item--needs-note { border-color: var(--color-danger); border-width: 2px; }
+.progress__item[aria-current='step'] { outline: 2px solid var(--color-accent); outline-offset: 1px; color: var(--color-heading); font-weight: 750; }
+.progress__item[aria-current='step']::after {
+  content: '';
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: -6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+.progress__item:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.progress__mark { position: absolute; width: 0.7rem; height: 0.7rem; padding: 1px; border-radius: 999px; background: var(--color-surface); }
+.progress__mark--flag { top: -0.4rem; right: -0.35rem; color: var(--color-info); box-shadow: 0 0 0 1px var(--color-info); }
+.progress__mark--note { top: -0.4rem; left: -0.35rem; color: var(--color-danger); box-shadow: 0 0 0 1px var(--color-danger); }
+.progress-legend { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-3); font-size: var(--text-sm); }
+.progress-legend li { display: flex; align-items: center; gap: var(--space-3); }
+.progress__item--sample { cursor: default; flex: none; }
+.shortcuts-legend__title { margin: var(--space-4) 0 0; font-size: var(--text-md); }
+
+/* ---------- Paused, submitted, skipped notices ---------- */
+.paused-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-warning-solid);
+  background: var(--color-warning-bg);
+  color: var(--color-text);
+}
+.paused-banner > .icon { width: 1.25rem; height: 1.25rem; color: var(--color-warning); }
+.paused-banner p { margin: 0; }
+.paused-banner__title { font-weight: 700; color: var(--color-warning); }
+.live-readonly { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--color-info-bg); color: var(--color-text); font-size: var(--text-sm); }
+.live-readonly > .icon { color: var(--color-info); }
+.live-readonly > span { flex: 1 1 auto; }
+.skip-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-warning-solid);
+  background: var(--color-warning-bg);
+  color: var(--color-text);
+}
+.skip-banner > .icon { color: var(--color-warning); }
+.skip-banner p { margin: 0; }
+.skip-banner__title { font-weight: 700; color: var(--color-warning); }
+
+/* ---------- Body: question and notes (left), what to listen for (right) ---------- */
+.live-body {
+  display: grid;
+  /* BANK-15: the checklist items are sentences, so the checklist gets as much width as the question. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4) var(--space-4);
+  align-items: start;
+}
+@media (max-width: 56rem) {
+  .live-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+.question-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+.question-pane__meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
+.question-pane__number { margin: 0; font-size: var(--text-md); color: var(--color-heading); scroll-margin-top: 6rem; }
+.question-pane__number:focus { outline: none; }
+/* Focus sits here while the shortcuts are used: a quiet underline rather than a box. */
+.question-pane__number:focus-visible { outline: none; box-shadow: 0 2px 0 var(--color-focus); }
+.question-pane__of { font-weight: 500; color: var(--color-text-muted); }
+.question-pane__facts { font-size: var(--text-sm); color: var(--color-text-muted); }
+.live .question-text:not(.question-text--candidate) { font-size: clamp(1.375rem, 1rem + 1.15vw, 2rem); max-width: 40ch; line-height: 1.25; }
+.live .question-text--long:not(.question-text--candidate) { font-size: clamp(1.125rem, 0.85rem + 0.7vw, 1.375rem); max-width: 52ch; line-height: 1.3; }
+
+/* The probe: asked after the question, ticked when handled without help (FLOW-13). */
+.probe { margin: 0; padding: var(--space-1) 0 var(--space-1) var(--space-3); border: 0; border-left: 3px solid var(--color-border-strong); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.probe__heading { display: flex; align-items: center; gap: var(--space-1); padding: 0; margin: 0 0 2px; font-size: var(--text-xs); font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-muted); }
+.probe .probes { padding-left: 0; list-style: none; font-size: var(--text-base); line-height: var(--leading-normal); }
+.probe .checkbox, .probe .tick-ro { font-size: var(--text-sm); }
+
+/* Steering note: the question's description, right under it (FLOW-12, BANK-8). */
+.steer { display: flex; flex-direction: column; gap: 2px; padding: var(--space-1) 0 var(--space-1) var(--space-3); border-left: 3px solid var(--color-accent); }
+.steer__heading { display: flex; align-items: center; gap: var(--space-1); margin: 0; font-size: var(--text-xs); font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-accent); }
+.steer__text { margin: 0; font-size: var(--text-base); line-height: var(--leading-normal); color: var(--color-text); max-width: 70ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Notes (FLOW-15): a compact composer that grows; earlier notes collapse. */
+.notes-pane { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-1); padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
+.notes-pane__body { display: flex; flex-direction: column; gap: var(--space-2); }
+.notes-pane__needed { margin-left: var(--space-2); padding: 0 var(--space-2); border-radius: 999px; border: 1px solid currentColor; font-size: var(--text-xs); font-weight: 650; color: var(--color-danger); background: var(--color-danger-bg); }
+.notes-pane--needed .note-composer__field { border-color: var(--color-danger); box-shadow: 0 0 0 1px var(--color-danger); }
+.note-composer { display: flex; flex-direction: column; gap: var(--space-1); }
+.note-composer__field.textarea { min-height: 2.75rem; max-height: 12rem; resize: vertical; field-sizing: content; }
+.note-composer__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.note-composer__hint { flex: 1 1 auto; font-size: var(--text-xs); color: var(--color-text-muted); }
+.notes-list-wrap { display: flex; flex-direction: column; gap: var(--space-1); }
+.notes-list__more { align-self: flex-start; }
+.notes-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  border-radius: var(--radius);
+  background: var(--color-surface-2);
+}
+.note__time { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--color-text-muted); padding-top: 0.2em; }
+.note__text { margin: 0; padding: 0.15em 0; }
+.note__actions { display: inline-flex; gap: 2px; }
+.note__edit { min-width: 0; }
+.note__by { display: inline-block; margin-right: var(--space-2); padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--color-accent-soft); color: var(--color-text); font-size: var(--text-sm); font-weight: 600; }
+.note-by-field { display: inline-flex; align-items: center; gap: var(--space-2); }
+.select.select--compact { width: auto; min-height: var(--target-min); padding-block: 0.15rem; }
+
+/* What to listen for: one card, three tight checklists of sentences (BANK-15). On two columns the
+   card stays in view and is never taller than the room between the bars (UX-4): when a question's
+   lists do not all fit, the card scrolls inside itself, with a cue, and the page does not. */
+.interviewer-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-1) var(--space-4) 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+@media (min-width: 56.01rem) {
+  .interviewer-pane {
+    position: sticky;
+    top: calc(var(--live-bar-h, 0px) + var(--space-3));
+    max-height: var(--live-pane-max, none);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+}
+.evidence__group { margin: 0; padding: var(--space-1) 0 var(--space-2); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.evidence__group + .evidence__group { border-top: 1px solid var(--color-border); }
+.evidence__group > legend { float: left; width: 100%; margin: 0 0 2px; padding-top: var(--space-1); }
+.evidence__group > legend + * { clear: both; }
+.evidence__flag-icon { color: var(--color-danger); }
+.pane__heading { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--text-base); font-weight: 650; color: var(--color-heading); }
+.checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+/* Each item is a sentence of 12-30 words: a hanging indent under the box, a slightly smaller size
+   than body text with an easy line height, and the leading label in the heading colour. */
+.interviewer-pane .checklist .checkbox,
+.interviewer-pane .tick-ro { font-size: var(--text-checklist, 0.875rem); line-height: 1.4; }
+.checklist .checkbox { display: flex; padding: 3px 0; line-height: 1.35; overflow-wrap: anywhere; }
+.checklist .checkbox input { margin-top: 0.1em; }
+.checklist .checkbox:has(input:checked) { color: var(--color-heading); }
+.tick-ro { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; padding: 3px 0; min-height: var(--target-min); line-height: 1.35; color: var(--color-text-muted); overflow-wrap: anywhere; }
+.tick-ro .icon { flex: none; margin-top: 0.1em; }
+.tick-ro--on { color: var(--color-heading); font-weight: 600; }
+.tick-ro--on .icon { color: var(--color-accent); }
+.tick-ro .item-lead { color: inherit; }
+.probes { margin: 0; padding-left: 1.25rem; font-size: var(--text-checklist, 0.875rem); line-height: 1.4; }
+.probes li { font-weight: 550; color: var(--color-heading); }
+/* The cue: pinned to the card's bottom edge while something is below it. */
+.interviewer-pane__more {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  margin: 0 calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4) var(--space-1);
+  background: linear-gradient(to bottom, transparent, var(--color-surface) 45%);
+  pointer-events: none;
+}
+.interviewer-pane__more--none { padding: 0; height: var(--space-1); }
+.interviewer-pane__more-button {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.interviewer-pane__more-button:hover { border-color: var(--color-accent); }
+.interviewer-pane__more-button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
+/* ---------- Bottom bar (UX-4): Previous · score · rubric, flag, skip · question time · Next ---------- */
+.live-dock {
+  position: fixed;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-strong);
+  box-shadow: 0 -4px 16px rgb(15 20 25 / 0.08);
+}
+.live-dock__inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-4);
+  display: grid;
+  /* The score sits next to Next and under the checklist: tick, score, next with the least travel. */
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas: 'info info info info info' 'prev tools timer score next';
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+}
+/* One line above the controls: the suggestion, the note rule, the rubric. Its height is fixed, so
+   the buttons never move when it changes. */
+.live-dock__info { grid-area: info; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2) var(--space-4); min-height: 1.5rem; min-width: 0; }
+.live-dock__info .live-dock__hint { flex: 0 1 auto; min-width: 0; justify-content: flex-end; }
+.live-dock__rubric-toggle { flex: none; font-size: var(--text-sm); gap: 2px; }
+.live-dock__prev { grid-area: prev; }
+.live-dock__score { grid-area: score; position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.live-dock__tools { grid-area: tools; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.live-dock .timer { grid-area: timer; }
+.live-dock__spent { grid-area: timer; margin: 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+.live-dock__spent-label { display: block; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.live-dock__next { grid-area: next; min-width: 7rem; }
+.live-dock__prev, .live-dock__next { min-height: 2.75rem; }
+.live-dock__score-row { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); min-width: 0; }
+.live-dock__clear { flex: none; }
+.live-dock__amending { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-weight: 600; color: var(--color-accent); }
+.live-dock__flagged { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); color: var(--color-info); font-weight: 600; }
+.live-dock__hint { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-4); margin: 0; min-height: 1.25rem; font-size: var(--text-sm); line-height: 1.3; }
+.live-dock__hint-item { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.live-dock__hint .suggestion { color: var(--color-info); }
+.live-dock__hint .suggestion strong { color: var(--color-heading); }
+.live-dock__hint .suggestion__why { color: var(--color-text-muted); }
+.live-dock__hint .needs-note { color: var(--color-danger); font-weight: 600; }
+.live-dock__hint .needs-note > span { color: var(--color-danger); }
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+.link-button:hover { color: var(--color-accent-hover); }
+
+/* The rubric, above the bar while open (RUB-1, RUB-2). */
+.live-dock__rubric { border-bottom: 1px solid var(--color-border); background: var(--color-surface-2); max-height: 45vh; overflow: auto; }
+.live-dock__rubric-inner { max-width: var(--content-max); margin: 0 auto; padding: var(--space-3) var(--space-4); }
+.live-dock__rubric-title { margin: 0; font-size: var(--text-base); }
+.rubric-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: var(--space-2) var(--space-4); margin: var(--space-2) 0 0; }
+.rubric-list__row { padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--color-surface); border: 1px solid var(--color-border); }
+.rubric-list__row--chosen { border: 2px solid var(--color-accent); padding: calc(var(--space-2) - 1px) calc(var(--space-3) - 1px); }
+.rubric-list dt { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-weight: 650; color: var(--color-heading); }
+.rubric-list dd { margin: var(--space-1) 0 0; font-size: var(--text-sm); color: var(--color-text); }
+.rubric-list__num { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 999px; border: 1px solid var(--color-border-strong); font-size: var(--text-sm); }
+.rubric-list__tag { padding: 0 var(--space-2); border-radius: 999px; border: 1px solid currentColor; font-size: var(--text-xs); font-weight: 650; color: var(--color-accent); }
+.rubric-list__tag--suggested { color: var(--color-info); border-style: dashed; }
+
+/* ---------- Score control (RUB-1..3, FLOW-14) ---------- */
+.score-control { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.score-control__legend { font-weight: 600; font-size: var(--text-sm); color: var(--color-heading); margin-bottom: var(--space-2); }
+.score-control__clear { align-self: flex-start; }
+.score-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+@media (max-width: 30rem) { .score-control--cards .score-options { grid-template-columns: minmax(0, 1fr); } }
+.score-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  cursor: pointer;
+  min-height: 2.75rem;
+}
+.score-option:hover { background: var(--color-surface-2); }
+.score-option input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.score-option:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.score-option--checked { border: 2px solid var(--color-accent); background: var(--color-accent-soft); padding: calc(var(--space-2) - 1px) calc(var(--space-3) - 1px); }
+.score-control:disabled .score-option { cursor: default; }
+.score-control:disabled .score-option:not(.score-option--checked) { opacity: 0.7; }
+.score-option__head { display: flex; align-items: center; gap: var(--space-2); }
+.score-option__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-heading);
+}
+.score-option--checked .score-option__num { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-contrast); }
+.score-option__label { font-weight: 650; color: var(--color-heading); }
+.score-option__check { color: var(--color-accent); }
+.score-option__suggested {
+  font-size: var(--text-xs);
+  font-weight: 650;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  border: 1px dashed var(--color-info);
+  color: var(--color-info);
+  background: var(--color-surface);
+}
+.score-option--suggested:not(.score-option--checked) { border-style: dashed; border-color: var(--color-info); }
+.score-option__kbd { margin-left: auto; }
+.score-option__desc { font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.4; }
+.score-option--checked .score-option__desc { color: var(--color-text); }
+.score-option__override { font-style: italic; }
+
+/* The bar's compact row: legend inline, four buttons, the level description shown above on hover or focus. */
+.score-control--bar { flex-direction: row; align-items: center; gap: var(--space-2); }
+.score-control__legend--bar { float: left; margin: 0 var(--space-1) 0 0; font-size: var(--text-sm); }
+.score-control--bar .score-options { display: flex; gap: var(--space-2); }
+.score-control--bar .score-option { flex-direction: row; align-items: center; min-height: 2.5rem; padding: 0 var(--space-3) 0 var(--space-2); }
+.score-control--bar .score-option--checked { padding: 0 calc(var(--space-3) - 1px) 0 calc(var(--space-2) - 1px); }
+.score-control--bar .score-option__head { white-space: nowrap; }
+.score-control--bar .score-option__suggested { position: absolute; top: -0.75rem; left: 50%; transform: translateX(-50%); line-height: 1.3; white-space: nowrap; }
+.score-control--bar .score-option__desc {
+  display: none;
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: calc(100% + var(--space-3));
+  width: max-content;
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+  color: var(--color-text);
+  white-space: normal;
+}
+.score-option__desc-title { color: var(--color-heading); }
+.live-dock__score:has(.score-option:hover) .score-option:hover .score-option__desc,
+.live-dock__score .score-option:has(input:focus-visible) .score-option__desc { display: block; }
+/* Anchor the description to the score area, not to the button, so it never runs off the screen. */
+.score-control--bar .score-option { position: static; }
+.score-control--bar .score-option > input { position: absolute; }
+.score-control--bar .score-option__head { position: relative; }
+
+/* ---------- Finish dialog (FLOW-22/23, UX-6) ---------- */
+.finish__heading { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-md); margin: 0; }
+.finish__heading:focus { outline: none; }
+.finish__heading:focus-visible { outline: 2px solid var(--color-focus); }
+.finish__questions { display: flex; flex-direction: column; gap: var(--space-3); }
+.finish__questions--open { padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-left: 4px solid var(--color-danger-solid); border-radius: var(--radius); }
+.finish__questions--open > .finish__heading > .icon { color: var(--color-danger); }
+.finish__questions:not(.finish__questions--open) > .finish__heading > .icon { color: var(--color-success); }
+.finish__row { display: flex; flex-direction: column; gap: var(--space-2); }
+.finish__line { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; }
+.finish__line > .icon { margin-top: 0.2em; color: var(--color-text-muted); }
+.finish__skip { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius); background: var(--color-surface-2); }
+.finish__jumps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.finish__jump-score { font-weight: 400; color: var(--color-text-muted); }
+.finish__done { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; color: var(--color-success); font-weight: 600; }
+.finish__done > span { color: var(--color-text); font-weight: 400; }
+.finish__names { margin: var(--space-1) 0 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+.finish__names strong { color: var(--color-heading); }
+.finish__lock { display: flex; align-items: center; gap: var(--space-1); margin: 0 auto 0 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+.finish__lock .icon { color: var(--color-info); }
+
+/* ---------- Submitted / amend (AUD-4) ---------- */
+.amend-form { margin-top: var(--space-2); padding: var(--space-4); border: 2px solid var(--color-accent); border-radius: var(--radius-lg); background: var(--color-surface); }
+.amend-form h3:focus { outline: none; }
+.amend-changes { margin: 0; padding-left: 1.25rem; }
+.note--editing { grid-template-columns: auto minmax(0, 1fr) auto; }
+.overall-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--space-3) var(--space-5); margin: 0; }
+.overall-summary dt { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: 600; }
+.overall-summary dd { margin: 0; font-weight: 550; color: var(--color-heading); }
+.overall-summary__wide { grid-column: 1 / -1; }
+.overall-summary__wide dd { font-weight: 400; color: var(--color-text); }
+
+/* ---------- Pre-start (FLOW-10) ---------- */
+.prestart { max-width: 48rem; }
+.prestart__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--space-3) var(--space-5); margin: 0 0 var(--space-4); }
+.prestart__facts dt { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: 600; }
+.prestart__facts dd { margin: 0; font-size: var(--text-md); font-weight: 600; color: var(--color-heading); }
+.prestart__questions summary { cursor: pointer; font-weight: 600; min-height: var(--target-min); }
+.prestart__list { margin: var(--space-3) 0 0; padding-left: 1.5rem; display: flex; flex-direction: column; gap: var(--space-2); }
+.prestart__list li > span:first-child { display: block; }
+
+/* ---------- Shortcuts dialog ---------- */
+.shortcuts-table td kbd { margin-right: 2px; }
+.shortcuts-note { margin-top: var(--space-3); }
+
+/* ---------- Candidate view (FLOW-11): in-app toggle and separate window ---------- */
+.live--candidate {
+  min-height: calc(100vh - 10rem);
+  justify-content: center;
+  padding: var(--space-6) clamp(var(--space-2), 4vw, 5rem);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  position: relative;
+}
+.candidate-exit { position: absolute; top: var(--space-3); right: var(--space-3); }
+
+.candidate-question { display: flex; flex-direction: column; gap: var(--space-5); }
+.candidate-question__number {
+  margin: 0;
+  font-size: clamp(1.25rem, 0.9rem + 1.2vw, 2rem);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.candidate-question__number:focus, .candidate-question__waiting:focus { outline: none; }
+.candidate-question__of { font-weight: 500; color: var(--color-text-muted); }
+.candidate-question__text { color: var(--color-heading); }
+.candidate-question__waiting {
+  margin: 0;
+  font-size: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+  font-weight: 550;
+  color: var(--color-text-muted);
+  max-width: 30ch;
+}
+
+/* ---------- Narrower windows ---------- */
+@media (max-width: 72rem) {
+  /* Two rows of controls: the score on top, the rest underneath. */
+  .live-dock__inner {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: 'info info info info' 'score score score score' 'prev tools timer next';
+    row-gap: var(--space-1);
+  }
+  .live-dock .timer { justify-self: end; }
+}
+@media (max-width: 40rem) {
+  .live-bar { gap: var(--space-2) var(--space-3); }
+  .live-bar__who { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-2); }
+  .live-bar .progress { order: 3; flex-basis: 100%; }
+  .live-bar__actions .menu-button + .btn, .live-bar__actions > .btn { padding-inline: var(--space-3); }
+  .question-pane { padding: var(--space-3) var(--space-3) var(--space-4); }
+  .interviewer-pane { padding: var(--space-2) var(--space-3); }
+  .note { grid-template-columns: minmax(0, 1fr) auto; }
+  .note__time { grid-column: 1 / -1; }
+  .note__edit, .note__text, .note--editing .textarea { grid-column: 1 / 2; }
+  .live-dock__inner { padding: var(--space-2) var(--space-3); gap: var(--space-1) var(--space-2); grid-template-areas: 'info info info info' 'score score score score' 'prev tools timer next'; grid-template-columns: auto auto minmax(0, 1fr) auto; }
+  .live-dock__info { align-items: flex-start; justify-content: space-between; }
+  .live-dock__info .live-dock__hint { justify-content: flex-start; }
+  .live-dock__prev .btn__text, .live-dock__tools .btn__text { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .live-dock__prev { padding: 0 var(--space-2); }
+  .live-dock__next { min-width: 0; }
+  .live-dock .timer--inline .timer__label { display: none; }
+  /* Narrow: the status keeps its icon here (never colour alone); its words are read by screen readers. */
+  .live-dock .timer--inline .timer__status-text { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .live-dock__score-row .score-control { flex: 1 1 auto; }
+  .paused-banner { flex-wrap: wrap; }
+  .paused-banner > p { flex: 1 1 12rem; }
+  .live-dock .timer--inline { justify-self: end; }
+  .score-control--bar { flex-wrap: wrap; }
+  .score-control__legend--bar { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .score-control--bar .score-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); width: 100%; }
+  .score-control--bar .score-option, .score-control--bar .score-option--checked { justify-content: center; padding: var(--space-1) 2px; min-height: 3rem; }
+  .score-control--bar .score-option__head { flex-direction: column; gap: 0; white-space: normal; text-align: center; }
+  .score-control--bar .score-option__num { width: 1.5rem; height: 1.5rem; font-size: var(--text-sm); }
+  .score-control--bar .score-option__label { font-size: var(--text-xs); line-height: 1.15; }
+  .score-control--bar .score-option__suggested { right: 50%; transform: translateX(50%); font-size: 0.625rem; }
+  .live-dock__score-row { flex-wrap: wrap; }
+  .live-dock__hint .suggestion__why { display: none; }
+}
+
+/* A11Y-6: standalone help links meet the 24px target size. */
+.live .help-link { min-height: var(--target-min); }
+
+/* PANEL-4: the interviewers dialog. */
+.interviewers-dialog__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.interviewers-dialog__list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); }
+.interviewers-dialog__add { display: flex; align-items: flex-end; gap: var(--space-2); flex-wrap: wrap; }
+.interviewers-dialog__add .field { flex: 1 1 12rem; min-width: 0; }
+@media (min-width: 40.01rem) {
+  /* One line: the note rule never shrinks; the suggestion's reason gives way first. */
+  .live-dock__hint { flex-wrap: nowrap; }
+  .live-dock__hint .needs-note { flex: none; }
+  .live-dock__hint .suggestion { flex: 0 1 auto; min-width: 0; }
+  .live-dock__hint .suggestion > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

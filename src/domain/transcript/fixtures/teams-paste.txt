@@ -1,0 +1,13 @@
+QA interview - senior engineer
+3 November 2026, 09:02am
+45m 12s
+
+Priya Natarajan   0:03
+Thanks for joining. Let's start with test strategy.
+
+Sam O'Neill   0:13
+I start from risk. I map the critical user journeys
+and automate the stable ones first.
+
+Priya Natarajan   1:02
+Great, thanks.

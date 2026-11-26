@@ -1,0 +1,6 @@
+Interviewer: How do you keep a regression suite fast?
+Candidate: We run the smoke tests on every commit.
+The full suite runs nightly in parallel shards.
+
+Interviewer: Anything else?
+Candidate: We delete tests that never fail and duplicate others.

@@ -1,0 +1,1539 @@
+{
+  "track": {
+    "id": "aks",
+    "name": "Senior Platform Engineer (AKS with Azure)",
+    "version": "2026.11.1"
+  },
+  "categories": [
+    {
+      "id": "aks-kubernetes-fundamentals-internals",
+      "name": "Kubernetes fundamentals & internals",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-aks-architecture",
+      "name": "AKS architecture",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-networking",
+      "name": "Networking",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-identity-access",
+      "name": "Identity & access",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-security",
+      "name": "Security",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-scaling",
+      "name": "Scaling",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-upgrades-lifecycle",
+      "name": "Upgrades & lifecycle",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-gitops-iac",
+      "name": "GitOps & IaC",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-observability-cost",
+      "name": "Observability & cost",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-dr-resilience",
+      "name": "DR & resilience",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-troubleshooting",
+      "name": "Troubleshooting",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-platform-engineering",
+      "name": "Platform engineering",
+      "weight": 1,
+      "mustHave": false
+    },
+    {
+      "id": "aks-behavioural-leadership",
+      "name": "Behavioural & leadership",
+      "weight": 1,
+      "mustHave": false
+    }
+  ],
+  "questions": [
+    {
+      "id": "aks-1",
+      "number": 1,
+      "categoryId": "aks-kubernetes-fundamentals-internals",
+      "text": "What happens when you kubectl apply a Deployment?",
+      "description": "Walk us through, in as much detail as you can, everything that happens inside a Kubernetes cluster between running kubectl apply on a Deployment manifest and the application's pods running.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Request path: kubectl sends the manifest to the API server, which authenticates the caller, checks authorisation (RBAC) and runs mutating then validating admission, including webhooks.",
+        "Storage: the accepted object is written to etcd; only the API server talks to etcd, and every other component watches the API server for changes.",
+        "Controllers: the Deployment controller creates or updates a ReplicaSet, and the ReplicaSet controller then creates Pod objects that have no node assigned yet.",
+        "Scheduler and kubelet: the scheduler filters and scores nodes and binds each pod; that node's kubelet asks containerd to pull the image and start the containers.",
+        "Networking and readiness: the CNI plugin gives the pod its IP address, and only after the readiness probe passes is the pod added to Service endpoints."
+      ],
+      "redFlags": [
+        "Skips the controllers entirely, implying kubectl or the API server creates pods directly rather than the Deployment and ReplicaSet controllers doing it.",
+        "Thinks kubectl talks to nodes or etcd directly, or that the scheduler itself starts containers on the chosen node.",
+        "Treats a pod in the Running state as ready to serve traffic, ignoring readiness probes and how Service endpoints are updated.",
+        "Cannot say where admission webhooks run or why a failing webhook can block every deployment in the cluster."
+      ],
+      "probes": [
+        "Where do admission webhooks run?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-2",
+      "number": 2,
+      "categoryId": "aks-kubernetes-fundamentals-internals",
+      "text": "Requests, limits and QoS classes?",
+      "description": "In Kubernetes, containers can declare resource requests and limits for CPU and memory, and each pod gets a Quality of Service (QoS) class. Explain what these mean and how they affect a pod's behaviour.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Scheduling on requests: the scheduler places pods using requests only, so requests reserve node capacity while limits play no part in placement.",
+        "Hitting limits: CPU above the limit is throttled and the app slows down, whereas memory above the limit gets the container OOM-killed (out of memory) and restarted.",
+        "Quality of Service (QoS) classes: Guaranteed when requests equal limits for every container, Burstable when only some are set, BestEffort when none are set.",
+        "Eviction order: under node memory pressure, pods using more than their requests go first, which in practice means BestEffort, then Burstable, with Guaranteed last.",
+        "Has a reasoned view on CPU limits (many teams drop them to avoid throttling but keep memory limits) and checks throttling metrics before deciding."
+      ],
+      "redFlags": [
+        "Runs workloads with no requests at all, so the scheduler overpacks nodes and those pods are the first to be evicted under pressure.",
+        "Believes limits drive scheduling, or that going over a CPU limit kills the container in the same way as exceeding memory.",
+        "Sets limits far above requests everywhere, overcommitting memory so nodes hit pressure and unrelated pods are evicted or killed.",
+        "Copies identical request and limit values across every service without ever looking at real usage data."
+      ],
+      "probes": [
+        "Should you set CPU limits?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-3",
+      "number": 3,
+      "categoryId": "aks-kubernetes-fundamentals-internals",
+      "text": "Liveness vs readiness vs startup probes misuse?",
+      "description": "Kubernetes has liveness, readiness and startup probes for checking a container's health. Explain what each one is for and the common ways teams misuse them.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Readiness gates traffic: a failing readiness check removes the pod from Service endpoints without restarting it, which suits warm-up or temporary overload.",
+        "Liveness restarts the container when it is stuck beyond recovery, such as a deadlock, so the check must be cheap and test only the process itself.",
+        "Startup probe: protects slow-booting apps by holding off liveness and readiness checks until start-up completes, preventing restart loops during long initialisation.",
+        "Dependencies stay out of liveness checks, because a database or downstream outage would otherwise restart every replica at the same moment.",
+        "Tuning: sets timeouts, periods and failure thresholds from measured start-up and response times, and can describe an outage caused by a badly tuned probe."
+      ],
+      "redFlags": [
+        "Uses identical endpoints and settings for liveness and readiness, so a pod that should simply stop taking traffic gets restarted instead.",
+        "Puts database or downstream service calls in the liveness probe, turning a brief dependency blip into a cluster-wide restart storm.",
+        "Works around slow start-up with a very long initial delay on the liveness probe instead of using a startup probe.",
+        "Cannot explain the difference between being removed from endpoints and being restarted, treating all three probes as one health check."
+      ],
+      "probes": [
+        "A probe-caused outage?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-4",
+      "number": 4,
+      "categoryId": "aks-kubernetes-fundamentals-internals",
+      "text": "PDBs with upgrades and autoscaling?",
+      "description": "A PDB, or PodDisruptionBudget, limits how many of an application's pods can be taken down at once. Explain how PDBs interact with cluster upgrades and with autoscaling, and what can go wrong.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Voluntary disruptions: a PodDisruptionBudget (PDB) limits evictions such as node drains during upgrades and autoscaler scale-down, not crashes or node failures.",
+        "Settings: explains minAvailable versus maxUnavailable, and often prefers maxUnavailable or percentages so the budget still permits evictions as replica counts change.",
+        "Strict PDBs block drains: a budget allowing zero evictions stops a node draining, which stalls AKS upgrades and stops the autoscaler removing nodes.",
+        "Spread replicas: runs enough replicas across nodes and zones that the budget can still be met while any single node is drained.",
+        "Checks the allowed-disruptions value on each PDB before upgrades, and agrees budgets with application teams rather than setting them blindly."
+      ],
+      "redFlags": [
+        "Sets minAvailable: 1 on a workload with 1 replica, which allows no evictions and blocks every drain of that node.",
+        "Believes a PDB protects pods against node crashes, hardware failures or out-of-memory kills.",
+        "Responds to a stuck upgrade by deleting the PDB or force-deleting pods without telling the owning team.",
+        "Has never looked at how PDBs, surge settings and autoscaler scale-down interact, so cannot explain why an upgrade stalls."
+      ],
+      "probes": [
+        "Stuck upgrade?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-5",
+      "number": 5,
+      "categoryId": "aks-kubernetes-fundamentals-internals",
+      "text": "How do you control scheduling?",
+      "description": "What tools does Kubernetes give you to influence which nodes pods run on and how they are spread out? Explain how and when you would use each of them.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Node affinity steers pods towards nodes with particular labels, such as a GPU or memory-optimised pool, using required or preferred rules.",
+        "Pod affinity and anti-affinity keep chatty pods together or replicas apart, noting that required anti-affinity can leave pods stuck Pending.",
+        "Taints and tolerations reserve dedicated pools (system, GPU, Spot) so only pods that tolerate the taint run there, usually paired with node affinity.",
+        "Topology spread constraints spread replicas evenly across zones and nodes using maxSkew, giving zone resilience that is easier to reason about than anti-affinity.",
+        "Priority classes let critical pods pre-empt lower-priority ones when capacity runs short, with control over which teams may use high priorities."
+      ],
+      "redFlags": [
+        "Pins pods to specific machines with nodeName, which bypasses the scheduler and breaks as soon as nodes are replaced or upgraded.",
+        "Thinks a toleration attracts pods to a tainted node, not realising it only permits scheduling there without steering pods towards it.",
+        "Uses hard anti-affinity or strict zone rules everywhere without considering that pods may become unschedulable during failures or upgrades.",
+        "Gives every workload the highest priority class, so priority stops meaning anything and pre-emption becomes unpredictable."
+      ],
+      "probes": [
+        "Zone spreading?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-6",
+      "number": 6,
+      "categoryId": "aks-kubernetes-fundamentals-internals",
+      "text": "Services, kube-proxy/eBPF and cluster DNS?",
+      "description": "Explain how Kubernetes Services route traffic to pods, the role played by kube-proxy or eBPF-based alternatives, and how DNS name resolution works inside a cluster.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Service types: ClusterIP for in-cluster traffic, NodePort opening a port on every node, and LoadBalancer provisioning an Azure load balancer in front.",
+        "EndpointSlices list the ready pod IP addresses behind each Service, are kept current by a controller, and scale better than the older Endpoints object.",
+        "Dataplane: kube-proxy programs iptables or IPVS rules on each node, while Cilium can replace kube-proxy entirely using eBPF programs in the kernel.",
+        "CoreDNS answers cluster names such as my-service.my-namespace.svc.cluster.local, and each pod's resolv.conf points at it with a list of search domains.",
+        "DNS pitfalls: the default ndots setting makes external lookups try several cluster search domains first, multiplying queries; fixes include trailing dots, lower ndots or node-local caching."
+      ],
+      "redFlags": [
+        "Unaware of common DNS pitfalls such as ndots search-domain expansion or an overloaded CoreDNS causing intermittent lookup timeouts.",
+        "Thinks a Service is a process or proxy pod that traffic passes through, rather than routing rules programmed on every node.",
+        "Exposes every Service as a public LoadBalancer when ClusterIP or an internal load balancer would be enough.",
+        "Would treat intermittent DNS failures by restarting CoreDNS without looking at its metrics, logs or query volumes first."
+      ],
+      "probes": [
+        "Intermittent DNS timeouts?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-7",
+      "number": 7,
+      "categoryId": "aks-kubernetes-fundamentals-internals",
+      "text": "Building and operating a controller safely?",
+      "description": "A Kubernetes controller, sometimes called an operator, is software that watches resources and acts to bring the cluster to a desired state. How would you build and run one safely in production?",
+      "difficulty": "expert",
+      "type": "knowledge",
+      "timeMin": 5,
+      "lookFor": [
+        "Reconcile loop: compares the desired state in the resource spec with actual state, acts to close the gap and records progress in the status field.",
+        "Idempotency: every reconcile can run repeatedly or out of order without harm, using owner references and finalizers to manage clean-up safely.",
+        "Custom resource definition (CRD) versioning: plans schema changes with multiple versions, conversion and validation so existing objects keep working.",
+        "Leader election ensures only one replica acts at a time, with narrowly scoped RBAC permissions limited to the resources and verbs actually needed.",
+        "Failure handling: assumes a crash at any point, retries with backoff, exposes metrics and conditions, and knows when an existing operator or plain Helm would do instead."
+      ],
+      "redFlags": [
+        "Describes imperative scripts in a loop calling kubectl, with no watch, no status reporting and no handling of partial failure.",
+        "Grants the controller cluster-admin for convenience instead of the few resources and verbs it actually needs.",
+        "Runs several replicas without leader election, so they fight each other and apply conflicting changes to the same objects.",
+        "Changes a CRD schema in place with no versioning plan, breaking objects that already exist in running clusters."
+      ],
+      "probes": [
+        "When not to build one?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-8",
+      "number": 8,
+      "categoryId": "aks-aks-architecture",
+      "text": "AKS architecture and shared responsibility?",
+      "description": "AKS is Azure Kubernetes Service, Microsoft's managed Kubernetes offering. Describe how an AKS cluster is put together and which parts Microsoft looks after versus which parts are your responsibility.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Managed control plane: Microsoft runs the API server, etcd and core controllers, offered in Free, Standard and Premium tiers, with the uptime SLA on paid tiers.",
+        "Node pools run on VM Scale Sets in the customer's own subscription, and the customer sizes, scales and schedules node image updates for them.",
+        "System versus user pools: system pools host critical components such as CoreDNS, while user pools run application workloads and can scale to zero.",
+        "Add-ons: knows which features Microsoft installs and supports (for example monitoring, policy or app routing) while their configuration stays the customer's job.",
+        "Who patches what: Microsoft releases Kubernetes versions and node images, but the customer chooses when to apply them and owns workloads, networking and identity."
+      ],
+      "redFlags": [
+        "Says Microsoft manages everything, missing that node upgrades, workload security, networking and access control remain with the customer.",
+        "Runs production clusters on the Free tier without realising it carries no financially backed uptime SLA.",
+        "Puts application workloads on the system pool, so a noisy app can starve CoreDNS and other critical components.",
+        "Cannot say what the Premium tier adds, such as long-term support for selected Kubernetes versions, or when it is worth paying for."
+      ],
+      "probes": [
+        "What does Premium add?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-9",
+      "number": 9,
+      "categoryId": "aks-aks-architecture",
+      "text": "Node pool design?",
+      "description": "A node pool is a group of identically configured virtual machines in an AKS cluster. How do you decide how many node pools to have and how to configure each of them?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Tainted system pool: kept small and tainted (CriticalAddonsOnly) so only system components land there, spread across availability zones for resilience.",
+        "User pools per profile: separate pools for general, memory-heavy, GPU and Spot workloads, each with its own taints, labels and autoscaler limits.",
+        "Operating system: compares Azure Linux with Ubuntu (smaller, Microsoft-maintained image versus wider familiarity) and keeps the choice consistent across pools.",
+        "Ephemeral OS disks give faster boots and reimages, and the max pods per node setting is chosen to match the networking model's IP budget.",
+        "Zones and Spot: pools spread across availability zones, with Spot reserved for interruptible work that tolerates eviction at short notice."
+      ],
+      "redFlags": [
+        "Runs one pool for everything, mixing system components, GPU jobs and Spot workloads with no isolation between them.",
+        "Places stateful or latency-critical services on Spot nodes without any plan for sudden eviction.",
+        "Picks a max pods value without checking the networking model and subnet size, then runs out of addresses during scale-out.",
+        "Creates a separate pool for every team, multiplying upgrade work and leaving many nodes half empty."
+      ],
+      "probes": [
+        "When is Spot appropriate?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-10",
+      "number": 10,
+      "categoryId": "aks-aks-architecture",
+      "text": "AKS Automatic vs Standard?",
+      "description": "AKS clusters can be created in two modes, Automatic and Standard. Explain how the two differ and how you would decide which to use for a given cluster.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Automatic preconfigures recommended practice, including Node Auto Provisioning (NAP), managed networking, automatic upgrades and enforced policies, so teams get a hardened cluster quickly.",
+        "Standard gives full control over node pools, networking, upgrade timing and add-ons, at the cost of the platform team owning every decision.",
+        "Knows the constraints: Automatic fixes certain choices, so they check networking, node and policy requirements against the workload before committing.",
+        "Decision: matches the mode to team maturity and workload, for example Automatic for typical web services and Standard for unusual networking or hardware needs.",
+        "Verification: would trial Automatic with a representative workload, checking that its built-in safeguards and upgrade behaviour suit existing pipelines."
+      ],
+      "redFlags": [
+        "Unaware that AKS Automatic exists, or assumes it is simply Standard with the cluster autoscaler switched on.",
+        "Picks Automatic without checking its fixed settings against existing network designs, policies or deployment tooling.",
+        "Rejects Automatic outright because the team wants to control everything, without weighing the operational effort it would save.",
+        "Assumes Automatic removes all platform responsibility for workload configuration, security and cost."
+      ],
+      "probes": [
+        "What would stop you using Automatic?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-11",
+      "number": 11,
+      "categoryId": "aks-networking",
+      "text": "Compare Azure CNI Overlay, Pod Subnet, legacy Node Subnet and kubenet.",
+      "description": "AKS offers several CNI (Container Network Interface) models for giving pods IP addresses: Azure CNI Overlay, Pod Subnet, the legacy Node Subnet, and kubenet. Compare them and say when each fits.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Azure CNI Overlay: pods take addresses from a private pod CIDR outside the VNet, so only nodes consume VNet IP addresses; the usual choice for new clusters.",
+        "Pod Subnet gives pods VNet-routable addresses from a dedicated subnet, which suits cases where other networks must reach pods directly by IP.",
+        "Legacy Node Subnet: pods take addresses from the node subnet, consuming large numbers of VNet addresses and needing careful subnet sizing up front.",
+        "kubenet retires on 31 March 2028, so existing kubenet clusters need a planned migration to Overlay, and no new cluster should use it.",
+        "Cilium dataplane: can pair Overlay or Pod Subnet with the Cilium dataplane, and explains the IP planning and network policy impact of each combination."
+      ],
+      "redFlags": [
+        "Recommends kubenet for a new cluster, unaware of its 31 March 2028 retirement and the migration work that follows.",
+        "Chooses a model without estimating how many IP addresses nodes and pods will need as the cluster grows.",
+        "Thinks Overlay pods cannot reach resources in the VNet, not realising outbound traffic leaves using the node's address.",
+        "Cannot describe how they would migrate an existing kubenet cluster to Overlay or what they would test afterwards."
+      ],
+      "probes": [
+        "Migrating a kubenet cluster?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-12",
+      "number": 12,
+      "categoryId": "aks-networking",
+      "text": "What does Azure CNI Powered by Cilium give you?",
+      "description": "Azure CNI Powered by Cilium is an AKS networking option built on the open-source Cilium project. Explain what it gives you compared with the other AKS networking options.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "eBPF dataplane: Cilium handles packets inside the Linux kernel using eBPF programs, replacing kube-proxy and long iptables rule chains for Service routing.",
+        "Built-in network policy: Cilium enforces Kubernetes network policies itself, so no separate engine such as Azure Network Policy Manager (NPM) is needed.",
+        "Performance: scales better with many Services and pods because lookups no longer walk long iptables chains, keeping latency steadier under load.",
+        "Observability: Hubble flow logs and metrics through Advanced Container Networking Services (ACNS), which also adds domain-name (FQDN) and layer 7 policies.",
+        "Azure NPM is retiring, for Windows in September 2026 and Linux in September 2028, so clusters still using it need a migration plan."
+      ],
+      "redFlags": [
+        "Unaware of the Azure NPM retirement, so would keep building on it or has no plan for moving existing clusters.",
+        "Describes Cilium only as faster networking, with no grasp of eBPF, policy enforcement or the visibility it adds.",
+        "Assumes FQDN and layer 7 policies come with any cluster, without knowing they need ACNS on the Cilium dataplane.",
+        "Would switch dataplane on production clusters without first testing existing network policies and tooling against Cilium."
+      ],
+      "probes": [
+        "L7/FQDN policies?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-13",
+      "number": 13,
+      "categoryId": "aks-networking",
+      "text": "Community ingress-nginx was retired in March 2026. Your AKS ingress plan?",
+      "description": "The community ingress-nginx controller, widely used to route external HTTP traffic into clusters, was retired in March 2026. Tell us how you would plan ingress for AKS from here and move existing workloads across.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Current position: the app routing NGINX add-on gets only critical patches through November 2026, so it is a stopgap rather than a destination.",
+        "Target: migrate to Gateway API using the app routing Istio implementation (GA April 2026) or Application Gateway for Containers, chosen on features, ownership and cost.",
+        "Inventory: lists every Ingress, controller and annotation in use, flagging rewrites, authentication or rate limits that have no direct equivalent.",
+        "Conversion with ingress2gateway: generates first-draft Gateway API resources, then reviews and tests them rather than applying the output blindly.",
+        "Staged cutover: runs old and new paths side by side, shifts traffic gradually by DNS or weights, watches error rates and keeps a rollback route."
+      ],
+      "redFlags": [
+        "Plans to stay on unsupported ingress indefinitely, accepting unpatched security issues on the internet-facing path.",
+        "Proposes a big-bang switch of every hostname in one change window with no parallel run or rollback.",
+        "Expects every NGINX annotation to convert automatically and has not considered custom snippets, rewrites or authentication rules.",
+        "Picks a replacement on familiarity alone, without comparing support status, Gateway API coverage or who will operate it."
+      ],
+      "probes": [
+        "Annotations that don't map?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-14",
+      "number": 14,
+      "categoryId": "aks-networking",
+      "text": "Gateway API resources and why they matter?",
+      "description": "Gateway API is the newer Kubernetes standard for routing traffic into a cluster. Describe its main resource types and explain why it matters compared with the older Ingress resource.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Core resources: GatewayClass names the implementation, Gateway defines listeners, ports and certificates, and HTTPRoute holds host, path and header matching rules.",
+        "Platform versus app role split: the platform team owns GatewayClass and Gateway, while application teams own HTTPRoutes in their own namespaces.",
+        "ReferenceGrant explicitly permits cross-namespace references, such as a route pointing to a Service elsewhere, so delegation stays deliberate rather than open.",
+        "Portability: header matching and traffic splitting are part of the standard rather than controller-specific annotations, so changing implementation is easier.",
+        "Delegating routes to teams: limits which namespaces may attach to a shared Gateway with allowedRoutes, and checks route status conditions to confirm attachment."
+      ],
+      "redFlags": [
+        "Dismisses it as just a new Ingress, missing the role model, typed resources and cross-namespace controls.",
+        "Gives every team its own Gateway and load balancer by default, multiplying cost and certificate management for no benefit.",
+        "Lets any namespace attach routes to the shared Gateway, so one team could take over another team's hostname.",
+        "Unaware that implementations differ in which optional features they support, so assumes every manifest moves across unchanged."
+      ],
+      "probes": [
+        "Delegating routes to teams?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-15",
+      "number": 15,
+      "categoryId": "aks-networking",
+      "text": "Private AKS cluster with controlled egress.",
+      "description": "Design an AKS cluster whose API server is not exposed to the internet and whose outbound traffic is tightly controlled. Talk through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "API access: a private cluster or API Server VNet Integration keeps the API server off the internet, with the trade-offs of each explained.",
+        "Private DNS zones: plans how the API server name resolves, with zones linked to hub and spoke networks so admins and pipelines can reach it.",
+        "Hub-spoke egress via Azure Firewall using a user-defined route (UDR), or NAT Gateway when fixed outbound addresses matter more than filtering.",
+        "Required FQDNs: allows the domain names AKS needs for images, updates and management, then tests that nodes still join, scale and upgrade.",
+        "Operator and CI access: admins connect through Azure Bastion or a jump host, and CI/CD runs on self-hosted runners inside the network."
+      ],
+      "redFlags": [
+        "Leaves the API server unrestricted and public because a private cluster seems too complicated to operate.",
+        "Blocks all egress without allowing the endpoints AKS needs, so node provisioning and upgrades start failing.",
+        "Has no answer for how pipelines reach a private API server other than making it public again.",
+        "Forgets DNS, so the private API server name will not resolve from the hub, VPN users or build agents."
+      ],
+      "probes": [
+        "How does CI/CD reach the API?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-16",
+      "number": 16,
+      "categoryId": "aks-networking",
+      "text": "Pods can't reach an Azure SQL private endpoint. Troubleshoot.",
+      "description": "Pods in your AKS cluster cannot connect to an Azure SQL database that is reachable only through a private endpoint. Walk us through, step by step, how you would troubleshoot it.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Resolution first: from a debug pod, checks the SQL hostname resolves to the private endpoint's private IP address rather than the public one.",
+        "Private DNS zone links: confirms the Azure SQL privatelink zone exists and is linked to the VNet whose DNS the cluster actually uses.",
+        "CoreDNS forwarding: checks any custom forwarding, and that custom or hub DNS servers send privatelink queries on to Azure DNS correctly.",
+        "Network path: reviews network security groups (NSGs), user-defined routes (UDRs) and the firewall for anything blocking or rerouting traffic to the SQL port.",
+        "Netshoot tests: runs a netshoot pod with nslookup, dig and nc to separate DNS, routing and authentication failures, then confirms the fix end to end."
+      ],
+      "redFlags": [
+        "Restarts pods or the application in the hope it fixes itself, before checking DNS or routing at all.",
+        "Jumps straight to firewall rules without first confirming which IP address the hostname actually resolves to.",
+        "Enables public network access on the database just to make the error go away.",
+        "Cannot tell a DNS failure from a connection timeout or an authentication error in the client's message."
+      ],
+      "probes": [
+        "Custom hub DNS?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-17",
+      "number": 17,
+      "categoryId": "aks-identity-access",
+      "text": "How does Microsoft Entra Workload ID work on AKS?",
+      "description": "Microsoft Entra Workload ID lets pods on AKS authenticate to Azure services as an Azure identity. Explain how it works end to end, from the pod to it receiving a usable Azure token.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "OIDC issuer: the cluster's OpenID Connect issuer is enabled, publishing keys so Microsoft Entra ID can verify service account tokens the cluster signs.",
+        "Service account annotated with the client ID of a managed identity or app registration, and pods opt in with the azure.workload.identity/use label.",
+        "Federated credential on that identity trusts only tokens matching the cluster's issuer plus the exact namespace and service account name.",
+        "Token exchange: a projected service account token is mounted into the pod, and the Azure SDK exchanges it for an Entra token at runtime.",
+        "Replaces the deprecated pod-managed identity, and the candidate can describe migrating existing workloads across and removing the old components."
+      ],
+      "redFlags": [
+        "Stores client secrets or connection strings in pods or Kubernetes Secrets instead of using federated workload identity.",
+        "Still relies on the deprecated pod identity for new workloads, with no plan to migrate away from it.",
+        "Cannot explain what the federated credential checks, so would scope it loosely or share one identity across many apps.",
+        "Forgets the pod label or service account annotation and cannot work out why the token never appears."
+      ],
+      "probes": [
+        "Federated credential limits?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-18",
+      "number": 18,
+      "categoryId": "aks-identity-access",
+      "text": "Cluster access: Azure RBAC vs Kubernetes RBAC?",
+      "description": "People need access to AKS clusters. Compare using Azure role-based access control (RBAC) with native Kubernetes RBAC to decide who can do what, and describe how you would set up cluster access.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Entra auth: users sign in with Microsoft Entra identities, and kubelogin handles the token flow for kubectl, including non-interactive logins for pipelines.",
+        "Azure RBAC for Kubernetes authorisation manages permissions as Azure role assignments, whereas Kubernetes RBAC binds Roles to Entra groups inside the cluster.",
+        "Disable local accounts so the shared admin certificate is gone, every action is tied to a named identity and audit logs mean something.",
+        "Groups, not individuals, receive access, scoped to namespaces where possible, with read-only as the default for most engineers.",
+        "Privileged Identity Management (PIM) gives just-in-time, time-limited admin rights, and a documented, tested break-glass route exists for emergencies."
+      ],
+      "redFlags": [
+        "Shares an admin kubeconfig between engineers, or keeps it in a wiki page or pipeline variable.",
+        "Gives every developer cluster-admin because fine-grained roles take effort to set up and maintain.",
+        "Leaves local accounts enabled, so access can bypass Entra and audit trails cannot identify a person.",
+        "Has no break-glass plan for an Entra outage or broken role assignments, or has never tested the one that exists."
+      ],
+      "probes": [
+        "Break-glass?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-19",
+      "number": 19,
+      "categoryId": "aks-identity-access",
+      "text": "Which managed identities does AKS use?",
+      "description": "AKS relies on several Azure managed identities to do its work. Which identities are involved, what is each one used for, and how should their permissions be set?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Cluster identity: used by the control plane to manage Azure resources such as load balancers, public IPs and routes, including in a bring-your-own VNet.",
+        "Kubelet identity is attached to the nodes and pulls images from Azure Container Registry (ACR), so it needs the AcrPull role and little else.",
+        "Add-on identities: separate identities for add-ons such as monitoring or policy, each with only the permissions that add-on requires.",
+        "Least privilege: scopes role assignments to the specific subnet, registry or resource group, and prefers user-assigned identities that survive cluster rebuilds.",
+        "No app roles on the kubelet identity, because any pod on the node could use it; applications get their own access through Workload ID."
+      ],
+      "redFlags": [
+        "Gives the cluster identity subscription Owner or Contributor to make permission errors go away.",
+        "Adds application permissions such as Key Vault or storage access to the kubelet identity for convenience.",
+        "Cannot say which identity needs network rights on a bring-your-own VNet, so troubleshoots by widening roles.",
+        "Unaware that several identities are involved and treats AKS as one service principal with one set of rights."
+      ],
+      "probes": [
+        "BYO VNet permissions?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-20",
+      "number": 20,
+      "categoryId": "aks-identity-access",
+      "text": "Pulling images securely from ACR?",
+      "description": "ACR is Azure Container Registry. How do you make sure your AKS clusters pull container images from it securely? Describe the set-up you would put in place and why.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "AcrPull on the kubelet identity, so nodes pull from Azure Container Registry without registry passwords or image pull secrets.",
+        "Private endpoints: the registry is reachable only from the network, with public access disabled and private DNS resolving correctly from nodes.",
+        "Signing and verification: images signed with Notation and checked at admission with Ratify, so unsigned or tampered images are rejected.",
+        "Cache rules keep copies of upstream public images in ACR, so clusters depend on one controlled registry rather than pulling from the internet.",
+        "Pipeline hygiene: images scanned before promotion and referenced by digest or immutable tag, so what was tested is what actually runs."
+      ],
+      "redFlags": [
+        "Keeps the ACR admin user switched on and pastes its credentials into image pull secrets across clusters.",
+        "Pulls production images straight from public registries without caching, scanning or any provenance checks.",
+        "Uses mutable tags such as latest in production, so a cluster can quietly start running a different image.",
+        "Has never considered how pulls fail if the registry's private DNS breaks, or how that failure would be noticed."
+      ],
+      "probes": [
+        "Cross-tenant pulls?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-21",
+      "number": 21,
+      "categoryId": "aks-security",
+      "text": "Azure Policy for AKS and your baseline?",
+      "description": "Azure Policy can enforce rules about what is deployed to AKS clusters. Explain how it works with AKS and what baseline set of rules you would apply.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Gatekeeper-based add-on: the Azure Policy add-on runs Gatekeeper in the cluster, checks admission requests and reports compliance back to Azure.",
+        "Built-in pod security initiatives (baseline and restricted) are the starting point, rather than custom rules written from scratch.",
+        "Audit before deny: runs policies in audit mode first, reviews which workloads would fail, fixes them, then switches to deny.",
+        "Exemptions follow a documented process: named, time-limited and reviewed periodically, with system namespaces excluded deliberately.",
+        "Baseline content: no privileged containers, approved registries only, required requests and labels, and no public load balancers without approval."
+      ],
+      "redFlags": [
+        "Turns on deny for every rule on day one, breaking deployments and pushing teams to find workarounds.",
+        "Leaves everything in audit mode forever, so violations pile up in reports and nothing is ever enforced.",
+        "Grants exceptions informally, with no expiry, owner or record of why they were needed.",
+        "Cannot explain how the add-on relates to Gatekeeper or where to read why a request was denied."
+      ],
+      "probes": [
+        "Exceptions?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-22",
+      "number": 22,
+      "categoryId": "aks-security",
+      "text": "Enforcing Pod Security Standards?",
+      "description": "Pod Security Standards are Kubernetes' predefined security profiles for pods. How would you enforce them across an AKS cluster, and what kinds of setting do they cover?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Pod Security Admission labels on each namespace set enforce, audit and warn modes with the privileged, baseline or restricted level.",
+        "Non-root: requires runAsNonRoot and blocks privileged containers and privilege escalation, so a compromised process has less power on the node.",
+        "Read-only root file system as further hardening, with writable paths provided through emptyDir volumes where the application needs them.",
+        "Drop capabilities and seccomp: drops all Linux capabilities except an approved few, and requires the RuntimeDefault seccomp profile to limit system calls.",
+        "Azure Policy equivalents: the built-in pod security initiatives give consistent enforcement and compliance reporting across many clusters."
+      ],
+      "redFlags": [
+        "Allows privileged pods by default and only tightens up after a security finding forces the issue.",
+        "Labels every namespace privileged to silence warnings rather than fixing the workloads that trigger them.",
+        "Approves hostPath mounts or host networking without asking why, ignoring the node access they hand over.",
+        "Unaware that PodSecurityPolicy has been removed from Kubernetes and still plans enforcement around it."
+      ],
+      "probes": [
+        "hostPath workloads?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-23",
+      "number": 23,
+      "categoryId": "aks-security",
+      "text": "Network policies for multi-tenant namespaces?",
+      "description": "When several teams share a cluster, each in its own namespace, how do you use Kubernetes network policies to control traffic between their workloads?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Default deny for ingress and egress in each tenant namespace, then only the flows that are actually needed are opened.",
+        "Namespace isolation uses namespace and pod selectors so tenants cannot reach each other, with shared services allowed explicitly.",
+        "Allow DNS: always permits egress to CoreDNS, plus platform needs such as monitoring scrapes, or everything breaks after default deny.",
+        "Cilium FQDN and layer 7 (L7) policies restrict egress to named external domains or specific HTTP paths where plain IP rules fall short.",
+        "Policy tests: checks rules with connectivity tests in CI or after rollout, knowing a policy engine must be enabled for any policy to take effect."
+      ],
+      "redFlags": [
+        "Has no network policies in a shared cluster, so any compromised pod can reach every other tenant.",
+        "Applies default deny without allowing DNS, then cannot explain why every service suddenly fails.",
+        "Writes policies but never tests them, assuming they work because the API server accepted them.",
+        "Relies on pod IP ranges in policies, which change constantly, instead of labels and selectors."
+      ],
+      "probes": [
+        "Monitoring scrapes?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-24",
+      "number": 24,
+      "categoryId": "aks-security",
+      "text": "Secrets on AKS?",
+      "description": "How do you handle secrets such as passwords, keys and certificates for applications running on AKS? Describe the options available and what you would recommend.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Key Vault Secrets Store CSI driver with workload identity: mounts secrets as files, authenticating through Workload ID rather than stored credentials.",
+        "Rotation and sync caveats: auto-rotation refreshes mounted files, but applications reading values through environment variables only see a change after a pod restart.",
+        "KMS etcd encryption: Key Management Service encryption with a key in Key Vault protects Kubernetes Secrets at rest beyond the default.",
+        "External Secrets Operator is an alternative that syncs Key Vault entries into Kubernetes Secrets, with the trade-off that values then sit in etcd.",
+        "Nothing in Git: plaintext secrets never enter repositories; GitOps references Key Vault or encrypted secrets, and repositories are scanned for leaks."
+      ],
+      "redFlags": [
+        "Commits base64-encoded secrets to repositories, treating base64 as if it were encryption.",
+        "Puts secrets in container images or ConfigMaps where anyone who can read the namespace can see them.",
+        "Has no rotation plan, or assumes rotating a value in Key Vault updates running applications automatically.",
+        "Gives every app access to one shared Key Vault with broad permissions instead of scoped identities per workload."
+      ],
+      "probes": [
+        "Rotation without restarts?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-25",
+      "number": 25,
+      "categoryId": "aks-security",
+      "text": "What does Defender for Containers add?",
+      "description": "Microsoft Defender for Containers is Azure's security product for container environments. What does it add on top of an AKS cluster's built-in security, and how would you use it?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Image vulnerability assessment covers images in registries and running in clusters, so teams can see which live workloads a CVE affects.",
+        "Runtime threat detection: a sensor on nodes flags suspicious behaviour such as crypto-mining, shells opened in containers or access to sensitive files.",
+        "Posture recommendations highlight cluster misconfigurations against security benchmarks and connect to Azure Policy for enforcement.",
+        "Agentless discovery finds clusters and images across subscriptions without installing anything, which exposes gaps in coverage.",
+        "SIEM integration: alerts flow to the security team's tooling (for example Microsoft Sentinel) with clear owners, and CVEs are triaged by exposure and exploitability."
+      ],
+      "redFlags": [
+        "Says AKS is secure by default, so Defender adds nothing worth paying for.",
+        "Switches it on but routes alerts nowhere, so nobody ever acts on them.",
+        "Tries to fix every CVE regardless of severity or exposure, drowning teams in tickets they learn to ignore.",
+        "Treats Defender as a replacement for pod security, network policy and least-privilege identity rather than an extra layer."
+      ],
+      "probes": [
+        "Triaging CVE volume?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-26",
+      "number": 26,
+      "categoryId": "aks-scaling",
+      "text": "HPA vs VPA vs KEDA?",
+      "description": "HPA is the Horizontal Pod Autoscaler, VPA the Vertical Pod Autoscaler, and KEDA is Kubernetes Event-driven Autoscaling. Explain what each does and when you would use them, alone or together.",
+      "difficulty": "core",
+      "type": "knowledge",
+      "timeMin": 3,
+      "lookFor": [
+        "Horizontal Pod Autoscaler (HPA) scales replicas up and down on CPU, memory or custom metrics, suiting stateless services with variable load.",
+        "Vertical Pod Autoscaler (VPA) right-sizes CPU and memory requests from observed usage, and conflicts with HPA when both act on the same metric.",
+        "Kubernetes Event-driven Autoscaling (KEDA) scales on external events such as queue length or stream lag, including down to zero replicas.",
+        "Combining them: VPA in recommendation-only mode alongside HPA, or KEDA driving scaling for event workloads, with a clear reason for each pairing.",
+        "AKS add-ons: knows KEDA and VPA can be enabled as managed AKS add-ons, and that node scaling must keep pace with pod scaling."
+      ],
+      "redFlags": [
+        "Runs HPA and VPA both on CPU for the same workload, so they fight and replicas or requests oscillate.",
+        "Scales a queue worker on CPU when the real backlog sits in the queue, so capacity lags far behind demand.",
+        "Thinks HPA works without resource requests set, or cannot explain why utilisation targets depend on them.",
+        "Lets VPA restart production pods automatically without understanding the disruption that causes."
+      ],
+      "probes": [
+        "Scaling on queue length?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-27",
+      "number": 27,
+      "categoryId": "aks-scaling",
+      "text": "Cluster Autoscaler vs Node Auto Provisioning (Karpenter)?",
+      "description": "Cluster Autoscaler and Node Auto Provisioning, which is based on the open-source Karpenter project, both add and remove nodes in AKS. Compare how they work and when you would choose each.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Cluster Autoscaler (CA) scales existing pools by changing node counts within set minimums and maximums, so VM sizes must be chosen in advance.",
+        "Node Auto Provisioning (NAP), GA 2025 and Karpenter-based, picks suitable VM SKUs for pending pods, configured through NodePool and AKSNodeClass resources.",
+        "Consolidation: NAP removes or replaces underused nodes to pack workloads more tightly, saving cost at the price of more pod moves.",
+        "Constraints: knows NAP has no kubenet or Calico support, and checks networking and existing pool design before adopting it.",
+        "Disruption budgets: uses NodePool disruption budgets and pod PDBs to limit consolidation churn, for example capping how many nodes can be disrupted at once."
+      ],
+      "redFlags": [
+        "Unaware of NAP, or describes it only as a faster version of the Cluster Autoscaler.",
+        "Enables aggressive consolidation without budgets or PDBs, causing constant restarts for stateful or slow-starting apps.",
+        "Plans to adopt NAP on a kubenet or Calico cluster without checking its support constraints first.",
+        "Cannot explain why a pod with a large request never triggers scale-up when every pool's VM size is too small."
+      ],
+      "probes": [
+        "Controlling consolidation churn?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-28",
+      "number": 28,
+      "categoryId": "aks-scaling",
+      "text": "Pods stay Pending during a spike. Diagnose.",
+      "description": "During a traffic spike, new pods stay in the Pending state instead of starting. Walk us through, step by step, how you would find out why and get them running.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Events first: reads the FailedScheduling message from kubectl describe, which says whether resources, taints, affinity or volumes are blocking placement.",
+        "Resources versus affinity and taints: compares requests with node allocatable, then checks affinity rules, taints and spread constraints that rule nodes out.",
+        "Autoscaler logs and status show whether scale-up was attempted and why it failed, for both Cluster Autoscaler and NAP.",
+        "Azure limits: checks regional vCPU quota and subnet IP exhaustion, which stop new nodes or pods even when the autoscaler tries.",
+        "Scale-up latency: allows minutes for new nodes, checks whether PDBs are blocking rebalancing, and pre-warms capacity with spare nodes or low-priority placeholder pods."
+      ],
+      "redFlags": [
+        "Starts manually adding nodes straight away without finding out why the autoscaler did not.",
+        "Ignores pod events and searches application logs, which do not exist for a pod that never started.",
+        "Unaware that quota or subnet exhaustion can block scale-out, so keeps raising the autoscaler's maximums.",
+        "Expects new nodes within seconds, so has no capacity buffer for spikes that were predictable."
+      ],
+      "probes": [
+        "Pre-warming capacity?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-29",
+      "number": 29,
+      "categoryId": "aks-scaling",
+      "text": "Right-sizing workloads?",
+      "description": "Right-sizing means setting each workload's CPU and memory to what it actually needs. How do you work out the right values, and how do you keep them right over time?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "VPA recommendation mode suggests requests from real usage without letting the autoscaler change running pods.",
+        "Prometheus percentiles: queries CPU and memory usage at high percentiles over representative periods, sizing memory to peaks and CPU to typical load.",
+        "Load tests confirm values under realistic peak traffic before release, especially for new services with no usage history.",
+        "Periodic review: revisits sizing on a schedule or after major releases, using dashboards that compare requests with usage per team.",
+        "Runtime awareness: for JVM and similar apps, aligns heap settings with container memory limits so the runtime and Kubernetes agree."
+      ],
+      "redFlags": [
+        "Copying defaults or template values across services without measuring anything about real usage.",
+        "Sizes from averages, so memory spikes cause OOM kills and CPU peaks cause throttling.",
+        "Sets values once at launch and never revisits them as traffic patterns and code change.",
+        "Squeezes requests to cut cost without watching latency, throttling or restart rates afterwards."
+      ],
+      "probes": [
+        "JVM apps?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-30",
+      "number": 30,
+      "categoryId": "aks-upgrades-lifecycle",
+      "text": "Your AKS upgrade strategy?",
+      "description": "Talk us through how you keep AKS clusters up to date, both the Kubernetes version and the nodes themselves, and how you make upgrades safe and predictable.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Support window: AKS supports three GA minor versions, about 12 months each, so staying current is continuous work rather than an occasional project.",
+        "Cluster channels: chooses between none, patch, stable and rapid auto-upgrade channels per environment, with a reason for each choice.",
+        "Node OS channels: picks None, Unmanaged, SecurityPatch or NodeImage for node images, and explains how this differs from Kubernetes version upgrades.",
+        "Maintenance windows control timing, max surge balances speed against spare capacity, and blue/green node pools handle the riskiest changes.",
+        "Deprecated-API checks: scans manifests and charts for removed APIs before each minor upgrade, and reads release notes for behaviour changes."
+      ],
+      "redFlags": [
+        "Upgrading only when forced by end of support, so each upgrade jumps a long way and becomes a risky event.",
+        "Puts every cluster on the rapid channel with no maintenance window, so upgrades land during peak hours.",
+        "Confuses node image updates with Kubernetes version upgrades, so nodes quietly miss security patches.",
+        "Cannot say how long-term support (LTS) changes the plan, or when paying for it is justified."
+      ],
+      "probes": [
+        "How does LTS change this?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-31",
+      "number": 31,
+      "categoryId": "aks-upgrades-lifecycle",
+      "text": "Upgrade 40 clusters across environments safely.",
+      "description": "You run around forty AKS clusters spread across several environments. Design how you would upgrade them all safely, talking through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Azure Kubernetes Fleet Manager update runs with stages and groups, so clusters upgrade in a defined order rather than one by one by hand.",
+        "Promotion order: dev, test, prod, with production split further by region or criticality so problems surface on a small slice first.",
+        "Soak time between stages is long enough to see real traffic and scheduled jobs, not just nodes reporting ready.",
+        "Health gates: promotion depends on signals such as error rates, pod restarts, node readiness and SLO burn, with a clear stop decision.",
+        "Auto-upgrade profiles start runs on a schedule, with an agreed response for a failed stage since a minor version upgrade cannot be rolled back."
+      ],
+      "redFlags": [
+        "Upgrades prod first or all forty clusters at once, so one bad version hits everything.",
+        "Relies on manual scripts and spreadsheets across forty clusters, with no record of which version each one runs.",
+        "Uses fixed time gaps between stages without looking at any health signals before promoting.",
+        "Has no plan for pausing the rollout or telling application teams when a stage fails."
+      ],
+      "probes": [
+        "Signals gating promotion?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-32",
+      "number": 32,
+      "categoryId": "aks-upgrades-lifecycle",
+      "text": "An upgrade is stuck draining a node. Check what?",
+      "description": "An AKS cluster upgrade has stalled because a node will not finish draining, meaning its pods cannot all be moved off. Walk us through, step by step, what you would check.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "PDBs blocking eviction: checks for disruption budgets with zero allowed disruptions, which make the eviction API refuse to remove pods.",
+        "Controller-less pods: finds bare pods not managed by a Deployment or similar, which will not be recreated elsewhere if removed.",
+        "Long grace periods: looks for termination grace periods or shutdown hooks that keep pods terminating far longer than expected.",
+        "Surge quota: confirms vCPU quota and subnet addresses allow the extra surge nodes, since missing surge capacity can stall the process.",
+        "Events and upgrade settings: reads node and pod events, then reviews max surge and drain timeout before changing anything."
+      ],
+      "redFlags": [
+        "Force-deletes all pods on the node to finish the upgrade, ignoring possible data loss and the application owners.",
+        "Deletes the PDB without talking to the owning team or understanding why it was set so strictly.",
+        "Restarts the upgrade repeatedly without reading events, hoping it will pass next time.",
+        "Has never seen a drain stall and cannot list what typically blocks an eviction."
+      ],
+      "probes": [
+        "Talking to the app team?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-33",
+      "number": 33,
+      "categoryId": "aks-gitops-iac",
+      "text": "Flux vs Argo CD on AKS?",
+      "description": "Flux and Argo CD are the two main GitOps tools, which keep a cluster in sync with configuration stored in Git. Compare them for use on AKS and explain how you would choose.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "AKS GitOps (Flux) extension versus self-managed Argo CD: compares who supports and upgrades each, the user interface and multi-cluster management.",
+        "Repo layout separates platform components from application config, with per-environment folders or overlays and promotion through pull requests.",
+        "Kustomize and Helm: uses overlays or Helm releases consistently, and understands how each GitOps tool renders them.",
+        "Drift detection: the tool reverts manual changes, alerts on drift and shows sync status, so teams know what is actually deployed.",
+        "Progressive delivery: pairs GitOps with canary or blue-green release tooling, and chooses based on team needs rather than preference."
+      ],
+      "redFlags": [
+        "Still deploys with kubectl from laptops alongside GitOps, so Git no longer reflects what is running.",
+        "Stores plaintext secrets in the GitOps repository because the cluster needs them somehow.",
+        "Puts every team and environment in one repository with no ownership rules, so one bad merge reaches all clusters.",
+        "Picks a tool on popularity alone without considering scale, access control or who will run it."
+      ],
+      "probes": [
+        "Secrets in GitOps?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-34",
+      "number": 34,
+      "categoryId": "aks-gitops-iac",
+      "text": "Terraform vs Bicep for AKS?",
+      "description": "Terraform and Bicep are both infrastructure-as-code tools for creating Azure resources. Compare them for building and managing AKS clusters, and explain which you would choose and why.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "State and drift: Terraform keeps a state file needing a locked remote backend, while Bicep relies on Azure's deployment state with what-if previews.",
+        "Module design: small, versioned modules for networking, cluster and identity with clear inputs, rather than one module that does everything.",
+        "Azure Verified Modules: considers Microsoft-maintained modules for Terraform or Bicep as a starting point rather than writing everything from scratch.",
+        "Separate cluster infra from in-cluster config: infrastructure through IaC, workloads and add-on settings through GitOps, each with one source of truth.",
+        "Policy as code: checks plans and templates against rules in CI, and handles version settings so IaC does not fight auto-upgrade."
+      ],
+      "redFlags": [
+        "Keeps every environment and component in one giant state, so any change risks everything and plans take ages.",
+        "Manages in-cluster applications through Terraform providers, mixing lifecycles and causing destroy-and-recreate surprises.",
+        "Chooses a tool by personal habit with no view on multi-cloud needs, team skills or state management.",
+        "Edits resources in the portal and lets IaC drift, then overwrites live fixes on the next apply."
+      ],
+      "probes": [
+        "IaC vs auto-upgrade version fights?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-35",
+      "number": 35,
+      "categoryId": "aks-gitops-iac",
+      "text": "Helm best practices for a platform?",
+      "description": "Helm is the package manager for Kubernetes, using charts to template manifests. What practices do you follow when a platform team provides Helm charts for many other teams to use?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Library charts hold common templates for labels, probes and security settings, so application charts stay small and consistent.",
+        "Values schema: a values.schema.json file validates inputs, catching typos and wrong types before anything reaches a cluster.",
+        "Versioning: charts follow semantic versioning with changelogs, so teams know when an upgrade contains breaking changes.",
+        "Lint and chart-testing run in CI, installing charts into a throwaway cluster to catch rendering and upgrade errors early.",
+        "Limited template logic keeps charts readable, and charts are published to OCI registries such as Azure Container Registry."
+      ],
+      "redFlags": [
+        "Lets teams keep untracked forks of platform charts, so fixes and security changes never reach them.",
+        "Builds charts full of nested conditionals and loops that nobody can read or safely change.",
+        "Publishes charts without versioning or release notes, so every consumer receives breaking changes immediately and without warning.",
+        "Cannot explain when Kustomize would be a simpler fit than Helm for a given team."
+      ],
+      "probes": [
+        "Helm vs Kustomize?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-36",
+      "number": 36,
+      "categoryId": "aks-observability-cost",
+      "text": "A good AKS observability stack?",
+      "description": "What would a good observability set-up, covering metrics, logs and traces, look like for AKS clusters and the applications on them? Describe the components and how they fit together.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Metrics: Azure Monitor managed Prometheus collects cluster and application metrics, viewed through Azure Managed Grafana dashboards.",
+        "Cost-tuned Container Insights: filters noisy namespaces, chooses cheaper log tiers where possible and sets retention deliberately rather than keeping everything.",
+        "Control-plane diagnostics send API server, audit and autoscaler logs to a workspace, choosing categories rather than enabling all of them.",
+        "OpenTelemetry instrumentation in applications, so traces, metrics and logs share context across services.",
+        "SLO alerts: paging is based on service level objectives and user impact, with runbooks, rather than on every CPU spike."
+      ],
+      "redFlags": [
+        "Ingests all logs at full price into Log Analytics with no filtering, then is surprised by the bill.",
+        "Pages people on raw resource thresholds such as high node CPU, causing alert fatigue.",
+        "Has no control-plane logs, so cannot investigate who changed what or why the API server was slow.",
+        "Builds dashboards for everything but cannot say which signals show that users are affected."
+      ],
+      "probes": [
+        "Cutting Log Analytics cost?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-37",
+      "number": 37,
+      "categoryId": "aks-observability-cost",
+      "text": "Managing and allocating AKS cost?",
+      "description": "How do you keep AKS costs under control, and how do you work out which teams or applications are responsible for which costs?",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "AKS cost analysis add-on breaks cluster costs down by namespace and workload, giving a starting point for allocation.",
+        "Namespace labels for team, application and cost centre are applied consistently and used for showback first, then chargeback once trusted.",
+        "Right-sizing and Spot: trims requests to real usage and runs interruptible work on Spot nodes, with NAP consolidation packing nodes tighter.",
+        "Reservations or savings plans cover steady baseline capacity, bought after waste has been removed rather than before.",
+        "Idle time: scale-to-zero for event-driven workloads and stopping dev clusters out of hours, with savings measured afterwards."
+      ],
+      "redFlags": [
+        "Has no per-team visibility, so cost is one shared bill that nobody owns or acts on.",
+        "Buys reservations before right-sizing, locking in payment for capacity that is not needed.",
+        "Cuts costs by removing zone redundancy from production without discussing the reliability trade-off.",
+        "Treats cost as finance's problem and has never shown teams their own spending."
+      ],
+      "probes": [
+        "Showback vs chargeback?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-38",
+      "number": 38,
+      "categoryId": "aks-observability-cost",
+      "text": "Node memory near 100% but nothing OOMs. Interpret.",
+      "description": "Monitoring shows AKS node memory close to one hundred per cent, yet no containers are being killed for running out of memory. Walk us through, step by step, how you would interpret that.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Working set versus RSS versus cache: separates working set, resident set size and page cache, explaining that much of the cache can be reclaimed.",
+        "Allocatable versus capacity: node capacity minus kube-reserved, system-reserved and the eviction threshold is what pods can actually use.",
+        "Eviction thresholds: the kubelet evicts pods when available memory falls below its threshold, judged from working set rather than total used.",
+        "Reading the graph: high usage that includes cache is often normal Linux behaviour, so they compare working set with allocatable before acting.",
+        "Follow-up: compares pod requests with real usage and watches eviction events and memory pressure conditions to judge the actual risk."
+      ],
+      "redFlags": [
+        "Panic scaling: adds nodes immediately without understanding what the memory metric actually includes.",
+        "Treats Linux page cache as wasted memory that must be freed, not realising the kernel reclaims it under pressure.",
+        "Cannot say which metric drives kubelet eviction, so cannot tell normal behaviour from danger.",
+        "Recommends dropping caches on nodes as a fix, treating the symptom without understanding it."
+      ],
+      "probes": [
+        "Which metric drives eviction?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-39",
+      "number": 39,
+      "categoryId": "aks-dr-resilience",
+      "text": "Multi-region resilience for a critical workload.",
+      "description": "A critical workload on AKS must keep running even if an entire Azure region fails. Design how you would achieve that, talking through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Active-active or active-passive, chosen from recovery time and recovery point objectives (RTO and RPO), cost and how the data layer replicates.",
+        "Global routing: Front Door or Akamai GTM sends users to a healthy region, with health probes and failover behaviour tested.",
+        "Clusters rebuilt from IaC and GitOps, so a region can be stood up again without manual steps or undocumented settings.",
+        "Data replication is the hardest part: geo-replicated databases and storage with understood consistency, lag and failover behaviour.",
+        "Zones and regular DR tests: zone-redundant pools inside each region, and scheduled failover exercises that measure real recovery time."
+      ],
+      "redFlags": [
+        "Relies on untested backups, so nobody knows whether recovery works or how long it takes.",
+        "Designs two regions but leaves the database in one, so a regional failure still takes the service down.",
+        "Has no failover runbook or decision owner, so nobody knows who triggers failover or when.",
+        "Builds active-active for everything regardless of cost or whether the workload actually needs it."
+      ],
+      "probes": [
+        "RTO/RPO for stateful services?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-40",
+      "number": 40,
+      "categoryId": "aks-dr-resilience",
+      "text": "Backing up and restoring AKS?",
+      "description": "How would you back up an AKS cluster and the applications on it, and how would you restore them after data loss or a disaster? Describe your approach and the tools you would use.",
+      "difficulty": "advanced",
+      "type": "knowledge",
+      "timeMin": 4,
+      "lookFor": [
+        "Azure Backup for AKS or Velero backs up Kubernetes resources and persistent volumes, with reasons given for choosing one over the other.",
+        "Back up PVs and CRDs: persistent volumes and custom resources are backed up, while everything else is rebuilt from Git through IaC and GitOps.",
+        "etcd is not customer-accessible on AKS, so backups work at the level of Kubernetes resources and volumes instead.",
+        "Restore drills run regularly into a test cluster, timing the restore and checking the applications actually work afterwards.",
+        "Granularity: can restore a single namespace or application, and keeps backups in a separate region or vault protected from deletion."
+      ],
+      "redFlags": [
+        "Says AKS is managed, so no backup is needed for the cluster or its data.",
+        "Backs up regularly but has never tested a restore or measured how long one takes.",
+        "Relies only on GitOps, forgetting that persistent volumes hold data that Git cannot recreate.",
+        "Stores backups with the same subscription and access as production, so one compromise destroys both."
+      ],
+      "probes": [
+        "Restoring one namespace?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-41",
+      "number": 41,
+      "categoryId": "aks-troubleshooting",
+      "text": "Pod in CrashLoopBackOff. Walk through.",
+      "description": "A pod is stuck in CrashLoopBackOff, meaning its container keeps starting, crashing and being restarted. Walk us through, step by step, how you would find out why.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Logs --previous: kubectl logs --previous shows output from the container that crashed rather than the fresh attempt.",
+        "Events and exit codes: describe shows the last state and exit code, where 137 means an OOM kill (reason OOMKilled) and 1 an application error.",
+        "Probes and config: checks for probes killing a slow start, missing config or secret mounts, wrong environment variables and image or entrypoint problems.",
+        "Limits: compares memory limits with real usage when OOM kills appear, and checks whether CPU throttling is slowing start-up.",
+        "Ephemeral debug containers: uses kubectl debug to inspect the pod or a copy of it when the image has no shell."
+      ],
+      "redFlags": [
+        "Delete and hope: removes the pod expecting the next one to work, without reading logs or events.",
+        "Reads only the current logs and is confused when they are empty or show a fresh start.",
+        "Cannot tell exit code 137 from 1, or explain what OOMKilled means.",
+        "Raises memory limits blindly or disables probes to stop restarts, hiding the real cause."
+      ],
+      "probes": [
+        "Exit 137 vs 1?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-42",
+      "number": 42,
+      "categoryId": "aks-troubleshooting",
+      "text": "Nodes go NotReady intermittently. Approach?",
+      "description": "Nodes in an AKS cluster keep dropping into the NotReady state now and then before recovering. Talk us through, step by step, how you would investigate the cause.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Kubelet and containerd logs on the affected node, collected for example through a node debug pod, around each NotReady window.",
+        "Memory, disk and PID pressure conditions, which often come from runaway pods, full disks or unbounded process counts.",
+        "VMSS health: checks VM Scale Set instance health, platform events and maintenance, correlating timings across nodes and zones.",
+        "Network and DNS to the API server: confirms nodes can still reach it, checking firewall, route and outbound connection changes around failure times.",
+        "Node-problem-detector conditions and AKS diagnostics guide the search, with a support case opened, backed by evidence, when the cause looks platform-side."
+      ],
+      "redFlags": [
+        "Reimages or deletes nodes without analysis, so the evidence is lost and the problem returns.",
+        "Assumes it is always an Azure fault and waits for support without gathering evidence.",
+        "Ignores node pressure caused by workloads with no limits, such as a pod filling the disk.",
+        "Looks at one node in isolation instead of checking whether failures line up in time or by zone."
+      ],
+      "probes": [
+        "When open a support case?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-43",
+      "number": 43,
+      "categoryId": "aks-troubleshooting",
+      "text": "Latency rises only for cross-zone traffic. Causes?",
+      "description": "Response times have gone up, but only for traffic travelling between Azure availability zones. Walk us through what could cause that and how you would investigate, step by step.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Inter-zone latency: traffic between availability zones has higher latency than within a zone, so chatty call chains feel it most.",
+        "Topology-aware routing lets Kubernetes prefer endpoints in the caller's zone, reducing cross-zone hops for Service traffic.",
+        "SNAT port exhaustion: outbound connections share source network address translation ports, and running out causes failed connections, retries and delays.",
+        "LB config: externalTrafficPolicy, health probes and backend distribution can add extra hops between nodes in different zones.",
+        "Measurement: compares same-zone and cross-zone latency with tests and traces, and verifies SNAT exhaustion through load balancer metrics before changing anything."
+      ],
+      "redFlags": [
+        "Blaming the app immediately without looking at network paths, zones or load balancer behaviour.",
+        "Moves everything into one zone to fix latency, giving up resilience without discussing the trade-off.",
+        "Cannot explain how to verify SNAT exhaustion, so guesses at the cause.",
+        "Ignores data placement, so pods spread across zones all call a database or cache in one zone."
+      ],
+      "probes": [
+        "Verifying SNAT exhaustion?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-44",
+      "number": 44,
+      "categoryId": "aks-troubleshooting",
+      "text": "At 2 a.m. in an incident, admission policy blocks a deploy. Act.",
+      "description": "It is two in the morning, you are in the middle of an incident, and an admission policy is rejecting a deployment you need to ship. Talk us through, step by step, what you would do.",
+      "difficulty": "advanced",
+      "type": "scenario",
+      "timeMin": 5,
+      "lookFor": [
+        "Read the deny reason first: identifies which policy blocked the deploy and why, before deciding anything.",
+        "Compliance check: asks whether the manifest can be changed quickly to comply, which is often faster and safer than any exemption.",
+        "Time-bound exemption via the agreed process, scoped narrowly to that workload and namespace, with an expiry and an approver.",
+        "Record and review: logs the decision in the incident record, then removes the exemption and fixes the underlying cause afterwards.",
+        "Policy stays on globally for everyone else, and the candidate can describe designing emergency exemptions in advance so nights like this are predictable."
+      ],
+      "redFlags": [
+        "Disabling Gatekeeper cluster-wide or removing the policy add-on to get the deploy through.",
+        "Grants a broad, permanent exemption during the incident and never revisits it once the pressure is off.",
+        "Goes around admission control with privileged access that leaves no record of what was done.",
+        "Blames the policy owners during the incident instead of understanding why the rule exists."
+      ],
+      "probes": [
+        "Designing emergency exemptions?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-45",
+      "number": 45,
+      "categoryId": "aks-platform-engineering",
+      "text": "Self-service developer platform on AKS for 50 teams.",
+      "description": "Design a self-service developer platform on AKS for fifty application teams: what it offers and how teams use it. Talk through your reasoning and trade-offs aloud; there is no single right answer.",
+      "difficulty": "advanced",
+      "type": "design",
+      "timeMin": 7,
+      "lookFor": [
+        "Golden paths: templates and a portal such as Backstage create a new service with CI, deployment and monitoring already wired in.",
+        "Namespace-as-a-service: self-service namespaces come with quotas, RBAC and network policies applied automatically, not configured by hand.",
+        "GitOps onboarding: teams join by pull request with automated checks, so there is no ticket queue to wait in.",
+        "Paved CI/CD and docs: standard pipelines with security checks built in, clear documentation, and agreed escape hatches for unusual needs.",
+        "Platform-as-product metrics: tracks onboarding time, adoption, deployment frequency and developer satisfaction, and talks to users regularly."
+      ],
+      "redFlags": [
+        "Requires a ticket per namespace, so the platform team becomes the bottleneck for every new service.",
+        "Builds a portal first without talking to teams about their actual pain points.",
+        "Forces every team onto the golden path with no exceptions, so teams quietly build shadow platforms.",
+        "Has no view on single versus multi-cluster tenancy or on noisy-neighbour risks between teams."
+      ],
+      "probes": [
+        "Single vs multi-cluster tenancy?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-46",
+      "number": 46,
+      "categoryId": "aks-behavioural-leadership",
+      "text": "Leading an incident on a Kubernetes platform.",
+      "description": "Tell us about a real incident on a Kubernetes platform that you led. Walk us through what happened, what you yourself did during and after it, and how it ended.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific incident they led: names the platform, the symptom and the user impact, and is clear about what they personally did.",
+        "Roles: set up incident roles such as incident commander, operations and communications, so people were not all debugging the same thing.",
+        "Mitigation first: restored service before chasing root cause, for example by rolling back, failing over or adding capacity.",
+        "Comms: gave regular, plain updates to stakeholders and users, with honest estimates rather than optimistic guesses.",
+        "Blameless postmortem with a measurable result, such as faster recovery next time, plus reflection on the key action item and whether it was completed."
+      ],
+      "redFlags": [
+        "Hypotheticals: describes what they would do, or an incident someone else led, rather than their own experience.",
+        "Blaming others: points at individuals or other teams instead of examining the system and process.",
+        "No outcome: cannot describe how the incident ended or any change that came from the postmortem.",
+        "Spent the incident deep in debugging while nobody coordinated the response or kept stakeholders informed."
+      ],
+      "probes": [
+        "Key action item?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-47",
+      "number": 47,
+      "categoryId": "aks-behavioural-leadership",
+      "text": "A migration you led (ingress, CNI or identity).",
+      "description": "Describe one migration you led, for example of ingress, container networking (CNI) or identity. How did you run it, what was your personal role, and how did it turn out?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real migration (ingress, CNI or identity): explains why it was needed, its scale, and the candidate's own role and decisions.",
+        "Inventory: built a full picture of affected clusters, workloads and dependencies before planning any change.",
+        "Phasing and tooling: moved in stages starting with low-risk workloads, using scripts or tools to automate repetitive steps.",
+        "Minimal downtime through parallel running, rollback options and testing, with a measurable account of disruption, duration and completion.",
+        "Comms and reflection: kept application teams informed of dates and actions, and names the surprises and what they would change."
+      ],
+      "redFlags": [
+        "Describes a hypothetical plan, or a migration they only watched from the side.",
+        "Blames application teams or vendors for delays without describing what they did to help.",
+        "Cannot say how it turned out, how long it took or what broke along the way.",
+        "Moved everything in one change with no inventory, testing or rollback route."
+      ],
+      "probes": [
+        "Surprises?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-48",
+      "number": 48,
+      "categoryId": "aks-behavioural-leadership",
+      "text": "Getting teams to adopt a standard they resisted.",
+      "description": "Tell us about one particular time teams pushed back on a standard you wanted them to adopt. What did you do to bring them round, and what was the outcome?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific situation: names the standard, the teams that resisted and their real reasons, with the candidate's own actions made clear.",
+        "Empathy: listened to objections and changed the standard where teams had a fair point, rather than defending every detail.",
+        "Make the right way easy: provided templates, tooling or automation so complying took less effort than not complying.",
+        "Data: used evidence such as incident counts or adoption rates to make the case and to track progress.",
+        "Measurable result and reflection: reports how many teams adopted and by when, whether mandates were used, and what they would do differently."
+      ],
+      "redFlags": [
+        "Gives a hypothetical answer or general views on standards rather than a real case.",
+        "Blames the resisting teams as lazy or difficult instead of understanding their objections.",
+        "Relies only on mandates or escalation to force adoption, leaving teams complying on paper while working around the standard.",
+        "Cannot say whether the standard was adopted or what changed as a result."
+      ],
+      "probes": [
+        "Mandates used?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-49",
+      "number": 49,
+      "categoryId": "aks-behavioural-leadership",
+      "text": "A costly infrastructure mistake you made.",
+      "description": "Describe a real infrastructure mistake you made that cost money, time or service. Tell us what happened, what you did about it, and what you learned.",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A real mistake: describes a specific infrastructure error they personally made and its cost in money, time or service.",
+        "Ownership: raised it quickly themselves and told leadership plainly, rather than waiting to be found out.",
+        "Fix: explains how they contained the damage and restored service, with a measurable account of the impact.",
+        "Guardrails: added changes that stop the mistake recurring, such as policies, review steps or automation.",
+        "Reflection on their own judgement or process, not just the technical fix, and how they work differently now."
+      ],
+      "redFlags": [
+        "Claims no real mistakes, or offers a trivial one dressed up as a weakness.",
+        "Blames others, tooling or unclear requirements for an error that was their own.",
+        "Speaks hypothetically or cannot say what the outcome or cost actually was.",
+        "Hid the mistake or fixed it quietly without telling the people affected."
+      ],
+      "probes": [
+        "Telling leadership?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    },
+    {
+      "id": "aks-50",
+      "number": 50,
+      "categoryId": "aks-behavioural-leadership",
+      "text": "Deciding what the platform team builds next.",
+      "description": "Tell us about a real occasion when you had to decide what your platform team would build next. How did you go about choosing, what did you personally do, and how did it work out?",
+      "difficulty": "core",
+      "type": "behavioural",
+      "timeMin": 4,
+      "lookFor": [
+        "A specific decision: describes a real choice about what the platform team built next, and the candidate's personal part in it.",
+        "User research: talked to application teams, reviewed support tickets or ran surveys to find real pain points.",
+        "Metrics: used data such as lead time, incident counts or adoption to compare options and later judge the result.",
+        "Trade-offs and saying no: explains what was deprioritised, why, and how they told the people affected.",
+        "Outcome and reflection: reports a measurable result after delivery and what they would choose differently."
+      ],
+      "redFlags": [
+        "Talks hypothetically about prioritisation frameworks rather than a real decision they made.",
+        "Chose what the platform team found interesting rather than what users needed.",
+        "Blames stakeholders or leadership for the roadmap instead of owning the decision and explaining the reasoning behind it.",
+        "Cannot say how the choice worked out or whether anyone measured it."
+      ],
+      "probes": [
+        "Something deprioritised?"
+      ],
+      "version": 2,
+      "status": "active",
+      "rubricOverride": null
+    }
+  ]
+}

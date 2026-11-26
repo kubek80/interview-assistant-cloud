@@ -1,0 +1,88 @@
+/* Panel decision, judgements entered by hand, written summary, panel files (TEAM-7…TEAM-13, SUM-3, SUM-4). */
+
+/* Recommendations use the band colours, always with an icon and words (A11Y-3). */
+.badge.rec-badge--strong_hire { color: var(--band-strong-hire); background: var(--band-strong-hire-bg); border-color: currentColor; }
+.badge.rec-badge--hire { color: var(--band-hire); background: var(--band-hire-bg); border-color: currentColor; }
+.badge.rec-badge--lean_no_hire { color: var(--band-lean-no-hire); background: var(--band-lean-no-hire-bg); border-color: currentColor; }
+.badge.rec-badge--no_hire { color: var(--band-no-hire); background: var(--band-no-hire-bg); border-color: currentColor; }
+.rec-badge { font-weight: 650; }
+
+/* ---------- Decision card ---------- */
+.pd-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  min-width: 0;
+}
+.pd-card--empty { border-left-color: var(--color-border-strong); align-items: flex-start; }
+.pd-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.pd-card__title { margin: 0; font-size: var(--text-sm); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
+.pd-card__none { margin: 0; color: var(--color-text-muted); }
+.pd-card__rec { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
+.pd-card__rec .rec-badge { font-size: var(--text-md); padding: 0.2em 0.6em; }
+.pd-card__why { margin: 0; overflow-wrap: anywhere; }
+.pd-card__meta { margin: 0; }
+
+.pd-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.pd-note__label { font-size: var(--text-sm); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
+.pd-note__why { flex: 1 1 16rem; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- Decision dialog ---------- */
+.pd-form__intro { margin: 0; }
+.pd-who { border: 0; margin: 0; padding: 0; min-width: 0; }
+.pd-who__names { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.pd-who__name { margin: 0; }
+.pd-who__add { display: inline-flex; gap: var(--space-1); align-items: center; }
+.pd-who__add .input { width: 11rem; }
+.pd-more > summary, .jd-grid > summary { cursor: pointer; font-weight: 600; min-height: var(--target-min); padding: var(--space-1) 0; }
+.pd-more__body { padding-top: var(--space-3); }
+.pd-scores__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--color-border); }
+.pd-scores__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1) 0; border-bottom: 1px solid var(--color-border); }
+.pd-scores__q { min-width: 0; flex: 1; overflow-wrap: anywhere; font-size: var(--text-sm); }
+.pd-scores__row .select { width: 11.5rem; flex: none; }
+
+/* ---------- Judgement entered by hand ---------- */
+.jd-grid__hint { margin: var(--space-1) 0 var(--space-2); }
+.jd-table { min-width: 34rem; }
+.jd-table__q { font-size: var(--text-sm); max-width: 26rem; overflow-wrap: anywhere; }
+.jd-table__score { white-space: nowrap; }
+.jd-table .input.jd-score { width: 2.75rem; padding: 0 0.25rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.jd-score__label { display: inline-block; min-width: 6.5rem; margin-left: var(--space-2); white-space: nowrap; }
+.jd-table__score { width: 10rem; }
+.jd-note { width: 100%; min-width: 10rem; }
+
+/* ---------- Written summary ---------- */
+.ws { display: flex; flex-direction: column; gap: var(--space-2); }
+.ws__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-3); }
+.ws__head h2, .ws__head h3 { margin: 0; font-size: var(--text-lg); }
+.ws__status { margin: 0; }
+.ws__text { width: 100%; min-height: 7rem; }
+
+/* ---------- Import: keep mine or take theirs ---------- */
+.import-conflict { margin: var(--space-2) 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface-2); }
+.import-conflict p { margin: 0 0 var(--space-2); overflow-wrap: anywhere; }
+
+@media (max-width: 40rem) {
+  .pd-scores__row { flex-wrap: wrap; }
+  .pd-scores__row .select { width: 100%; }
+}
+
+@media print {
+  .pd-card, .pd-note { border-color: #000 !important; background: #fff !important; break-inside: avoid; }
+  .rec-badge { background: #fff !important; color: #000 !important; }
+}

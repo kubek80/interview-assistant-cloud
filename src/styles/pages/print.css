@@ -1,0 +1,47 @@
+/* Print layout for the scorecard and debrief (FLOW-31): black on white, no app chrome or buttons,
+   sensible page breaks. The global print.css already hides the header, nav and .no-print. */
+@media print {
+  @page { margin: 14mm 12mm; }
+  html, body { background: #fff !important; color: #000 !important; }
+  :root { --color-accent: #000; --color-heading: #000; --color-text: #000; --color-text-muted: #333; }
+
+  .scorecard, .debrief { gap: 4mm; }
+  .scorecard .page-header h1, .debrief .page-header h1 { font-size: 18pt; }
+  .sc-toolbar, .dbf-import, .help-link { display: none !important; }
+
+  .sc-meta, .cat-chart, .sc-rationale__text, .card, .table-wrap, .alert {
+    background: #fff !important;
+    border-color: #777 !important;
+    box-shadow: none !important;
+    color: #000 !important;
+  }
+  .alert, .alert__body, .alert__title, .badge, .cat-chart__signal { color: #000 !important; }
+  .badge { background: #fff !important; }
+  .sc-summary { grid-template-columns: repeat(3, 1fr); }
+  .sc-lists { grid-template-columns: 1fr 1fr; }
+  .sc-big { font-size: 26pt; }
+
+  /* Bars must print even when "background graphics" is off. */
+  .cat-chart__track { background: #fff !important; border-color: #000 !important; }
+  .cat-chart__bar {
+    background: #bbb !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    border-right: 2px solid #000;
+  }
+  .cat-chart__row { grid-template-columns: 50mm 1fr 32mm; break-inside: avoid; }
+  .cat-chart { break-inside: avoid; }
+
+  .table { font-size: 8.5pt; }
+  .table thead { display: table-header-group; }
+  .table thead th { background: #eee !important; color: #000 !important; }
+  .table th, .table td { border-color: #999 !important; }
+  .sc-qtext, .sc-notes, .sc-flags { min-width: 0; max-width: none; }
+  /* Long red flags and notes wrap inside their cells; a row is not split across pages. */
+  .sc-questions tr, .sc-ai__ticks tr { break-inside: avoid; }
+  .sc-flags, .sc-notes, .sc-qtext, .sc-ai__item { overflow-wrap: anywhere; }
+  .sc-section > h2, .sc-rationale > h2 { break-after: avoid; }
+  .sc-summary, .sc-meta, .sc-lists > .card { break-inside: avoid; }
+  .tag { border-color: #000; background: #fff; color: #000; }
+}
