@@ -1,17 +1,27 @@
 # Roadmap
 
-## MVP pilot (this version)
+## Hosted version (being built)
+
+The hosted version ([Hosted version](#/docs/13-hosted-version)) replaces the v1 plan below. It is built in three steps:
+
+1. **Foundation (built):** the server, the PostgreSQL database and its migrations, Google sign-in, users and roles with the Users page, the question bank in the database with its import scripts, deployment to Google Cloud, and the test set-up.
+2. **Rounds and interviews (next):** hiring rounds and their teams, planning, interviewing together live, scorecards, the debrief and panel decision, and the summary.
+3. **The rest:** transcripts, recordings and the AI second opinion on the server, importing local-app files, the retention job, privacy requests, and a final verification pass.
+
+Until a step is built, its screens say "Coming in the next step", and the [Verification](#/docs/10-verification) page lists its requirements as not built yet.
+
+## MVP pilot (the local app)
 
 Vite + React + TypeScript, IndexedDB (Dexie), JSON seed files, static hosting. Pilot for two weeks, recording candidate initials only.
 
 Done when:
 
-- `MVP-1` a 10-question interview works end to end offline;
-- `MVP-2` a reload loses nothing;
+- `MVP-1` an interview with two panel members works end to end against a real database;
+- `MVP-2` a reload or a brief disconnection loses nothing;
 - `MVP-3` the score maths matches the worked example in [Scoring](#/docs/04-scoring);
-- `MVP-4` all bundled questions pass validation.
+- `MVP-4` all bundled questions import cleanly into the database (`DB-3`).
 
-## v1: team version (not built yet)
+## v1: team version (replaced by the hosted version)
 
 Next.js + TypeScript, Azure Database for PostgreSQL, Entra ID single sign-on (MSAL/Auth.js or Container Apps built-in authentication), Azure Container Apps, Key Vault, Application Insights. App roles: Interviewer, HiringManager, BankEditor, Admin.
 
@@ -31,5 +41,5 @@ AI assists may suggest probes and draft summaries from notes. They never score. 
 
 ## Not included, and why
 
-- Panels across devices use exported files in the pilot, because there is no server.
+- Panels across devices use exported files in the pilot, because there is no server. The hosted version shares one database instead.
 - A "rapid N-1" AKS upgrade channel and third-party prices for the AKS Premium tier were left out of the bank because they could not be confirmed.

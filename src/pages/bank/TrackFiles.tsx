@@ -1,15 +1,16 @@
-// Track files on the Question bank and Admin screens (BANK-4, BANK-6, BANK-7, BANK-14).
+// Track files on the Question bank and Admin screens (BANK-4, BANK-7, BANK-14, DB-3, DB-4).
 import { useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { RepoError, checkTrackFile, exportTrackFile, importTrackFile, replaceWithBundledSeed, useTrackBank, type PendingSeedUpdate, type TrackFileCheck } from '../../db';
+import { RepoError, exportTrackFile, importQuestionFiles, useTrackBank, useTracks } from '../../db';
 import { suggestNextVersion, trackVersionProblem } from '../../domain/bankEdit';
-import { Alert, Badge, Button, ConfirmDialog, Dialog, DocLink, Field, TextInput, downloadFile, formatDateTime, readJsonFile, useToast } from '../../ui';
+import type { ImportFileInput, ImportReport } from '../../shared/api';
+import { Alert, Badge, Button, Dialog, DocLink, Field, Select, TextInput, downloadFile, formatDateTime, useToast } from '../../ui';
 
 /** BANK-14: "this track has changes that have not been exported". Text and icon, not colour alone. */
 export function UnexportedBadge({ changedAt }: { changedAt: string | null | undefined }) {
   if (!changedAt) return null;
   return (
     <Badge tone="warning" icon="edit">
-      Unexported changes since {formatDateTime(changedAt)}
+      Not exported since {formatDateTime(changedAt)}
     </Badge>
   );
 }
@@ -30,8 +31,8 @@ function Problems({ message, details }: { message: string; details: string[] }) 
 }
 
 /**
- * BANK-4, BANK-7: export a track file. Asks for the new track version (suggests the next one when
- * there are unexported changes) and clears the unexported-changes marker.
+ * DB-4, BANK-7: export a track file. Asks for the track version (suggests the next one when there
+ * are changes not yet exported) and clears the "not exported" marker.
  */
 export function ExportTrackDialog({ trackId, onClose }: { trackId: string | null; onClose: () => void }) {
   return (
@@ -61,7 +62,7 @@ function ExportForm({ trackId, onDone }: { trackId: string; onDone: () => void }
     try {
       const f = await exportTrackFile(trackId, { version: value.trim() });
       downloadFile(f.fileName, f.mime, f.text);
-      toast(`Exported ${f.fileName} (version ${f.version}). To share it, replace seed/${f.fileName} with it and open a pull request.`, 'success');
+      toast(`Exported ${f.fileName} (version ${f.version}).`, 'success');
       onDone();
     } catch (err) {
       setError({ message: err instanceof Error ? err.message : 'The export failed.', details: err instanceof RepoError ? err.details : [] });
@@ -73,22 +74,17 @@ function ExportForm({ trackId, onDone }: { trackId: string; onDone: () => void }
   return (
     <form id={id} onSubmit={submit} className="stack">
       <p>
-        Downloads <span className="mono">{trackId}.json</span> for <strong>{bank.track.name}</strong>: every question, including retired ones, in the seed format.
-        To share your changes, replace <span className="mono">seed/{trackId}.json</span> with it and review the diff in a pull request. <DocLink req="BANK-4" />
+        Downloads <span className="mono">{trackId}.json</span> for <strong>{bank.track.name}</strong>: every question, including retired ones. Keep it as a copy, or
+        import it into another installation. <DocLink req="DB-4" />
       </p>
       {bank.changedAt ? (
         <p>
           <UnexportedBadge changedAt={bank.changedAt} />
         </p>
       ) : (
-        <p className="small muted">No changes since this track was loaded or last exported.</p>
+        <p className="small muted">No changes since this track was imported or last exported.</p>
       )}
-      <Field
-        label="Track version"
-        required
-        error={problem && value.trim() !== current ? problem : null}
-        hint={`Currently ${current}. Devices load a seed only when its version is newer than theirs, so raise it when the questions changed.`}
-      >
+      <Field label="Track version" required error={problem && value.trim() !== current ? problem.replace(/, so devices load it \(BANK-6\)/, '') : null} hint={`Currently ${current}. Raise it when the questions changed.`}>
         <TextInput data-autofocus value={value} onChange={(e) => setVersion(e.target.value)} autoComplete="off" spellCheck={false} />
       </Field>
       {error && <Problems {...error} />}
@@ -102,145 +98,195 @@ function ExportForm({ trackId, onDone }: { trackId: string; onDone: () => void }
   );
 }
 
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
 /**
- * BANK-7, SEC-2: import a track file. It is validated before anything changes. A track with
- * unexported changes on this device is only replaced after confirmation (BANK-6, BANK-14).
+ * DB-3: upload track files (.json) or CSV files, see what importing them would add, change and
+ * leave alone, then confirm. Nothing changes until "Import" is pressed, and nothing at all if any
+ * file has a problem.
  */
-export function ImportTrackFile({ onExportFirst, onImported }: { onExportFirst?: (trackId: string) => void; onImported?: (trackId: string) => void }) {
-  const id = useId();
+export function ImportQuestions({ onImported }: { onImported?: (trackIds: string[]) => void }) {
+  const inputId = useId();
   const hintId = useId();
   const ref = useRef<HTMLInputElement>(null);
-  const [result, setResult] = useState<{ ok: boolean; message: string; details: string[] } | null>(null);
-  const [pending, setPending] = useState<{ json: unknown; check: TrackFileCheck } | null>(null);
+  const tracks = useTracks();
+  const { toast } = useToast();
+  const [files, setFiles] = useState<ImportFileInput[]>([]);
+  const [report, setReport] = useState<ImportReport | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const csvTrack = files.find((f) => /\.csv$/i.test(f.name))?.trackId ?? '';
+  const hasCsv = files.some((f) => /\.csv$/i.test(f.name));
 
-  const doImport = async (json: unknown) => {
+  const check = async (list: ImportFileInput[]) => {
     setBusy(true);
+    setError(null);
+    setReport(null);
     try {
-      const r = await importTrackFile(json);
-      setResult({ ok: true, message: `Imported track ${r.trackId}, version ${r.version}. Recorded in the audit log.`, details: [] });
-      onImported?.(r.trackId);
+      setReport(await importQuestionFiles(list, true));
     } catch (err) {
-      setResult({ ok: false, message: err instanceof Error ? err.message : 'The file could not be imported.', details: err instanceof RepoError ? err.details : [] });
+      setError(err instanceof Error ? err.message : 'The files could not be checked.');
     } finally {
       setBusy(false);
-      setPending(null);
     }
   };
 
   const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const chosen = [...(e.target.files ?? [])];
+    if (!chosen.length) return;
+    if (chosen.some((f) => f.size > MAX_FILE_BYTES)) {
+      setError('A file is too large (5 MB at most).');
+      return;
+    }
+    const list = await Promise.all(chosen.map(async (f) => ({ name: f.name, text: await f.text() })));
+    setFiles(list);
+    await check(list);
+  };
+
+  const setTrack = async (trackId: string) => {
+    const list = files.map((f) => (/\.csv$/i.test(f.name) ? { ...f, trackId: trackId || undefined } : f));
+    setFiles(list);
+    await check(list);
+  };
+
+  const confirm = async () => {
     setBusy(true);
-    setResult(null);
-    setPending(null);
     try {
-      const json = await readJsonFile(file);
-      const check = await checkTrackFile(json);
-      if (check.existing?.changedAt) {
-        setPending({ json, check });
-        setBusy(false);
-      } else await doImport(json);
-    } catch (err) {
-      setResult({ ok: false, message: err instanceof Error ? err.message : 'The file could not be imported.', details: err instanceof RepoError ? err.details : [] });
-      setBusy(false);
-    } finally {
+      const r = await importQuestionFiles(files, false);
+      setReport(null);
+      setFiles([]);
       if (ref.current) ref.current.value = '';
+      const added = r.tracks.reduce((n, t) => n + t.added.length, 0);
+      const changed = r.tracks.reduce((n, t) => n + t.changed.length, 0);
+      toast(`Imported: ${added} added, ${changed} changed. Recorded in the audit log.`, 'success');
+      onImported?.(r.tracks.map((t) => t.trackId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The import failed.');
+    } finally {
+      setBusy(false);
     }
   };
+
+  const changes = report?.ok ? report.tracks.reduce((n, t) => n + t.added.length + t.changed.length + t.categoriesAdded.length + t.categoriesChanged.length + (t.trackAction === 'create' ? 1 : 0) + t.trackChanges.length, 0) : 0;
 
   return (
     <div className="stack">
       <div className="field">
-        <label htmlFor={id} className="field__label">
-          Track file (JSON)
+        <label htmlFor={inputId} className="field__label">
+          Track files or CSV files
         </label>
         <div id={hintId} className="field__hint">
-          A file in the seed format. It is validated against the track schema before it is accepted, and replaces that track’s questions on this device
-          whatever its version. <DocLink req="BANK-7" /> <DocLink req="BANK-3" />
+          Track files (.json) in the export format, or CSV files in the bulk-add layout. You see what would change before anything is imported. <DocLink req="DB-3" />
         </div>
-        <input ref={ref} id={id} type="file" accept=".json,application/json" className="file-input" aria-describedby={hintId} onChange={onChange} disabled={busy} />
+        <input ref={ref} id={inputId} type="file" multiple accept=".json,.csv,application/json,text/csv" className="file-input" aria-describedby={hintId} onChange={onChange} disabled={busy} />
       </div>
-      <div aria-live="polite">
-        {busy && <p className="muted">Checking the file…</p>}
-        {pending && (
-          <Alert tone="warning" title={`${pending.check.existing!.name} has changes on this device that have not been exported.`} role="alert">
-            <p>
-              Importing <span className="mono">{pending.check.trackId}</span> version {pending.check.version} ({pending.check.questions} questions) replaces them. Export them
-              first if you want to keep them. <DocLink req="BANK-6" />
-            </p>
-            <div className="cluster">
-              {onExportFirst && (
-                <Button size="sm" icon="download" onClick={() => onExportFirst(pending.check.trackId)}>
-                  Export my changes first…
-                </Button>
-              )}
-              <Button size="sm" variant="danger" onClick={() => doImport(pending.json)}>
-                Replace with the file
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setPending(null)}>
-                Cancel
-              </Button>
-            </div>
-          </Alert>
-        )}
-        {result && !busy && (
-          <Alert tone={result.ok ? 'success' : 'danger'} title={result.ok ? result.message : `Not imported: ${result.message}`}>
-            {result.details.length > 0 && (
-              <ul className="adm-errors">
-                {result.details.slice(0, 20).map((d, i) => (
-                  <li key={i}>{d}</li>
-                ))}
-                {result.details.length > 20 && <li>…and {result.details.length - 20} more problems.</li>}
-              </ul>
-            )}
-          </Alert>
+      {hasCsv && tracks && (
+        <Field label="Track for the CSV file" hint="CSV files do not say which track they belong to.">
+          <Select value={csvTrack} onChange={(e) => void setTrack(e.target.value)} placeholder="Choose a track" options={tracks.map((t) => ({ value: t.id, label: t.name }))} />
+        </Field>
+      )}
+      <div aria-live="polite" className="stack">
+        {busy && <p className="muted">Checking…</p>}
+        {error && <Alert tone="danger" title={error} role="alert" />}
+        {report && !busy && <ImportReportView report={report} />}
+        {report?.ok && !busy && (
+          <div className="cluster">
+            <Button variant="primary" icon="upload" onClick={confirm} disabled={!changes}>
+              {changes ? 'Import' : 'Nothing to import'}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setReport(null);
+                setFiles([]);
+                if (ref.current) ref.current.value = '';
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-/**
- * BANK-6: a newer bundled seed was not loaded because the track was changed on this device. Offers
- * to export the changes first, then to replace the track with the bundled version.
- */
-export function PendingSeedAlert({ update, onExport }: { update: PendingSeedUpdate; onExport: (trackId: string) => void }) {
-  const [confirm, setConfirm] = useState(false);
-  const { toast } = useToast();
+/** DB-2, DB-3: the import report, in the same words as the command line. */
+export function ImportReportView({ report }: { report: ImportReport }) {
+  if (!report.ok) {
+    return (
+      <Alert tone="danger" title="These files have problems. Nothing was imported." role="alert">
+        {report.problems.map((p) => (
+          <div key={p.source}>
+            <p>
+              <strong>{p.source}</strong>
+            </p>
+            <ul className="adm-errors">
+              {p.messages.slice(0, 20).map((m, i) => (
+                <li key={i}>{m}</li>
+              ))}
+              {p.messages.length > 20 && <li>…and {p.messages.length - 20} more.</li>}
+            </ul>
+          </div>
+        ))}
+      </Alert>
+    );
+  }
   return (
-    <Alert tone="warning" title={`A newer version of ${update.name} (${update.bundledVersion}) is bundled with the app.`}>
-      <p>
-        This device has version {update.storedVersion}
-        {update.changedAt ? ` with changes that have not been exported (since ${formatDateTime(update.changedAt)})` : ''}, so the newer version was not loaded
-        automatically. Export your changes first if you want to keep them, then replace. Existing interviews are not affected. <DocLink req="BANK-6" />
-      </p>
-      <div className="cluster">
-        <Button size="sm" icon="download" onClick={() => onExport(update.trackId)}>
-          Export my changes…
-        </Button>
-        <Button size="sm" onClick={() => setConfirm(true)}>
-          Replace with version {update.bundledVersion}…
-        </Button>
-      </div>
-      <ConfirmDialog
-        open={confirm}
-        danger
-        title={`Replace ${update.name} with version ${update.bundledVersion}?`}
-        confirmLabel="Replace"
-        onCancel={() => setConfirm(false)}
-        onConfirm={async () => {
-          try {
-            await replaceWithBundledSeed(update.trackId);
-            toast(`${update.name} is now version ${update.bundledVersion}. Recorded in the audit log.`, 'success');
-          } catch (err) {
-            toast(err instanceof Error ? err.message : 'Could not replace the track.', 'error');
-          }
-          setConfirm(false);
-        }}
-      >
-        <p>The changes made on this device to this track are replaced by the bundled version. Interviews already set up keep their own copy of each question.</p>
-      </ConfirmDialog>
-    </Alert>
+    <div className="table-wrap">
+      <table className="table table--compact">
+        <caption className="visually-hidden">What the import would do</caption>
+        <thead>
+          <tr>
+            <th scope="col">Track</th>
+            <th scope="col" className="num">
+              Added
+            </th>
+            <th scope="col" className="num">
+              Changed
+            </th>
+            <th scope="col" className="num">
+              Unchanged
+            </th>
+            <th scope="col">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {report.tracks.map((t) => (
+            <tr key={`${t.source}-${t.trackId}`}>
+              <th scope="row">
+                {t.name} <span className="small muted">({t.source})</span>
+                {t.trackAction === 'create' && (
+                  <>
+                    {' '}
+                    <Badge tone="info">New track</Badge>
+                  </>
+                )}
+              </th>
+              <td className="num">{t.added.length}</td>
+              <td className="num">{t.changed.length}</td>
+              <td className="num">{t.unchanged}</td>
+              <td className="small">
+                <ul className="adm-report">
+                  {t.trackChanges.map((c) => (
+                    <li key={c}>Track {c}</li>
+                  ))}
+                  {t.categoriesAdded.length > 0 && <li>New categories: {t.categoriesAdded.join(', ')}</li>}
+                  {t.categoriesChanged.length > 0 && <li>Changed categories: {t.categoriesChanged.join(', ')}</li>}
+                  {t.changed.slice(0, 10).map((c) => (
+                    <li key={c.id}>
+                      Question {c.number}: version {c.fromVersion} → {c.toVersion}
+                    </li>
+                  ))}
+                  {t.changed.length > 10 && <li>…and {t.changed.length - 10} more changed.</li>}
+                  {t.keptNewer.length > 0 && <li>{t.keptNewer.length} kept as they are: edited here since the file was made.</li>}
+                  {t.notInFile > 0 && <li>{t.notInFile} not in the file: left as they are.</li>}
+                </ul>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

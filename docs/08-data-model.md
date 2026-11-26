@@ -1,6 +1,6 @@
 # Data model
 
-The local database (IndexedDB) holds these records. Field names are the ones used in code and in exported files.
+The database holds these records (in the hosted version, PostgreSQL tables created by the migrations in `server/db/migrations`). Field names are the ones used in code and in exported files.
 
 - `DATA-1` Entities:
 

@@ -1,0 +1,33 @@
+/* Users page (USER-1). */
+.users-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.users-toolbar .field { margin: 0; flex: 1 1 18rem; max-width: 26rem; }
+.users-toolbar p { margin: 0; }
+.users-name { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
+.users-name__main { font-weight: 600; color: var(--color-heading); }
+.users-name__email { color: var(--color-text-muted); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.users-role { min-width: 9.5rem; max-width: 13rem; }
+.users-row--inactive .users-name__main, .users-row--inactive .users-name__email { color: var(--color-text-muted); }
+.users-hint { margin-top: var(--space-4); }
+.users-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 16rem;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+}
+.users-preview__title { margin: 0 0 var(--space-1); font-weight: 600; }
+.users-preview ul { margin: 0; padding-left: var(--space-5); overflow-wrap: anywhere; }
+@media (max-width: 48rem) {
+  .users-role { width: 100%; }
+}

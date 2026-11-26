@@ -16,14 +16,14 @@ The app enforces these; it does not just store notes.
 
 ## What this version is
 
-This is the **MVP pilot** (Option A of the build plan): a single-page app with no backend.
+This is the **hosted version**: a web application with a server and a shared database, for a company to use together (see [Hosted version](#/docs/13-hosted-version)). It grew out of the MVP pilot, a single-page app with no backend, which lives on in its own repository.
 
-- `OV-1` The app works fully offline after first load, except the optional AI second opinion. All data is stored in the browser (IndexedDB) on this device.
+- `OV-1` All data lives in the organisation's database, reached through the app's server (`HOST-1`). The app needs a connection; a short loss of connection loses nothing (`HOST-6`).
 - `OV-2` The question bank is seeded from one JSON file per track. It ships with four senior tracks of about 50 questions each, and can then be changed in the app (see [Question bank](#/docs/05-question-bank)).
-- `OV-3` This documentation is available inside the app from the main navigation ("Docs"), and works offline.
+- `OV-3` This documentation is available inside the app from the main navigation ("Docs").
 - `OV-4` A person records every score and the final decision. The suggested score, the recommendation band and the optional AI second opinion are advisory: none of them is ever applied to, or changes, a human score or decision (`AI-10`).
 
-What it deliberately does not do yet (single sign-on, server-side panels, server audit, scheduled retention) is listed in the [Roadmap](#/docs/09-roadmap).
+It is being built in three steps; the [Roadmap](#/docs/09-roadmap) says which parts are there now.
 
 ## The four tracks
 

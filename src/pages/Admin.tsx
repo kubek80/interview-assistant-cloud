@@ -2,22 +2,19 @@ import { useRef, type KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router';
 import { PageHeader, useDocumentTitle } from '../ui';
 import { AuditLog } from './admin/AuditLog';
-import { Privacy } from './admin/Privacy';
-import { BankAdmin } from './admin/BankAdmin';
-import { Device } from './admin/Device';
-import { AiAdmin } from './admin/AiAdmin';
+import { BankFiles } from './admin/BankFiles';
+import { Settings } from './admin/Settings';
 import '../styles/pages/admin.css';
 
 const TABS = [
   { id: 'audit', label: 'Audit log', render: () => <AuditLog /> },
-  { id: 'privacy', label: 'Privacy', render: () => <Privacy /> },
-  { id: 'bank', label: 'Question bank', render: () => <BankAdmin /> },
-  { id: 'device', label: 'This device', render: () => <Device /> },
-  { id: 'ai', label: 'AI second opinion', render: () => <AiAdmin /> },
+  { id: 'bank', label: 'Question files', render: () => <BankFiles /> },
+  { id: 'settings', label: 'Settings', render: () => <Settings /> },
+  // Privacy requests and the AI second opinion come with steps 2 and 3 of the hosted build.
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
-/** Route: /admin (PRIV-5, PRIV-6, AUD-1…AUD-3, BANK-7, AI-2). */
+/** Route: /admin, for administrators (HPRIV-4, AUD-3, DB-3). */
 export default function Admin() {
   useDocumentTitle('Admin');
   const [params, setParams] = useSearchParams();
@@ -47,7 +44,7 @@ export default function Admin() {
   const tab = TABS.find((t) => t.id === current)!;
   return (
     <div className="admin">
-      <PageHeader title="Admin" subtitle="Audit log, privacy requests, the question bank, this device’s settings and the optional AI second opinion." />
+      <PageHeader title="Admin" subtitle="The audit log, question files and settings for everyone." />
       <div role="tablist" aria-label="Admin sections" className="adm-tabs" onKeyDown={onKeyDown}>
         {TABS.map((t) => (
           <button

@@ -1,5 +1,5 @@
 // Finish checks (FLOW-16, FLOW-22) and import validators (SEC-2, BANK-7). Pure.
-import compiledTrackSchema from 'virtual:track-schema-validator';
+import compiledTrackSchema from './generated/trackSchemaValidator';
 import { MAX_CANDIDATE, candidateKey, cleanCandidate, isValidCandidate, planFingerprint } from './plan';
 import { MAX_INTERVIEWERS, interviewerNameProblems } from './interviewers';
 import { MAX_EXPECTED, MAX_NOTE, isDay, isTimeOfDay } from './team';

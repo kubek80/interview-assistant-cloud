@@ -1,0 +1,34 @@
+/* Sign-in and no-access pages (AUTH-1, AUTH-2): one centred card, no navigation. */
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: start center;
+  padding: 12vh var(--space-4) var(--space-7);
+}
+.auth-card {
+  width: 100%;
+  max-width: 26rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.auth-card h1 { margin: 0; font-size: var(--text-2xl); }
+.auth-card p { margin: 0; }
+.auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+.auth-card .btn { justify-content: center; width: 100%; }
+.auth-dev {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+.auth-dev h2 { font-size: var(--text-md); margin: 0; }
+.auth-dev .btn { width: auto; }

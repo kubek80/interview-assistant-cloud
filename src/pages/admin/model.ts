@@ -1,6 +1,6 @@
 // Pure helpers for the Admin screen (PRIV-5, PRIV-6, AUD-1…3, BANK-7).
 import type { AuditAction, AuditEntity, AuditEvent, Question } from '../../domain/types';
-import type { AuditFilter } from '../../db';
+import type { AuditFilter } from '../../db/audit';
 
 const DAY_MS = 86_400_000;
 
@@ -37,6 +37,8 @@ export const ENTITY_LABELS: Record<AuditEntity, string> = {
   device: 'This device',
   invitation: 'Planned interview',
   panel: 'Panel decision and summary',
+  user: 'Person',
+  settings: 'Settings',
 };
 
 /** AUD-1: entity column text, e.g. "Interview 3f9a1c2b" (ids are random, PRIV-3). */
@@ -56,7 +58,7 @@ export function auditValueText(value: unknown): string | null {
 }
 
 export interface AuditFilterForm {
-  action: AuditAction | '';
+  action: AuditAction | string;
   from: string;
   to: string;
   text: string;
@@ -70,10 +72,10 @@ export interface AuditFilterForm {
 export function toAuditFilter(f: AuditFilterForm): AuditFilter {
   const filter: AuditFilter = {};
   const day = /^\d{4}-\d{2}-\d{2}$/;
-  if (f.action) filter.actions = [f.action];
+  if (f.action) filter.action = f.action;
   if (f.from) filter.from = day.test(f.from) ? new Date(`${f.from}T00:00:00`).toISOString() : f.from;
   if (f.to) filter.to = day.test(f.to) ? new Date(`${f.to}T23:59:59.999`).toISOString() : f.to;
-  if (f.text.trim()) filter.text = f.text.trim();
+  if (f.text.trim()) filter.q = f.text.trim();
   return filter;
 }
 

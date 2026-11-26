@@ -15,8 +15,10 @@ describe('in-app docs', () => {
       '09-roadmap',
       '11-interviewers-transcripts-ai',
       '12-planning-and-panels',
+      '13-hosted-version',
       '10-verification',
     ]);
+    expect(DOC_PAGES.find((p) => p.slug === '13-hosted-version')!.title).toBe('Hosted version');
     expect(DOC_PAGES.find((p) => p.slug === '12-planning-and-panels')!.title).toBe('Planning ahead and working as a panel');
     expect(DOC_PAGES.find((p) => p.slug === '11-interviewers-transcripts-ai')!.title).toBe('Interviewers, transcripts and AI second opinion');
     expect(DOC_PAGES[3].title).toBe('Scoring');
@@ -30,7 +32,8 @@ describe('in-app docs', () => {
     expect(REQ_INDEX.get('A11Y-7')).toBe('07-keyboard-accessibility');
     expect(REQ_INDEX.get('PANEL-3')).toBe('11-interviewers-transcripts-ai');
     expect(REQ_INDEX.get('DATA-5')).toBe('08-data-model');
-    expect(REQ_INDEX.get('TEAM-4')).toBe('12-planning-and-panels');
+    expect(REQ_INDEX.get('TEAM-6')).toBe('12-planning-and-panels');
+    expect(REQ_INDEX.get('AUTH-2')).toBe('13-hosted-version');
     expect(REQ_INDEX.get('SUM-1')).toBe('12-planning-and-panels');
     const prefixes = new Set([...REQ_INDEX.keys()].map((k) => k.split('-')[0]));
     for (const p of ['FLOW', 'SCORE', 'RUB', 'BANK', 'PRIV', 'AUD', 'SEC', 'KEY', 'A11Y', 'DATA', 'RES', 'OV']) expect(prefixes).toContain(p);
@@ -58,7 +61,7 @@ describe('in-app docs', () => {
   it('AI-2: the privacy notice section of page 11 can be shown on its own (Admin shows it before the AI can be turned on)', () => {
     const notice = docSection('11-interviewers-transcripts-ai', 'Privacy notice for AI and transcripts')!;
     expect(notice).toMatch(/^## Privacy notice for AI and transcripts\n/);
-    expect(notice).toContain('The transcript leaves this device when the AI second opinion is run');
+    expect(notice).toContain('The transcript leaves the organisation\'s database when the AI second opinion is run');
     expect(notice).toContain('APP 1.7-1.9');
     expect(notice).not.toContain('## AI second opinion');
     expect(docSection('11-interviewers-transcripts-ai', 'No such heading')).toBeNull();

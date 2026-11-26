@@ -261,9 +261,19 @@ export type AuditAction =
   | 'decision.recorded'
   | 'decision.changed'
   // SUM-4: the written summary saved (never its text).
-  | 'summary.saved';
+  | 'summary.saved'
+  // Hosted version (USER-4, AUTH-4, HPRIV-4): people and access, sign-ins, audit exports, settings.
+  | 'user.added'
+  | 'user.changed'
+  | 'user.deactivated'
+  | 'user.reactivated'
+  | 'user.removed'
+  | 'auth.signed_in'
+  | 'auth.signed_out'
+  | 'audit.exported'
+  | 'settings.changed';
 
-export type AuditEntity = 'plan' | 'session' | 'answer' | 'track' | 'category' | 'question' | 'audit' | 'device' | 'invitation' | 'panel';
+export type AuditEntity = 'plan' | 'session' | 'answer' | 'track' | 'category' | 'question' | 'audit' | 'device' | 'invitation' | 'panel' | 'user' | 'settings';
 
 export interface AuditEvent {
   /** Auto-incremented; assigned by the database. */

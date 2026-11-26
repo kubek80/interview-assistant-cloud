@@ -8,8 +8,22 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+    services:
+      # HOST-8: server and end-to-end tests run against a real PostgreSQL.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ia
+          POSTGRES_PASSWORD: ia
+          POSTGRES_DB: ia_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ia" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://ia:ia@localhost:5432/ia_test
+      DATABASE_URL: postgres://ia:ia@localhost:5432/ia_ci
     steps:
       - uses: actions/checkout@v4
 
@@ -20,25 +34,29 @@ jobs:
 
       - run: npm ci
 
-      # BANK-3: schema, unique question ids and numbers, every categoryId exists
-      # and every category is used. The seed files are the source of truth (BANK-4).
+      # BANK-3: the bundled track files are valid.
       - name: Validate seed
         run: npm run validate:seed
 
-      - name: Typecheck
-        run: npm run typecheck --if-present
+      # HOST-4: migrations apply to an empty database, and a second run applies nothing.
+      - name: Migrate a fresh database twice, seed twice
+        run: |
+          psql "$TEST_DATABASE_URL" -c 'CREATE DATABASE ia_ci'
+          npm run db:migrate
+          npm run db:migrate
+          npm run db:seed
+          npm run db:seed
 
-      - name: Test
-        run: npm test --if-present
+      - name: Typecheck (browser and server)
+        run: npm run typecheck
 
-      # Local AI helper (docs/11 AI-1, AI-4) against the fake Claude Code CLI in server/test/.
-      - name: Helper tests
+      - name: Unit tests
+        run: npm test
+
+      - name: Server tests (PostgreSQL)
         run: npm run test:server
 
-      - name: Build
-        run: npm run build --if-present
-
-      # End-to-end checks against the production build (docs/10-verification.md).
+      # E2E builds the app itself (npm run build) before starting the server.
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
@@ -52,3 +70,19 @@ jobs:
           name: e2e-results
           path: test-results/
           retention-days: 7
+
+  docker:
+    # HOST-2: the container image builds. (Pushing and deploying are in docs/deploy.)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build --tag interview-assistant:ci .
+      - name: The image starts and refuses to run without its settings
+        run: |
+          out=$(docker run --rm -e NODE_ENV=production interview-assistant:ci 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -q "Interview Assistant cannot start"
+      - name: The image runs as a non-root user
+        run: test "$(docker inspect --format '{{.Config.User}}' interview-assistant:ci)" = "nonroot"

@@ -10,7 +10,7 @@
 
 ## Managing the bank in the app
 
-The Question bank screen is also the editor. Changes are saved on this device straight away.
+The Question bank screen is also the editor. The bank lives in the database and is shared by everyone (`DB-1`); changes are saved for everyone straight away.
 
 - `BANK-9` Questions can be added, edited, duplicated, retired and restored. Every field can be edited: text, description, category, difficulty, type, time estimate, key points, red flags, probes and the optional per-level rubric descriptions (`RUB-2`). Key points, red flags and probes are edited as lists: add, remove and reorder items. The form shows problems next to the field they concern and does not save an invalid question.
 - `BANK-10` New questions get the next free number in their track; numbers and ids are never reused. The time estimate is filled in from the table below when the type or difficulty is chosen, and can be changed. Questions are retired, not deleted, so past interviews keep their meaning; a retired question is not offered when building a plan.
@@ -21,8 +21,8 @@ The Question bank screen is also the editor. Changes are saved on this device st
 
 ## Seed files
 
-- `BANK-3` There is one seed file per track in `seed/`. Each is validated against the JSON Schema in `schema/track.schema.json`. Validation runs with `npm run validate:seed` and in CI on every push and pull request; it also checks that question ids and numbers are unique, that every question's `categoryId` exists and that every category is used. It warns when a time estimate differs from the table below, and when a question does not have five key points and four red flags (`BANK-15`).
-- `BANK-4` The seed files are the bank's source of truth for a team. To share changes made in the app: export the track from the Question bank screen (the export asks for the new track version), replace the file in `seed/`, and review the diff in a pull request. Seed files can also be edited by hand; when doing so, raise a question's `version` when its meaning changes, and the track `version` so that devices reload it.
+- `BANK-3` There is one seed file per track in `seed/`; they are imported into the database by `npm run db:seed` (`DB-3`). Each is validated against the JSON Schema in `schema/track.schema.json`. Validation runs with `npm run validate:seed` and in CI on every push and pull request; it also checks that question ids and numbers are unique, that every question's `categoryId` exists and that every category is used. It warns when a time estimate differs from the table below, and when a question does not have five key points and four red flags (`BANK-15`).
+- `BANK-4` The database is the bank's source of truth (`DB-1`). Track files are its import and export format: any track can be exported at any time (`DB-4`), and files are imported with `npm run db:import-questions` or by an administrator in the app (`DB-2`, `DB-3`). Seed files can still be edited by hand and reviewed in a pull request; when doing so, raise a question's `version` when its meaning changes, and the track `version`, then import the file.
 
 Shape of a seed file:
 
@@ -70,9 +70,8 @@ Shape of a seed file:
 | Design | 7 min | 7 min | 8 min |
 | Behavioural | 4 min | - | - |
 
-## Loading and versions
+## Importing and exporting
 
-- `BANK-6` On first load, and whenever a seed file's track `version` is newer than the one stored, the app loads the seed into the local database. A track that has been changed on this device is never overwritten automatically: the app says a newer bundled version is available and lets you export your changes first, then replace. Locked plans keep their own snapshot of each question (`FLOW-8`), so reloading the bank never changes an existing interview.
 - `BANK-7` A track file can be imported (validated against the same schema before it is accepted) and any track can be exported as a track file, from the Question bank screen and the Admin screen. Both are recorded in the audit log.
 
 ## Re-check every quarter

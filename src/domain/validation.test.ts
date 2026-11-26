@@ -3,7 +3,7 @@ import { canFinish, needsNote, validateCandidateInput, validatePlanFile, validat
 import { planFile, sessionFile } from './export';
 import { makeAnswer, makeTrackFile, scored, skipped, workedExamplePlan } from '../test/fixtures';
 import type { OverallAssessment, Session } from './types';
-import compiledTrackSchema from 'virtual:track-schema-validator';
+import compiledTrackSchema from './generated/trackSchemaValidator';
 
 const compiledSchemaPresent = compiledTrackSchema !== null;
 

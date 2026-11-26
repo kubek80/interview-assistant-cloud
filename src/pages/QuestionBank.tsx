@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { NavLink, useNavigate, useParams } from 'react-router';
-import { exportTrackCsv, setQuestionStatus, useBankStatus, useTrackBank, useTracks } from '../db';
+import { exportTrackCsv, hasPermission, setQuestionStatus, useMe, useTrackBank, useTracks } from '../db';
 import { filterQuestions } from '../domain/plan';
 import type { Question } from '../domain/types';
 import { Badge, Button, Dialog, DocLink, EmptyState, IconButton, PageHeader, QuestionTags, downloadFile, formatMinutes, useDocumentTitle, useToast } from '../ui';
@@ -10,16 +10,21 @@ import { TagLegend } from './bank/TagLegend';
 import { QuestionEditor, type EditorMode } from './bank/QuestionEditor';
 import { BulkAddDialog } from './bank/BulkAddDialog';
 import { CategoryManager, NewTrackDialog } from './bank/CategoryManager';
-import { ExportTrackDialog, ImportTrackFile, PendingSeedAlert, UnexportedBadge } from './bank/TrackFiles';
+import { ExportTrackDialog, ImportQuestions, UnexportedBadge } from './bank/TrackFiles';
 import { EMPTY_FILTERS, resultSummary, toQuestionFilter, type FilterState } from './bank/filters';
 import '../styles/pages/bank.css';
 
-/** Routes: /bank, /bank/:trackId. Browse (BANK-2) and manage (BANK-9…BANK-14) the question bank. */
+/**
+ * Routes: /bank, /bank/:trackId. Browse (BANK-2) and manage (BANK-9…BANK-14) the question bank,
+ * which lives in the database and is shared by everyone (DB-1). Interviewers read it; organisers
+ * and administrators edit it (USER-2); the server checks every change.
+ */
 export default function QuestionBank() {
   useDocumentTitle('Question bank');
   const { trackId: routeTrackId } = useParams();
   const tracks = useTracks();
-  const status = useBankStatus();
+  const me = useMe();
+  const canEdit = hasPermission(me, 'bank.edit');
   const trackId = routeTrackId ?? tracks?.[0]?.id;
   const [newTrack, setNewTrack] = useState(false);
   const [exportId, setExportId] = useState<string | null>(null);
@@ -28,18 +33,20 @@ export default function QuestionBank() {
     <>
       <PageHeader
         title="Question bank"
-        subtitle="Browse, add and edit the questions for each role. Changes are saved on this device straight away."
+        subtitle={canEdit ? 'Browse, add and edit the questions for each role. Changes are saved for everyone straight away.' : 'Browse the questions for each role.'}
         actions={
-          <Button icon="plus" onClick={() => setNewTrack(true)}>
-            New track…
-          </Button>
+          canEdit ? (
+            <Button icon="plus" onClick={() => setNewTrack(true)}>
+              New track…
+            </Button>
+          ) : undefined
         }
       />
-      <p className="small muted bank-intro">
-        Interviews already set up keep the questions as they were. To share your changes with the team, export the track file.{' '}
-        <DocLink req="BANK-4" label="Sharing changes to the question bank" />
-      </p>
-      {status?.pending.map((u) => <PendingSeedAlert key={u.trackId} update={u} onExport={setExportId} />)}
+      {canEdit && (
+        <p className="small muted bank-intro">
+          Interviews already set up keep the questions as they were. <DocLink req="BANK-11" label="How question versions work" />
+        </p>
+      )}
       {tracks && tracks.length > 0 && (
         <nav className="bank-tracks" aria-label="Tracks">
           <ul role="list">
@@ -47,10 +54,10 @@ export default function QuestionBank() {
               <li key={t.id}>
                 <NavLink to={`/bank/${t.id}`} aria-current={t.id === trackId ? 'page' : undefined} className={t.id === trackId ? 'active' : undefined}>
                   {t.name}
-                  {status?.changedAt[t.id] && (
-                    <span className="bank-tracks__mark" title="Unexported changes">
+                  {canEdit && t.changedAt && (
+                    <span className="bank-tracks__mark" title="Not exported">
                       {' '}
-                      ●<span className="visually-hidden"> (unexported changes)</span>
+                      ●<span className="visually-hidden"> (changes not exported)</span>
                     </span>
                   )}
                 </NavLink>
@@ -62,9 +69,11 @@ export default function QuestionBank() {
       {tracks === undefined ? (
         <p className="muted">Loading…</p>
       ) : trackId ? (
-        <TrackBrowser key={trackId} trackId={trackId} onExport={setExportId} />
+        <TrackBrowser key={trackId} trackId={trackId} onExport={setExportId} canEdit={canEdit} canImport={hasPermission(me, 'bank.import')} />
       ) : (
-        <EmptyState title="No tracks are loaded." actions={<Button onClick={() => setNewTrack(true)}>New track…</Button>} />
+        <EmptyState title="There are no questions yet." actions={canEdit ? <Button onClick={() => setNewTrack(true)}>New track…</Button> : undefined}>
+          <p>{canEdit ? 'Create a track, or ask an administrator to import the question files.' : 'Ask an administrator to import the question files.'}</p>
+        </EmptyState>
       )}
       <NewTrackDialog open={newTrack} onClose={() => setNewTrack(false)} />
       <ExportTrackDialog trackId={exportId} onClose={() => setExportId(null)} />
@@ -72,7 +81,7 @@ export default function QuestionBank() {
   );
 }
 
-function TrackBrowser({ trackId, onExport }: { trackId: string; onExport: (trackId: string) => void }) {
+function TrackBrowser({ trackId, onExport, canEdit, canImport }: { trackId: string; onExport: (trackId: string) => void; canEdit: boolean; canImport: boolean }) {
   const bank = useTrackBank(trackId);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -131,13 +140,19 @@ function TrackBrowser({ trackId, onExport }: { trackId: string; onExport: (track
             {bank.categories.length} categories
           </p>
         </div>
-        {bank.changedAt && (
+        {canEdit && bank.changedAt && (
           <div className="cluster">
             <UnexportedBadge changedAt={bank.changedAt} />
             <DocLink req="BANK-14" />
           </div>
         )}
+        {!canEdit && (
+          <Button icon="download" variant="ghost" onClick={exportCsv}>
+            Export CSV
+          </Button>
+        )}
       </div>
+      {canEdit ? (
       <div className="bank-toolbar" role="group" aria-label="Manage this track">
         <div className="cluster">
           <Button variant="primary" icon="plus" onClick={() => setEditor({ kind: 'add', categoryId: filters.categoryId || undefined })}>
@@ -157,16 +172,19 @@ function TrackBrowser({ trackId, onExport }: { trackId: string; onExport: (track
           <Button icon="download" variant="ghost" onClick={exportCsv}>
             Export CSV
           </Button>
-          <Button icon="upload" variant="ghost" onClick={() => setDialog('import')}>
-            Import track file…
-          </Button>
+          {canImport && (
+            <Button icon="upload" variant="ghost" onClick={() => setDialog('import')}>
+              Import files…
+            </Button>
+          )}
         </div>
       </div>
+      ) : null}
       {all.length === 0 ? (
         <EmptyState
           title="This track has no questions yet."
           actions={
-            <>
+            canEdit && <>
               <Button variant="primary" icon="plus" onClick={() => setEditor({ kind: 'add' })}>
                 Add question
               </Button>
@@ -176,7 +194,7 @@ function TrackBrowser({ trackId, onExport }: { trackId: string; onExport: (track
             </>
           }
         >
-          <p>Add them one by one, or paste them from a spreadsheet.</p>
+          {canEdit && <p>Add them one by one, or paste them from a spreadsheet.</p>}
         </EmptyState>
       ) : (
         <>
@@ -213,7 +231,7 @@ function TrackBrowser({ trackId, onExport }: { trackId: string; onExport: (track
                 </thead>
                 <tbody>
                   {shown.map((q) => (
-                    <BankRow key={q.id} q={q} category={categoryName.get(q.categoryId) ?? q.categoryId} onOpen={() => setOpenId(q.id)} onEdit={() => setEditor({ kind: 'edit', question: q })} />
+                    <BankRow key={q.id} q={q} category={categoryName.get(q.categoryId) ?? q.categoryId} onOpen={() => setOpenId(q.id)} onEdit={canEdit ? () => setEditor({ kind: 'edit', question: q }) : undefined} />
                   ))}
                 </tbody>
               </table>
@@ -236,7 +254,7 @@ function TrackBrowser({ trackId, onExport }: { trackId: string; onExport: (track
             : undefined
         }
         extraFooter={
-          open && (
+          open && canEdit && (
             <div className="cluster">
               <Button size="sm" icon="edit" onClick={() => setEditor({ kind: 'edit', question: open })}>
                 Edit
@@ -274,20 +292,19 @@ function TrackBrowser({ trackId, onExport }: { trackId: string; onExport: (track
       />
       <BulkAddDialog open={dialog === 'bulk'} trackId={trackId} trackName={bank.track.name} categories={bank.categories} questions={all} onClose={() => setDialog(null)} />
       <CategoryManager open={dialog === 'categories'} onClose={() => setDialog(null)} trackId={trackId} trackName={bank.track.name} categories={bank.categories} questions={all} />
-      <Dialog open={dialog === 'import'} onClose={() => setDialog(null)} title="Import a track file" footer={<Button onClick={() => setDialog(null)}>Close</Button>}>
-        <ImportTrackFile
-          onExportFirst={(id) => {
+      <Dialog open={dialog === 'import'} onClose={() => setDialog(null)} wide title="Import question files" footer={<Button onClick={() => setDialog(null)}>Close</Button>}>
+        <ImportQuestions
+          onImported={(ids) => {
             setDialog(null);
-            onExport(id);
+            if (ids.length === 1 && ids[0] !== trackId) navigate(`/bank/${ids[0]}`);
           }}
-          onImported={(id) => id !== trackId && navigate(`/bank/${id}`)}
         />
       </Dialog>
     </section>
   );
 }
 
-function BankRow({ q, category, onOpen, onEdit }: { q: Question; category: string; onOpen: () => void; onEdit: () => void }) {
+function BankRow({ q, category, onOpen, onEdit }: { q: Question; category: string; onOpen: () => void; onEdit?: () => void }) {
   return (
     <tr className={q.status === 'retired' ? 'bank-row--retired' : undefined}>
       <td className="num" data-label="No.">
@@ -316,7 +333,7 @@ function BankRow({ q, category, onOpen, onEdit }: { q: Question; category: strin
         {formatMinutes(q.timeMin)}
       </td>
       <td className="pc-rtable__actions">
-        <IconButton icon="edit" size="sm" label={`Edit question ${q.number}`} onClick={onEdit} aria-haspopup="dialog" />
+        {onEdit && <IconButton icon="edit" size="sm" label={`Edit question ${q.number}`} onClick={onEdit} aria-haspopup="dialog" />}
       </td>
     </tr>
   );

@@ -4,9 +4,9 @@ An interview moves through eight steps. Each step lists the requirements the app
 
 ## 1. Choose a track
 
-- `FLOW-1` The Dashboard lists the tracks and all sessions on this device with their state (ready to start, in progress, paused, submitted). A new interview starts by choosing a track.
-- `FLOW-33` New interview: one screen sets up an interview. It asks for the role (track) and the candidate's initials, and arrives with a question set already drawn from the default quotas and time budget (preferring a draw whose time estimates fit the budget). The set is shown as a summary (number of questions, estimated time, mix) and can be shuffled or edited in place (step 2). Everything else is optional and out of the way under "More options": requisition id, more interviewers, recording or transcription, how long to keep the record, and category weights. One button, "Continue", pins the plan (`FLOW-8`) and opens the ready screen (step 3). The interviewer name comes from this device's settings and is asked for only the first time.
-- `FLOW-34` When there is an unfinished interview on this device, the Dashboard's most prominent action is to continue it. Interviews planned for later are listed under Upcoming instead (`TEAM-2`).
+- `FLOW-1` The Dashboard lists the tracks and the interviews the signed-in person can see (`ROUND-4`) with their state (ready to start, in progress, paused, submitted). A new interview starts by choosing a track.
+- `FLOW-33` New interview: one screen sets up an interview. It asks for the role (track) and the candidate's initials, and arrives with a question set already drawn from the default quotas and time budget (preferring a draw whose time estimates fit the budget). The set is shown as a summary (number of questions, estimated time, mix) and can be shuffled or edited in place (step 2). Everything else is optional and out of the way under "More options": requisition id, more interviewers, recording or transcription, how long to keep the record, and category weights. One button, "Continue", pins the plan (`FLOW-8`) and opens the ready screen (step 3). The interviewer is the signed-in person.
+- `FLOW-34` When the signed-in person has an unfinished interview, the Dashboard's most prominent action is to continue it. Interviews planned for later are listed under Upcoming instead (`TEAM-2`).
 
 ## 2. Configure the plan
 
@@ -15,7 +15,7 @@ An interview moves through eight steps. Each step lists the requirements the app
 - `FLOW-4` A time budget is set (default 60 minutes). A time meter compares the sum of the selected questions' time estimates to the budget and warns when it is over.
 - `FLOW-5` A category coverage view shows how many selected questions fall in each category.
 - `FLOW-6` Each category's weight (default from the seed, normally 1.0) and "must-have" flag can be adjusted for the plan before it is locked.
-- `FLOW-7` Candidate and interviewer details are captured: candidate initials, requisition id (optional), interviewer name, and a retention date (default 90 days ahead; the default period can be changed for this device in the Admin screen). More interviewers can be named (`PANEL-1`). Consent is confirmed on the ready screen, with the candidate present: the consent text is shown to be read out, and the interview cannot be started until the interviewer confirms the candidate has been told. See [Data and privacy](#/docs/06-data-privacy).
+- `FLOW-7` Candidate and interviewer details are captured: candidate initials, requisition id (optional), interviewer name, and a retention date (default 90 days ahead; the default period is an organisation setting managed by administrators). More interviewers can be named (`PANEL-1`). Consent is confirmed on the ready screen, with the candidate present: the consent text is shown to be read out, and the interview cannot be started until the interviewer confirms the candidate has been told. See [Data and privacy](#/docs/06-data-privacy).
 - `FLOW-8` When "Continue" is pressed the plan is **locked** (the screens say the questions are "fixed for this interview"). A locked plan's questions, order, weights and time budget cannot be changed. The plan stores a snapshot of each question as it was when locked, so later edits to the bank never alter the interview (version pinning). There is no separate locking step or confirmation; until the interview is started it can be discarded and set up again.
 - `FLOW-9` Every plan has a *plan fingerprint* (shown on screens as the comparison code): a hash of the track, the ordered question ids and versions, the category weights and must-have flags. Two sessions are comparable only when their fingerprints match. A locked plan can be reused for another candidate ("New interview with these questions", or "Use the same questions as…" on the New interview screen) and can be exported and imported as a file so that panelists share the same plan.
 
@@ -49,12 +49,11 @@ An interview moves through eight steps. Each step lists the requirements the app
 
 ## 7. Debrief
 
-Several interviewers at one machine share one scorecard (see [Interviewers, transcripts and AI](#/docs/11-interviewers-transcripts-ai)). Interviewers who score on their own devices have their files merged here.
+Several interviewers at one machine share one scorecard (see [Interviewers, transcripts and AI](#/docs/11-interviewers-transcripts-ai)). Panel members who score on their own computers each keep their own record, and the debrief shows them side by side (`LIVE-1`, `LIVE-9`).
 
-- `FLOW-26` A submitted session can be exported as a session file (JSON). Other panelists' session files can be imported into the Debrief screen.
-- `FLOW-27` Other interviewers' judgements are shown as soon as they are imported. Independent scoring is optional: a device setting, "Hide other people's scores until I have submitted mine", is off by default. When it is on, an imported judgement for an interview shows only the interviewer's name and "submitted" until your own record for that interview is submitted. Only submitted interviews can be imported.
+- `FLOW-27` Other panel members' judgements are shown as soon as they are recorded. Independent scoring is optional: a setting for each round, chosen by its organiser, "Hide other people's scores until they have submitted", is off by default (`LIVE-3`). When it is on, another panel member's judgement for an interview shows only their name and whether they have submitted until your own record for that interview is submitted.
 - `FLOW-28` The debrief shows each panelist's percentage and band, per-category averages side by side, the panel score (the median of the percentages) and a warning when the spread (highest minus lowest) is above 20 points.
-- `FLOW-29` Interviews are grouped into a panel only when the candidate (name or initials plus requisition id, ignoring case and extra spaces) and the plan fingerprint both match.
+- `FLOW-29` An interview's panel is the round members the plan names (`ROUND-4`, `LIVE-5`); their judgements belong to that interview, so nothing has to be matched up afterwards. Judgements imported from local-app files are matched to an interview of the round only when the candidate (name or initials plus requisition id, ignoring case and extra spaces) and the plan fingerprint both match (`DB-5`).
 - `FLOW-30` The Comparison screen shows a matrix of candidates against categories. Candidates can be compared only if they had the same plan (same fingerprint); the screen makes you choose a plan first and shows only that plan's submitted sessions.
 
 ## 8. Export
@@ -78,6 +77,6 @@ These hold at a laptop-sized window (1280 by 800) and are checked like any other
 
 ## Resilience
 
-- `RES-1` Every change is saved automatically to IndexedDB as it is made. Reloading or closing the page at any point loses nothing: the session reopens at the same question with the same ticks, score, notes and flags.
+- `RES-1` Every change is saved automatically to the server as it is made (`HOST-6`). Reloading or closing the page at any point loses nothing: the session reopens at the same question with the same ticks, score, notes and flags.
 - `RES-2` Timers survive a reload. They are derived from stored timestamps, not from in-memory counters.
-- `RES-3` An offline banner is shown when the browser is offline, saying that work continues to be saved on this device.
+- `RES-3` When the connection is lost the screen says plainly that it is offline or reconnecting; changes made meanwhile are kept in the browser and sent when the connection returns (`HOST-6`).

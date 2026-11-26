@@ -1,6 +1,6 @@
-// Keeps docs/10-verification.md in step with the specification (docs 01-09, 11 and 12) and with the tests.
+// Keeps docs/10-verification.md in step with the specification (every docs page except 10) and with the tests.
 // It fails when:
-//   - a requirement id defined in docs 01-09, 11 or 12 has no row in docs/10-verification.md;
+//   - a requirement id defined in the other pages has no row in docs/10-verification.md;
 //   - docs/10-verification.md names an id that is not defined any more;
 //   - a row cites an automated test file that does not exist, or that has no test title
 //     mentioning that row's id.
@@ -20,7 +20,7 @@ export function definedIds(markdown: string): string[] {
 
 export interface VerificationRow {
   id: string;
-  /** Test files cited in the row, as repository paths (src/... or e2e/...). */
+  /** Test files cited in the row, as repository paths (src/..., server/... or e2e/...). */
   files: string[];
   line: number;
 }
@@ -31,7 +31,7 @@ export function verificationRows(markdown: string): VerificationRow[] {
   markdown.split('\n').forEach((line, i) => {
     const m = /^\|\s*`([A-Z][A-Z0-9]*-\d+)`\s*\|/.exec(line);
     if (!m) return;
-    const files = [...line.matchAll(/`((?:src|e2e)\/[\w./-]+\.(?:test|spec)\.tsx?)`/g)].map((f) => f[1]);
+    const files = [...line.matchAll(/`((?:src|server|e2e)\/[\w./-]+\.(?:test|spec)\.tsx?)`/g)].map((f) => f[1]);
     rows.push({ id: m[1], files: [...new Set(files)], line: i + 1 });
   });
   return rows;
@@ -48,20 +48,39 @@ const specPages = readdirSync(DOCS)
   .sort();
 
 /**
- * Requirements specified but not built yet. Their rows say "Not built yet" instead of citing tests.
- * Keep this list short and current: whoever builds one of these removes it from the list and gives
- * its row real tests (the test below fails while a built id is still listed with that status, and
- * fails for any other id marked "Not built yet").
+ * Requirements specified but not built yet in the hosted version. Their rows say "Not built yet" instead of
+ * citing tests. Whoever builds one of these removes it from the list and gives its row real tests (the test
+ * below fails while a built id is still listed with that status, and fails for any other id marked
+ * "Not built yet"). The local app's tests for them are in e2e-local/ and src/db-local/, ready to port.
  */
-const NOT_BUILT_YET: readonly string[] = [];
+const NOT_BUILT_YET: readonly string[] = [
+  // Step 2: hiring rounds, planning, interviewing together live, scorecards, debrief and decision, summary.
+  'OV-1', 'OV-4', 'FLOW-1', 'FLOW-33', 'FLOW-34', 'FLOW-2', 'FLOW-3', 'FLOW-4', 'FLOW-5', 'FLOW-6', 'FLOW-7',
+  'FLOW-8', 'FLOW-9', 'FLOW-10', 'FLOW-11', 'FLOW-12', 'FLOW-13', 'FLOW-14', 'FLOW-15', 'FLOW-16', 'FLOW-17',
+  'FLOW-18', 'FLOW-19', 'FLOW-20', 'FLOW-21', 'FLOW-22', 'FLOW-23', 'FLOW-24', 'FLOW-25', 'FLOW-27',
+  'FLOW-28', 'FLOW-30', 'FLOW-31', 'FLOW-32', 'UX-1', 'UX-2', 'UX-3', 'UX-4', 'UX-5', 'UX-6', 'RES-1',
+  'RES-2', 'RES-3', 'SCORE-1', 'SCORE-2', 'SCORE-3', 'SCORE-4', 'SCORE-5', 'SCORE-6', 'SCORE-7', 'SCORE-8',
+  'SCORE-9', 'SCORE-10', 'SCORE-11', 'PRIV-1', 'PRIV-3', 'PRIV-4', 'AUD-2', 'AUD-4', 'KEY-1', 'KEY-2',
+  'A11Y-4', 'A11Y-5', 'DATA-1', 'DATA-5', 'DATA-6', 'DATA-2', 'DATA-3', 'DATA-4', 'MVP-1', 'MVP-2',
+  'PANEL-1', 'PANEL-2', 'PANEL-3', 'PANEL-4', 'PANEL-5', 'TEAM-1', 'TEAM-2', 'TEAM-15', 'TEAM-16', 'TEAM-6',
+  'TEAM-7', 'TEAM-8', 'TEAM-9', 'TEAM-10', 'TEAM-11', 'TEAM-12', 'SUM-1', 'SUM-2', 'SUM-3', 'SUM-5', 'SUM-6',
+  'HOST-6', 'ROUND-1', 'ROUND-2', 'ROUND-3', 'ROUND-4', 'ROUND-5', 'ROUND-6', 'LIVE-1', 'LIVE-2', 'LIVE-3',
+  'LIVE-4', 'LIVE-5', 'LIVE-6', 'LIVE-7', 'LIVE-8', 'LIVE-9', 'HPRIV-1',
+  // Step 3: transcripts, recordings and AI on the server, local-file import, retention job, privacy requests.
+  'FLOW-29', 'PRIV-5', 'PRIV-6', 'AUD-1', 'TR-1', 'TR-2', 'TR-3', 'TR-4', 'AI-1', 'AI-2', 'AI-3', 'AI-4',
+  'AI-5', 'AI-6', 'AI-7', 'AI-8', 'AI-9', 'AI-10', 'AI-11', 'AI-12', 'SUM-4', 'TEAM-14', 'DB-5', 'HPRIV-2',
+  'HPRIV-3', 'HPRIV-5', 'HPRIV-6',
+];
 const defined = new Map<string, string>();
 for (const f of specPages) for (const id of definedIds(readFileSync(join(DOCS, f), 'utf8'))) defined.set(id, f);
 const verification = readFileSync(join(DOCS, '10-verification.md'), 'utf8');
 const rows = verificationRows(verification);
 
 describe('traceability: docs/10-verification.md', () => {
-  it('OV-3: finds the requirement ids in docs 01-09, 11 and 12 and the rows of the verification page', () => {
-    expect(specPages).toHaveLength(11);
+  it('OV-3: finds the requirement ids in every docs page and the rows of the verification page', () => {
+    expect(specPages).toHaveLength(12);
+    expect(specPages).toContain('13-hosted-version.md');
+    expect(defined.get('AUTH-1')).toBe('13-hosted-version.md');
     expect(specPages).toContain('11-interviewers-transcripts-ai.md');
     expect(specPages).toContain('12-planning-and-panels.md');
     expect(defined.get('TEAM-1')).toBe('12-planning-and-panels.md');
@@ -71,7 +90,7 @@ describe('traceability: docs/10-verification.md', () => {
     expect(rows.length).toBeGreaterThan(80);
   });
 
-  it('every requirement id defined in docs 01-09, 11 and 12 has exactly one row', () => {
+  it('every requirement id defined in the docs has exactly one row', () => {
     const counts = new Map<string, number>();
     for (const r of rows) counts.set(r.id, (counts.get(r.id) ?? 0) + 1);
     const missing = [...defined.keys()].filter((id) => !counts.has(id));
@@ -83,7 +102,7 @@ describe('traceability: docs/10-verification.md', () => {
   it('the verification page names no id that the specification does not define', () => {
     const mentioned = new Set([...verification.matchAll(new RegExp(`\`(${ID.source})\``, 'g'))].map((m) => m[1]));
     const unknown = [...mentioned].filter((id) => !defined.has(id));
-    expect(unknown, 'ids in docs/10-verification.md that docs 01-09, 11 and 12 do not define').toEqual([]);
+    expect(unknown, 'ids in docs/10-verification.md that the other pages do not define').toEqual([]);
   });
 
   it('every cited test file exists and has a test title mentioning the row’s id', () => {
@@ -119,7 +138,7 @@ describe('traceability: docs/10-verification.md', () => {
       }
       if (listed) bad.push(`${m[1]}: built now? Remove it from NOT_BUILT_YET (its row is "${status}")`);
       if (!/^(Automated|Partial|Manual)/.test(status)) bad.push(`${m[1]}: status "${status}" must start with Automated, Partial or Manual`);
-      if (/^Automated/.test(status) && !/`(src|e2e|scripts)\//.test(how)) bad.push(`${m[1]}: automated but cites no test or script`);
+      if (/^Automated/.test(status) && !/`(src|server|e2e|scripts)\//.test(how)) bad.push(`${m[1]}: automated but cites no test or script`);
       if (/^(Partial|Manual)/.test(status) && !/manual/i.test(how + status)) bad.push(`${m[1]}: partial/manual rows must say what is checked by hand`);
     }
     expect(bad).toEqual([]);
@@ -129,8 +148,8 @@ describe('traceability: docs/10-verification.md', () => {
 describe('traceability helpers', () => {
   it('parses ids, rows and test titles', () => {
     expect(definedIds('- `FLOW-1` A\n  - `X-2` b\ntext `FLOW-3`')).toEqual(['FLOW-1', 'X-2']);
-    expect(verificationRows('| `A-1` | x | `src/a.test.ts` “t”, `e2e/b.spec.ts` | Automated |')).toEqual([
-      { id: 'A-1', files: ['src/a.test.ts', 'e2e/b.spec.ts'], line: 1 },
+    expect(verificationRows('| `A-1` | x | `src/a.test.ts` “t”, `e2e/b.spec.ts`, `server/c.test.ts` | Automated |')).toEqual([
+      { id: 'A-1', files: ['src/a.test.ts', 'e2e/b.spec.ts', 'server/c.test.ts'], line: 1 },
     ]);
     expect(testTitles("it('A-1: x', () => {}); test(`B-2 y`, async () => {}); test.describe('C-3', () => {})")).toEqual(['A-1: x', 'B-2 y']);
   });

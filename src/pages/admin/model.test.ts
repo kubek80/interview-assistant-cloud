@@ -25,13 +25,13 @@ describe('Admin helpers', () => {
     expect(auditValueText('<b>x</b>')).toBe('<b>x</b>');
   });
 
-  it('AUD-3: the filter form maps to the repository filter; empty fields mean any', () => {
+  it('AUD-3: the filter form maps to the server filter; empty fields mean any', () => {
     expect(toAuditFilter({ action: '', from: '', to: '', text: '  ' })).toEqual({});
     expect(toAuditFilter({ action: 'export', from: '2026-11-01', to: '2026-11-24', text: ' alice ' })).toEqual({
-      actions: ['export'],
+      action: 'export',
       from: new Date(2026, 10, 1, 0, 0, 0, 0).toISOString(),
       to: new Date(2026, 10, 24, 23, 59, 59, 999).toISOString(),
-      text: 'alice',
+      q: 'alice',
     });
   });
 

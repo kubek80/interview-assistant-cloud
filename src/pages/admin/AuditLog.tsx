@@ -1,24 +1,20 @@
 import { useMemo, useState } from 'react';
-import { AUDIT_ACTION_LABELS, exportAuditCsv, useAuditEvents } from '../../db';
-import type { AuditAction, AuditEvent } from '../../domain/types';
+import { AUDIT_ACTION_LABELS, exportAuditCsv, useAuditLog } from '../../db';
+import type { AuditEntry } from '../../shared/api';
+import type { AuditEntity } from '../../domain/types';
 import { Button, DocLink, EmptyState, Field, Select, TextInput, downloadFile, formatDateTime, useToast } from '../../ui';
 import { auditEntityText, auditValueText, toAuditFilter, type AuditFilterForm } from './model';
 
-const PAGE = 100;
 const EMPTY: AuditFilterForm = { action: '', from: '', to: '', text: '' };
 
-/** AUD-1, AUD-2, AUD-3: view, filter and export the append-only audit log. */
+/** HPRIV-4, AUD-3: view, filter and export the audit log kept in the database. */
 export function AuditLog() {
   const [form, setForm] = useState<AuditFilterForm>(EMPTY);
-  const [shown, setShown] = useState(PAGE);
   const filter = useMemo(() => toAuditFilter(form), [form]);
-  const events = useAuditEvents(filter);
+  const { entries, hasMore, loadMore, loadingMore } = useAuditLog(filter);
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
-  const set = (patch: Partial<AuditFilterForm>) => {
-    setForm((f) => ({ ...f, ...patch }));
-    setShown(PAGE);
-  };
+  const set = (patch: Partial<AuditFilterForm>) => setForm((f) => ({ ...f, ...patch }));
   const filtered = !!(form.action || form.from || form.to || form.text.trim());
 
   const exportCsv = async () => {
@@ -37,19 +33,12 @@ export function AuditLog() {
   return (
     <div className="stack">
       <p>
-        Every plan lock, start, submission, edit after submission, export, import, bank reload, retention purge and privacy
-        request is recorded here. The log is append-only: entries cannot be edited or deleted. <DocLink req="AUD-1" />{' '}
-        <DocLink req="AUD-2" />
+        Every change to people, the question bank and settings, every sign-in and every export is recorded here, with who did it and when. Entries cannot be
+        changed or deleted. <DocLink req="HPRIV-4" />
       </p>
-
       <form className="adm-filters" role="search" aria-label="Filter the audit log" onSubmit={(e) => e.preventDefault()}>
         <Field label="Action">
-          <Select
-            value={form.action}
-            onChange={(e) => set({ action: e.target.value as AuditAction | '' })}
-            placeholder="All actions"
-            options={(Object.keys(AUDIT_ACTION_LABELS) as AuditAction[]).map((a) => ({ value: a, label: AUDIT_ACTION_LABELS[a] }))}
-          />
+          <Select value={form.action} onChange={(e) => set({ action: e.target.value })} placeholder="All actions" options={Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => ({ value, label }))} />
         </Field>
         <Field label="From (date)">
           <TextInput type="date" value={form.from} onChange={(e) => set({ from: e.target.value })} />
@@ -57,29 +46,24 @@ export function AuditLog() {
         <Field label="To (date)">
           <TextInput type="date" value={form.to} onChange={(e) => set({ to: e.target.value })} />
         </Field>
-        <Field label="Search" hint="Actor, action, entity id or reason.">
+        <Field label="Search" hint="Person, action, item or reason.">
           <TextInput type="search" value={form.text} onChange={(e) => set({ text: e.target.value })} />
         </Field>
         <div className="adm-filters__actions">
           <Button onClick={() => set(EMPTY)} disabled={!filtered}>
             Clear filters
           </Button>
-          <Button icon="download" onClick={exportCsv} disabled={busy || !events?.length}>
+          <Button icon="download" onClick={exportCsv} disabled={busy || !entries?.length}>
             Export CSV
           </Button>
         </div>
       </form>
-
       <p className="small muted" aria-live="polite">
-        {events === undefined
-          ? 'Loading…'
-          : `${events.length} entr${events.length === 1 ? 'y' : 'ies'}${filtered ? ' match the filters' : ''}, newest first.${filtered ? ' The CSV export uses the same filters.' : ''}`}{' '}
-        <DocLink req="AUD-3" />
+        {entries === undefined ? 'Loading…' : `${entries.length}${hasMore ? '+' : ''} entr${entries.length === 1 ? 'y' : 'ies'}${filtered ? ' match the filters' : ''}, newest first.`}
       </p>
-
-      {events && events.length === 0 ? (
+      {entries && entries.length === 0 ? (
         <EmptyState title={filtered ? 'No entries match these filters.' : 'The audit log is empty.'} />
-      ) : events ? (
+      ) : entries ? (
         <>
           <div className="table-wrap">
             <table className="table table--compact adm-audit">
@@ -87,24 +71,24 @@ export function AuditLog() {
               <thead>
                 <tr>
                   <th scope="col">Time</th>
-                  <th scope="col">Actor</th>
+                  <th scope="col">Who</th>
                   <th scope="col">Action</th>
-                  <th scope="col">Entity</th>
+                  <th scope="col">Item</th>
                   <th scope="col">Reason</th>
                   <th scope="col">Before / after</th>
                 </tr>
               </thead>
               <tbody>
-                {events.slice(0, shown).map((e) => (
-                  <AuditRow key={e.id} event={e} />
+                {entries.map((e) => (
+                  <AuditRow key={e.id} entry={e} />
                 ))}
               </tbody>
             </table>
           </div>
-          {events.length > shown && (
+          {hasMore && (
             <p>
-              <Button onClick={() => setShown((n) => n + PAGE)}>
-                Show {Math.min(PAGE, events.length - shown)} more ({events.length - shown} not shown)
+              <Button onClick={loadMore} disabled={loadingMore}>
+                Show more
               </Button>
             </p>
           )}
@@ -114,19 +98,17 @@ export function AuditLog() {
   );
 }
 
-function AuditRow({ event: e }: { event: AuditEvent }) {
+function AuditRow({ entry: e }: { entry: AuditEntry }) {
   const before = auditValueText(e.before);
   const after = auditValueText(e.after);
   return (
     <tr>
       <td className="nowrap tabular">
-        <time dateTime={e.ts}>{formatDateTime(e.ts)}</time>
+        <time dateTime={e.at}>{formatDateTime(e.at)}</time>
       </td>
       <td>{e.actor}</td>
       <td className="nowrap">{AUDIT_ACTION_LABELS[e.action] ?? e.action}</td>
-      <td className="nowrap">
-        <span title={e.entityId ?? undefined}>{auditEntityText(e)}</span>
-      </td>
+      <td className="nowrap">{auditEntityText({ entity: e.entity as AuditEntity, entityId: e.entityId })}</td>
       <td className="pre-wrap">{e.reason ?? <span className="muted">–</span>}</td>
       <td>
         {before || after ? (

@@ -18,5 +18,38 @@
     "noEmit": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "vite.config.ts", "vite-plugins", "e2e", "playwright.config.ts"]
+  "include": ["src", "vite.config.ts", "e2e", "playwright.config.ts"],
+  // The browser app. The server has its own project (server/tsconfig.json).
+  // Excluded until steps 2 and 3 port them to the HTTP data layer (README "Porting a screen"):
+  // the local app's IndexedDB layer, its end-to-end tests, and the screens that still use it.
+  "exclude": [
+    "src/db-local",
+    "e2e-local",
+    "src/ai",
+    "src/pages/Dashboard.tsx",
+    "src/pages/NewInterview.tsx",
+    "src/pages/PlanSeveral.tsx",
+    "src/pages/Setup.tsx",
+    "src/pages/LiveInterview.tsx",
+    "src/pages/CandidateWindow.tsx",
+    "src/pages/Scorecard.tsx",
+    "src/pages/Debrief.tsx",
+    "src/pages/Comparison.tsx",
+    "src/pages/Summary.tsx",
+    "src/pages/CandidateSummary.tsx",
+    "src/pages/admin/AiAdmin.tsx",
+    "src/pages/admin/BankAdmin.tsx",
+    "src/pages/admin/Device.tsx",
+    "src/pages/admin/Privacy.tsx",
+    "src/pages/compare",
+    "src/pages/dashboard",
+    "src/pages/debrief",
+    "src/pages/interview",
+    "src/pages/panel",
+    "src/pages/scorecard",
+    "src/pages/setup",
+    "src/pages/summary",
+    "src/pages/team",
+    "src/pages/transcript"
+  ]
 }
