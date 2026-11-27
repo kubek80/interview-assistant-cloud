@@ -7,7 +7,10 @@ RUN npm ci
 COPY . .
 # Build the browser app and the server (the same two builds as "npm run build", without the type check).
 RUN npx vite build && npx vite build --config vite.server.config.ts
+# HOST=0.0.0.0: listen on the container's network address so the published port reaches the app
+# (outside production the server otherwise listens only on 127.0.0.1).
 ENV NODE_ENV=development \
+    HOST=0.0.0.0 \
     PORT=8080 \
     STATIC_DIR=dist/client \
     MIGRATIONS_DIR=server/db/migrations \
