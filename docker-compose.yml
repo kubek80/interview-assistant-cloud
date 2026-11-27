@@ -1,26 +1,23 @@
-# Run the hosted Interview Assistant on your own computer with Docker. For trying it out and for
-# development only: it uses the development sign-in (no Google account) and a database with no
-# password. Never use this file for real candidate data or in production (see docs/deploy/README.md).
+# Run the hosted Interview Assistant on your own computer with Docker. For trying it out only: it
+# uses the development sign-in (no Google account) and a database with no password. Never use this
+# file for real candidate data or in production (see docs/deploy/README.md).
 #
-# Everything in Docker (nothing else to install):
+# Windows: double-click start-local.bat (and stop-local.bat to stop).
+# Any system:
 #
-#     docker compose up
+#     docker compose up -d --build
 #
-#   then open http://localhost:5173 and choose "Development sign-in". The first start takes a few
-#   minutes (it installs dependencies, creates the tables and imports the 207 bundled questions).
-#   Test users: admin@, organiser@, interviewer@ and reviewer@example.test.
-#   To be several people at once, sign in as different users in separate browser profiles or a
-#   private window.
+#   then open http://localhost:8080 and follow "How to sign in here" on the sign-in screen.
+#   The first start takes a few minutes. Test users: admin@, organiser@, interviewer@ and
+#   reviewer@example.test. To be several people at once, sign in as different users in a private
+#   window or another browser profile. Use "localhost" in the address, not 127.0.0.1.
 #
-# Only the database in Docker, the app with Node.js on your machine:
-#
-#     docker compose up -d db
-#     cp .env.example .env
-#     export DATABASE_URL=postgres://ia@127.0.0.1:54329/ia_dev
-#     npm install && npm run db:migrate && npm run db:seed && npm run db:dev-users && npm run dev
-#
-# Stop:                       docker compose down
+# Stop (keeps your data):     docker compose down
 # Stop and delete all data:   docker compose down -v
+# After pulling new code:     docker compose up -d --build
+#
+# Developing with Node.js on your machine instead: start only the database with
+# "docker compose up -d db" and follow "Development quick start" in README.md (skip "npm run db:start").
 
 services:
   db:
@@ -41,37 +38,21 @@ services:
       retries: 30
 
   app:
-    image: node:22-bookworm-slim
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: local.Dockerfile
     depends_on:
       db:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://ia@db:5432/ia_dev
       SESSION_SECRET: local-docker-only-not-a-secret-0123456789abcdef
-      PUBLIC_URL: http://localhost:5173
+      PUBLIC_URL: http://localhost:8080
       BOOTSTRAP_ADMINS: admin@example.test
       DEV_SIGN_IN: "true"
-      PORT: "8080"
     ports:
-      - "127.0.0.1:5173:5173"
-    volumes:
-      - .:/app
-      # Dependencies live in a Docker volume, so they are built for Linux and do not mix with any
-      # node_modules folder on your own machine.
-      - app-node-modules:/app/node_modules
-    command:
-      - sh
-      - -c
-      - |
-        set -e
-        npm ci
-        npm run db:migrate
-        npm run db:seed
-        npm run db:dev-users
-        npm run -s dev:server &
-        exec npx vite --host 0.0.0.0
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
 
 volumes:
   db-data:
-  app-node-modules:

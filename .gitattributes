@@ -1,0 +1,5 @@
+# Same line endings on every system, so files copied into Docker images behave the same.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.docx binary
