@@ -69,6 +69,24 @@ function DevSignIn({ returnTo, primary }: { returnTo: string; primary: boolean }
     <form className="auth-dev stack" onSubmit={submit} aria-labelledby="dev-title">
       <h2 id="dev-title">Development sign-in</h2>
       <p className="small muted">For development and tests only. It does not exist on a real installation.</p>
+      <div className="auth-dev-help small">
+        <p>
+          <strong>How to sign in here</strong>
+        </p>
+        <ul>
+          <li>
+            First time: type <code>admin@example.test</code> in Email (the administrator in the example settings).{' '}
+            <Button type="button" variant="ghost" size="sm" onClick={() => setEmail('admin@example.test')}>
+              Use it
+            </Button>
+          </li>
+          <li>
+            Other test users are in the list once added: <code>organiser@example.test</code>, <code>interviewer@example.test</code> and{' '}
+            <code>reviewer@example.test</code>. An administrator can add more on the Users page.
+          </li>
+          <li>To be several people at once, sign in as a different user in a private window or another browser profile.</li>
+        </ul>
+      </div>
       {users && users.length > 0 && (
         <Field label="Test user">
           <Select value={users.some((u) => u.email === email) ? email : ''} onChange={(e) => setEmail(e.target.value)} placeholder="Choose…" options={users.map((u) => ({ value: u.email, label: `${u.name ?? u.email} (${ROLE_LABELS[u.role]})` }))} />
