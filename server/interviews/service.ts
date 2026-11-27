@@ -21,6 +21,8 @@ import { canInRound, type Actor, type RoundAccess } from '../authz/policy';
 import { loadInterview } from '../rounds/service';
 import { personName } from '../../src/domain/rounds';
 import { canFinish } from '../../src/domain/validation';
+import { othersHidden as hiddenRule } from '../../src/domain/panel';
+import { decisionFor } from '../panel/service';
 import {
   EMPTY_OVERALL,
   PRESENCE_TTL_MS,
@@ -197,7 +199,7 @@ async function recordData(db: Executor, recordId: string): Promise<{ answers: An
   };
 }
 
-type RecordRow = { id: string; interview_id: string; owner_user_id: string | null; names: string[]; shared_with: string[]; state: 'draft' | 'submitted'; overall_rating: number | null; recommendation: Recommendation | null; rationale: string | null; submitted_at: Date | null; version: number };
+type RecordRow = { id: string; interview_id: string; owner_user_id: string | null; names: string[]; shared_with: string[]; state: 'draft' | 'submitted'; overall_rating: number | null; recommendation: Recommendation | null; rationale: string | null; submitted_at: Date | null; version: number; origin?: 'live' | 'entered' | 'imported'; entered_at?: Date | null; entered_by_name?: string | null };
 
 async function recordDetail(db: Executor, r: RecordRow): Promise<RecordDetail> {
   const data = await recordData(db, r.id);
@@ -212,6 +214,7 @@ async function recordDetail(db: Executor, r: RecordRow): Promise<RecordDetail> {
     version: r.version,
     overall: { rating: (r.overall_rating as Score | null) ?? null, recommendation: r.recommendation ?? null, rationale: r.rationale ?? '' },
     ...data,
+    ...(r.origin === 'entered' ? { origin: 'entered' as const, enteredBy: r.entered_by_name ?? 'someone no longer here', enteredAt: r.entered_at?.toISOString() ?? null } : {}),
   };
 }
 
@@ -224,15 +227,16 @@ async function recordFor(db: Executor, interviewId: string, userId: string): Pro
 }
 
 /**
- * LIVE-3, FLOW-27: whether others' marks are hidden from `actor`. When the round hides them, nobody
- * sees another person's marks until their own record (or the one they share) is submitted, or the
- * interview is complete. Organisers watching without a record of their own wait for completion.
+ * LIVE-3, FLOW-27: whether others' marks are hidden from `actor`: the one rule, in src/domain/panel.ts
+ * (othersHidden), shared with the debrief, the Summary and the exports. When the round hides them and
+ * the interview is running, nobody sees another person's marks until their own record (or the one they
+ * share) is submitted; once it is complete everyone does. Organisers watching without a record wait.
  */
-async function othersHidden(db: Executor, actor: Actor, interviewId: string): Promise<boolean> {
+export async function othersHidden(db: Executor, actor: Actor, interviewId: string): Promise<boolean> {
   const i = await db.selectFrom('interviews as i').innerJoin('rounds as r', 'r.id', 'i.round_id').select(['i.state', 'r.hide_others_scores']).where('i.id', '=', interviewId).executeTakeFirstOrThrow();
-  if (!i.hide_others_scores || i.state === 'completed') return false;
-  const mine = await recordFor(db, interviewId, actor.id);
-  return mine?.state !== 'submitted';
+  if (!i.hide_others_scores) return false;
+  const rows = await db.selectFrom('records').select(['origin', 'owner_user_id', 'shared_with', 'state']).where('interview_id', '=', interviewId).where('origin', '=', 'live').execute();
+  return hiddenRule(i.hide_others_scores, i.state, rows.map((r) => ({ origin: 'live' as const, ownerId: r.owner_user_id, sharedWith: r.shared_with, state: r.state })), actor.id);
 }
 
 /** LIVE-1, LIVE-3: my record in full, and the others' as the round lets me see them. */
@@ -391,6 +395,8 @@ export async function command(db: Executor, actor: Actor, interviewId: string, c
   if (cmd.type === 'lead') {
     if (i.lead_user_id === actor.id) return;
     await update({ lead_user_id: actor.id });
+    // AUD-2: who led when (no candidate data).
+    await appendAudit(db, actor, { action: 'interview.lead_taken', entity: 'interview', entityId: interviewId, roundId: i.round_id, before: { lead: i.lead_user_id }, after: { lead: actor.id } });
     await interviewEvent(db, interviewId, 'state');
     return;
   }
@@ -411,10 +417,12 @@ export async function command(db: Executor, actor: Actor, interviewId: string, c
   } else if (cmd.type === 'pause') {
     if (i.state === 'paused') return;
     await update({ state: 'paused', ...timerColumns(pauseTimers(t, i.current_question_id, now)) });
+    await appendAudit(db, actor, { action: 'interview.paused', entity: 'interview', entityId: interviewId, roundId: i.round_id, after: { elapsedSec: Math.round(pauseTimers(t, i.current_question_id, now).timer.accumulatedMs / 1000) } });
     await roundEvent(db, i.round_id, interviewId);
   } else {
     if (i.state === 'in_progress') return;
     await update({ state: 'in_progress', ...timerColumns(resumeTimers(t, i.current_question_id, now)) });
+    await appendAudit(db, actor, { action: 'interview.resumed', entity: 'interview', entityId: interviewId, roundId: i.round_id });
     await roundEvent(db, i.round_id, interviewId);
   }
   await interviewEvent(db, interviewId, 'state');
@@ -553,8 +561,8 @@ export async function applyOps(db: Executor, actor: Actor, recordId: string, ops
   return recordDetail(db, await lockRecord(db, recordId));
 }
 
-/** When the lead submits, the lead passes to whoever joined first among those still interviewing. */
-async function handOnLead(db: Executor, i: InterviewRow, leaving: readonly string[]): Promise<boolean> {
+/** When the lead submits, the lead passes to whoever joined first among those still interviewing (audited, AUD-2). */
+async function handOnLead(db: Executor, actor: Actor, i: InterviewRow, leaving: readonly string[]): Promise<boolean> {
   if (!i.lead_user_id || !leaving.includes(i.lead_user_id)) return false;
   const next = await db
     .selectFrom('interview_panel')
@@ -565,6 +573,7 @@ async function handOnLead(db: Executor, i: InterviewRow, leaving: readonly strin
     .orderBy('joined_at')
     .executeTakeFirst();
   await db.updateTable('interviews').set({ lead_user_id: next?.user_id ?? i.lead_user_id, version: sql`version + 1` }).where('id', '=', i.id).execute();
+  if (next) await appendAudit(db, actor, { action: 'interview.lead_passed', entity: 'interview', entityId: i.id, roundId: i.round_id, before: { lead: i.lead_user_id }, after: { lead: next.user_id } });
   return !!next;
 }
 
@@ -608,7 +617,7 @@ export async function submitRecord(db: Executor, actor: Actor, recordId: string)
     after: { interviewId: i.id, scored: data.answers.filter((a) => a.score != null).length, skipped: data.answers.filter((a) => a.skipped).length, rating: overall.rating, recommendation: overall.recommendation },
   });
   await db.deleteFrom('interview_presence').where('interview_id', '=', i.id).where('user_id', 'in', people).execute();
-  if (!(await completeIfDone(db, actor, i.id))) await handOnLead(db, i, people);
+  if (!(await completeIfDone(db, actor, i.id))) await handOnLead(db, actor, i, people);
   await interviewEvent(db, i.id, 'state');
   await interviewEvent(db, i.id, 'records');
   await roundEvent(db, i.round_id, i.id);
@@ -688,16 +697,25 @@ export async function amendRecord(db: Executor, actor: Actor, recordId: string, 
  * scores, once their own record is submitted too (or the interview is complete).
  */
 export async function loadScorecard(db: Executor, actor: Actor, recordId: string): Promise<ScorecardData> {
-  const r = await db.selectFrom('records').select(RECORD_COLUMNS).where('id', '=', recordId).where('origin', '=', 'live').executeTakeFirst();
+  const r = await db
+    .selectFrom('records as r')
+    .leftJoin('users as eb', 'eb.id', 'r.entered_by')
+    .select(RECORD_COLUMNS.map((c) => `r.${c}` as const))
+    .select(['r.origin', 'r.entered_at', 'r.entered_by', 'eb.name as eb_name', 'eb.email as eb_email'])
+    .where('r.id', '=', recordId)
+    .where('r.origin', 'in', ['live', 'entered'])
+    .executeTakeFirst();
   if (!r) throw notFound('That record');
-  const ownish = r.owner_user_id === actor.id || r.shared_with.includes(actor.id);
+  // TEAM-8: a judgement entered on someone's behalf is readable at once by the person who entered it.
+  const ownish = r.owner_user_id === actor.id || r.shared_with.includes(actor.id) || (r.origin === 'entered' && r.entered_by === actor.id);
   if (!ownish) {
     if (r.state !== 'submitted') throw notFound('That record');
     if (await othersHidden(db, actor, r.interview_id)) throw new ApiError(403, 'forbidden', 'This round hides other people’s scores until you have submitted yours.');
   }
   const i = await db.selectFrom('interviews').selectAll().where('id', '=', r.interview_id).executeTakeFirstOrThrow();
-  const [interview, record, now] = await Promise.all([loadInterview(db, actor, r.interview_id), recordDetail(db, r), dbNow(db)]);
-  return { record, interview, elapsedSec: questionSeconds(timersOf(i), now), startedAt: i.started_at?.toISOString() ?? null, mine: r.owner_user_id === actor.id };
+  const row: RecordRow = { ...r, entered_by_name: r.eb_email ? personName({ name: r.eb_name, email: r.eb_email }) : null };
+  const [interview, record, now, decision] = await Promise.all([loadInterview(db, actor, r.interview_id), recordDetail(db, row), dbNow(db), decisionFor(db, actor, r.interview_id)]);
+  return { record, interview, elapsedSec: questionSeconds(timersOf(i), now), startedAt: i.started_at?.toISOString() ?? null, mine: r.owner_user_id === actor.id, decision };
 }
 
 /** FLOW-32: every export of a scorecard is recorded. */

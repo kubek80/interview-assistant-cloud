@@ -240,6 +240,8 @@ export interface RecordsTable {
   created_at: Generated<Date>;
   updated_at: Generated<Date>;
   shared_with: ColumnType<string[], string | undefined, string>;
+  /** TEAM-7 (migration 0006): the round member on whose behalf an entered judgement was typed. */
+  entered_for: ColumnType<string | null, string | null | undefined, string | null>;
 }
 
 export interface AnswersTable {
@@ -348,6 +350,34 @@ export interface QuestionLooksGoodTable {
   created_at: Generated<Date>;
 }
 
+// ---- Panel decisions and written summaries (migrations 0002 and 0006, TEAM-9…TEAM-11, SUM-4) ----
+
+export interface PanelDecisionsTable {
+  interview_id: string;
+  recommendation: 'strong_hire' | 'hire' | 'lean_no_hire' | 'no_hire';
+  rationale: string;
+  /** [{ userId: string | null, name: string }] */
+  participants: Json<Array<{ userId: string | null; name: string }>>;
+  overall_rating: number | null;
+  /** { [questionId]: 1-4 } */
+  question_scores: Json<Record<string, number>>;
+  /** Who last recorded or changed it, and when. */
+  decided_by: string | null;
+  decided_at: Generated<Date>;
+  version: Generated<number>;
+  created_by: string | null;
+  created_at: Generated<Date>;
+}
+
+export interface WrittenSummariesTable {
+  candidate_id: string;
+  text: string;
+  ai_draft: Generated<boolean>;
+  updated_by: string | null;
+  updated_at: Generated<Date>;
+  version: Generated<number>;
+}
+
 export interface Database {
   users: UsersTable;
   auth_sessions: AuthSessionsTable;
@@ -376,6 +406,8 @@ export interface Database {
   question_proposals: QuestionProposalsTable;
   question_comments: QuestionCommentsTable;
   question_looks_good: QuestionLooksGoodTable;
+  panel_decisions: PanelDecisionsTable;
+  written_summaries: WrittenSummariesTable;
 }
 
 export type UserRow = Selectable<UsersTable>;

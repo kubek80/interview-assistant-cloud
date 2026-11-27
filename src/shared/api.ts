@@ -564,6 +564,10 @@ export interface RecordDetail extends RecordData {
   state: 'draft' | 'submitted';
   submittedAt: string | null;
   version: number;
+  /** TEAM-8: a judgement entered on someone's behalf (its owner is null then): by whom and when. */
+  origin?: 'live' | 'entered';
+  enteredBy?: string | null;
+  enteredAt?: string | null;
 }
 
 /** LIVE-3: another panel member's record as I may see it. */
@@ -628,6 +632,8 @@ export interface ScorecardData {
   startedAt: string | null;
   /** I own it (I may amend it, AUD-4). */
   mine: boolean;
+  /** TEAM-12: the interview's panel decision, shown beside (never instead of) this record's figures; null when none or hidden from me. */
+  decision?: DecisionJson | null;
 }
 
 /** GET /api/interviews/:id/present: what the candidate window may show (FLOW-11, LIVE-7). */
@@ -637,3 +643,209 @@ export interface PresentView {
   total: number;
   text: string | null;
 }
+
+// ---- The debrief, panel decision, judgements entered on someone's behalf and the Summary ----
+// (LIVE-9, TEAM-6…TEAM-12, SUM-1…SUM-6, SCORE-11, FLOW-28, FLOW-30, PANEL-5)
+//
+// Computed on the server (server/panel/service.ts with the pure src/domain/panel.ts) for the reader:
+// other people's judgements, the panel decision and every figure made from them are left out while the
+// round hides them from this reader (LIVE-3, FLOW-27). Nothing here carries data the reader may not see.
+
+type Rec = import('../domain/types').Recommendation;
+type Sc = import('../domain/types').Score;
+
+/** A person in a decision's "who took part": a round member (userId) or someone named by hand. */
+export interface Participant {
+  userId: string | null;
+  name: string;
+}
+
+/** TEAM-9: the panel's agreed view of one interview. It never changes anyone's own record (TEAM-11). */
+export interface DecisionJson {
+  recommendation: Rec;
+  rationale: string;
+  participants: Participant[];
+  rating: Sc | null;
+  /** Agreed question scores (question id → 1-4); empty unless the panel set some. */
+  scores: Record<string, Sc>;
+  recordedBy: string;
+  recordedAt: string;
+  /** TEAM-11: the last change, made with a reason. */
+  changedBy: string | null;
+  changedAt: string | null;
+  version: number;
+}
+
+export interface DecisionInput {
+  recommendation: Rec;
+  rationale: string;
+  participants: Participant[];
+  rating: Sc | null;
+  scores: Record<string, Sc>;
+  /** TEAM-11: required to change a decision; ROUND-5: required for any change in a closed round. */
+  reason?: string;
+  /** The version this change starts from (null for a new decision): refused if someone changed it meanwhile. */
+  baseVersion: number | null;
+}
+
+/** TEAM-7: a judgement typed on someone's behalf. */
+export interface EnteredJudgementInput {
+  /** A round member; or null with `name` for someone who has no access to the app. */
+  forUserId: string | null;
+  name: string | null;
+  rating: Sc;
+  recommendation: Rec;
+  rationale: string;
+  /** Question id → score. Questions left out were not scored (like skipped ones). */
+  scores: Record<string, Sc>;
+  /** Question id → what they noted (optional). */
+  notes: Record<string, string>;
+  /** TEAM-8: required to correct; ROUND-5: required in a closed round. */
+  reason?: string;
+}
+
+/** TEAM-6: where one panel member is. "entered": a judgement was entered on their behalf. */
+export type PanelPersonStatus = 'submitted' | 'entered' | 'interviewing' | 'to-come' | 'did-not-take-part';
+
+export interface PanelPerson {
+  id: string;
+  name: string;
+  status: PanelPersonStatus;
+  /** LIVE-5: they scored on this person's record (shared screen). */
+  onRecordOf: string | null;
+}
+
+/** One judgement (a live record or one entered by hand) as the reader may see it. */
+export interface JudgementView {
+  recordId: string;
+  origin: 'live' | 'entered';
+  /** PANEL-5: everyone it speaks for (a shared screen is one judgement with all the names). */
+  names: string[];
+  /** TEAM-8: "Entered by … on behalf of …". */
+  enteredBy: string | null;
+  enteredAt: string | null;
+  enteredFor: string | null;
+  submittedAt: string | null;
+  /** The reader's own record (or the one they share). */
+  mine: boolean;
+  /** An entered judgement whose person now has their own record in the app: not counted; an organiser removes it. */
+  superseded: boolean;
+  /** LIVE-3: hidden from this reader until their own record is submitted: no figures, no words. */
+  hidden: boolean;
+  rating: Sc | null;
+  recommendation: Rec | null;
+  rationale: string | null;
+  /** Null when hidden. answered = 0: no question scores (TEAM-7: not in the panel score). */
+  figures: { pct: number | null; band: import('../domain/scoring').Band | null; insufficientEvidence: boolean; capped: boolean; coverage: number; answered: number } | null;
+  /** Per category of the set (plan order): average 1-4 and percentage; empty when hidden. */
+  categories: Array<{ id: string; average: number | null; pct: number | null }>;
+  /** FLOW-18: questions flagged (index in the set), with their score. */
+  flagged: Array<{ index: number; score: Sc | null; skipped: boolean }>;
+}
+
+export interface SummaryRow {
+  interviewId: string;
+  roundId: string;
+  roundName: string;
+  roundState: 'open' | 'closed';
+  candidate: { id: string; name: string; requisitionId: string | null };
+  trackId: string;
+  trackName: string;
+  set: { id: string; name: string; fingerprint: string; questions: number };
+  /** As planned (YYYY-MM-DD, HH:MM), else the day it started. */
+  date: string | null;
+  time: string | null;
+  interviewState: 'planned' | 'in_progress' | 'paused' | 'completed';
+  panel: PanelPerson[];
+  /** Submitted judgements, counted and superseded ones (hidden ones carry no figures). */
+  judgements: JudgementView[];
+  decision: DecisionJson | null;
+  /** LIVE-3: a decision exists but is hidden from this reader for now. */
+  decisionHidden: boolean;
+  outcome: import('../domain/round').RoundOutcome;
+  /** "All agree", "Split", "From Ana Diaz" or "" (SUM-1). */
+  agreement: string;
+  score: import('../domain/round').RoundScore;
+  /** The figure that stands for the panel, per category id (agreed, else median, else the one judgement): FLOW-30. */
+  panelCategories: Array<{ id: string; average: number | null }>;
+  strengths: string[];
+  concerns: string[];
+  state: import('../domain/round').RoundState;
+  missing: string[];
+  /** Submitted judgements hidden from this reader. */
+  hiddenCount: number;
+  hasSummary: boolean;
+}
+
+/** SUM-3: strongest and weakest answers, relative to this candidate's own answers. */
+export interface AnswerHighlight {
+  index: number;
+  questionId: string;
+  text: string;
+  category: string;
+  /** The panel's score for the question: agreed, else the median of the scores given. */
+  score: number;
+  by: Array<{ names: string[]; score: Sc | null; notes: string[] }>;
+}
+
+export interface CandidateDetailJson {
+  /** One column per visible judgement with question scores (agreed scores first, when there are any). */
+  columns: Array<{ label: string; source: 'agreed' | 'judgement'; recordId: string | null }>;
+  categories: Array<{ id: string; name: string; mustHave: boolean; averages: Array<number | null>; pcts: Array<number | null>; figure: number | null }>;
+  strongest: AnswerHighlight[];
+  weakest: AnswerHighlight[];
+  /** Why there are no highlights: "even" (every answer scored about the same) or "none" (no scores). */
+  highlightsNote: 'even' | 'none' | null;
+  flagged: Array<{ index: number; text: string; by: string[] }>;
+  skipped: Array<{ index: number; text: string; by: string; reason: string }>;
+}
+
+/** SUM-4: the candidate's written summary (one per candidate). */
+export interface WrittenSummaryJson {
+  text: string;
+  updatedBy: string;
+  updatedAt: string;
+  version: number;
+}
+
+/** GET /api/interviews/:id/debrief: the debrief and the candidate page (LIVE-9, SUM-3). */
+export interface DebriefData {
+  row: SummaryRow;
+  set: QuestionSetDetail;
+  detail: CandidateDetailJson;
+  /** SCORE-11, FLOW-28: of the visible judgements with question scores. */
+  panel: { members: number; median: number | null; min: number | null; max: number | null; spread: number | null; spreadFlag: boolean };
+  /** TEAM-9: "Start from the panel's median" (halves rounded up), from the visible judgements. */
+  medianScores: Record<string, Sc>;
+  /** The round's team, to choose who took part and on whose behalf a judgement is entered. */
+  team: Array<{ id: string; name: string }>;
+  summary: WrittenSummaryJson | null;
+  /** LIVE-3: other people's judgements are hidden from me for now. */
+  hidden: boolean;
+  /** What I may do here (the server checks every request again). */
+  can: { decide: boolean; enter: boolean; writeSummary: boolean; remove: boolean; reasonNeeded: boolean };
+  /** My own live record of this interview, if any. */
+  myRecordId: string | null;
+  /** Other interviews of this candidate in the round. */
+  otherInterviews: Array<{ id: string; date: string | null; setName: string }>;
+}
+
+/** GET /api/summary, GET /api/rounds/:roundId/summary (SUM-1, SUM-2, ROUND-6). */
+export interface SummaryData {
+  rows: SummaryRow[];
+  /** The rounds the rows come from (or could: every round the reader can see). */
+  rounds: Array<{ id: string; name: string; state: 'open' | 'closed'; trackName: string; createdAt: string; mine: boolean }>;
+}
+
+/** POST /api/summary/report (SUM-5). */
+export interface ReportInput {
+  format: 'markdown' | 'csv' | 'print';
+  /** The rows shown, in the order shown. */
+  interviewIds: string[];
+  /** The filters in words, printed on the report ("Round A, Hire, from 2026-12-01"). */
+  scope: string;
+}
+
+export type ReportResult =
+  | { format: 'markdown' | 'csv'; fileName: string; mime: string; text: string }
+  | { format: 'print'; items: Array<{ row: SummaryRow; detail: CandidateDetailJson; summary: WrittenSummaryJson | null }>; preparedBy: string; preparedAt: string };

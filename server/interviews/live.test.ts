@@ -551,7 +551,8 @@ describe('scorecards (FLOW-24, FLOW-31, FLOW-32)', () => {
 describe('route protection for interviewing (AUTH-5, ROUND-2, REVIEW-1)', () => {
   it('ROUND-2 AUTH-5 REVIEW-1 HPRIV-1: every interview and record route answers people off the round, and question reviewers, with "not found"; interviewers cannot mark panel members', async () => {
     const { id, rec } = await running();
-    const routes = a.routes.filter((r) => r.url.startsWith('/api/records') || /^\/api\/interviews\/:id\/(live|records|present|start|join|command|presence|panel)/.test(r.url));
+    // The debrief's routes on records (entered judgements) have their own matrix in server/panel/panel.test.ts.
+    const routes = a.routes.filter((r) => (r.url.startsWith('/api/records') && !/\/(entered|remove)$/.test(r.url)) || /^\/api\/interviews\/:id\/(live|records|present|start|join|command|presence|panel)/.test(r.url));
     expect(routes.length).toBe(13);
     const fill = (url: string) => url.replace(':userId', ids.ben).replace(':id', url.startsWith('/api/records') ? rec.ana : id);
     const wrong: string[] = [];

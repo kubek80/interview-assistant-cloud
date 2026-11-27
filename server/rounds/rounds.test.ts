@@ -130,7 +130,8 @@ describe('rounds (ROUND-1, ROUND-2, ROUND-5)', () => {
     // Changes that end the test's fixtures (close, reopen, cancel, remove) have their own tests below.
     const skip = ['POST /api/rounds/:roundId/close', 'POST /api/rounds/:roundId/reopen', 'POST /api/interviews/:id/cancel', 'DELETE /api/rounds/:roundId/members/:userId'];
     // The live interview's routes (server/interviews) have their own matrix in server/interviews/live.test.ts.
-    const interviewing = (url: string) => url.startsWith('/api/records') || /^\/api\/interviews\/:id\/(live|records|present|start|join|command|presence|panel)/.test(url);
+    // …and the debrief's (decision, entered judgements, summaries) theirs in server/panel/panel.test.ts.
+    const interviewing = (url: string) => url.startsWith('/api/records') || url.startsWith('/api/candidates') || /^\/api\/interviews\/:id\/(live|records|present|start|join|command|presence|panel|debrief|decision|judgements)/.test(url);
     const roundRoutes = a.routes.filter((x) => x.access.startsWith('round:') && !skip.includes(`${x.method} ${x.url}`) && !interviewing(x.url));
     expect(roundRoutes.length).toBeGreaterThanOrEqual(13);
     const who = { 'round organiser': as.olive, 'round interviewer': as.ian, administrator: as.admin, 'organiser not on it': as.oscar, 'interviewer not on it': as.ivy, reviewer: as.rita };

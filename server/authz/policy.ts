@@ -92,11 +92,17 @@ export const ROUND_ACTIONS = [
   'round.read', // see the round, its candidates, interviews, judgements, decisions and summary
   'round.manage', // change the round: name, team, settings, close and reopen
   'round.plan', // plan, change and cancel interviews; question sets
-  'round.decide', // record and change panel decisions; enter judgements on someone's behalf
+  'round.decide', // organisers: remove a judgement entered on someone's behalf (TEAM-8)
   'round.audit', // read the round's audit entries
   'round.export', // export the round's reports
   'interview.take_part', // join an interview on its panel and keep one's own record
   'record.amend', // AUD-4: change one's own submitted record, with a reason (the route checks ownership)
+  // The panel's own work on one interview (step 2b, second part). Granted to the round's organisers and
+  // administrators, and to the members on that interview's panel: canOnInterview() below is the rule;
+  // the service supplies whether the actor is on the panel.
+  'panel.decide', // TEAM-9…TEAM-11: record and change the interview's panel decision
+  'panel.enter', // TEAM-7, TEAM-8: enter (and correct) a judgement on someone's behalf
+  'panel.summary', // SUM-4: write the candidate's written summary
 ] as const;
 export type RoundAction = (typeof ROUND_ACTIONS)[number];
 
@@ -109,7 +115,7 @@ export interface RoundAccess {
 }
 
 /** Changes a closed round allows (ROUND-5): reading, and a few things for organisers with a reason. */
-const ALLOWED_WHEN_CLOSED: ReadonlySet<RoundAction> = new Set(['round.read', 'round.audit', 'round.export', 'round.manage', 'round.decide', 'record.amend']);
+const ALLOWED_WHEN_CLOSED: ReadonlySet<RoundAction> = new Set(['round.read', 'round.audit', 'round.export', 'round.manage', 'round.decide', 'record.amend', 'panel.decide', 'panel.enter', 'panel.summary']);
 
 /**
  * ROUND-2: people see only the rounds they are on; administrators see every round. Within a round,
@@ -135,6 +141,12 @@ export function canInRound(actor: Actor | null, action: RoundAction, round: Roun
       // AUD-4: the owner amends their own record (the route checks ownership). ROUND-5: in a closed
       // round only its organisers (and administrators) may still correct their judgements.
       return round.state === 'open' || member === 'organiser';
+    case 'panel.decide':
+    case 'panel.enter':
+    case 'panel.summary':
+      // Any member at the round level; canOnInterview() narrows interviewers to that interview's
+      // panel. ROUND-5: in a closed round only organisers (with a reason, which the route enforces).
+      return round.state === 'open' || member === 'organiser';
     case 'round.manage':
     case 'round.plan':
     case 'round.decide':
@@ -144,6 +156,21 @@ export function canInRound(actor: Actor | null, action: RoundAction, round: Roun
       return member === 'organiser';
   }
   return false;
+}
+
+export type PanelAction = 'panel.decide' | 'panel.enter' | 'panel.summary';
+
+/**
+ * TEAM-7…TEAM-11, SUM-4: who may record the panel decision, enter a judgement on someone's behalf and
+ * write the candidate's summary for one interview: the round's organisers and administrators, and the
+ * people on that interview's panel (a panel member marked "did not take part" included: they may still
+ * have been in the room for the discussion). Other interviewers of the round read but do not change it.
+ * ROUND-5: in a closed round only organisers and administrators, with a reason.
+ */
+export function canOnInterview(actor: Actor | null, action: PanelAction, round: RoundAccess | null, onPanel: boolean): boolean {
+  if (!actor || !round || !canInRound(actor, action, round)) return false;
+  if (actor.role === 'admin' || round.memberRole === 'organiser') return true;
+  return onPanel;
 }
 
 /** The global permissions an actor holds, sent to the browser so it can show the right screens. */

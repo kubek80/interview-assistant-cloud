@@ -16,6 +16,7 @@ import { registerLiveRoutes } from './live/routes';
 import { registerReviewRoutes } from './review/routes';
 import { registerRoundRoutes } from './rounds/routes';
 import { registerInterviewRoutes } from './interviews/routes';
+import { registerPanelRoutes } from './panel/routes';
 import { describeAccess } from './http/route';
 
 export interface BuildOptions {
@@ -113,6 +114,7 @@ export async function buildApp(ctx: AppContext, opts: BuildOptions = {}): Promis
   registerReviewRoutes(app, ctx);
   registerRoundRoutes(app, ctx);
   registerInterviewRoutes(app, ctx);
+  registerPanelRoutes(app, ctx);
   registerLiveRoutes(app, ctx, { heartbeatMs: opts.liveHeartbeatMs });
   opts.extraRoutes?.(app, ctx);
   if (opts.serveStatic !== false) registerStatic(app, ctx.config.staticDir);
