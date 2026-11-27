@@ -1,0 +1,77 @@
+# Run the hosted Interview Assistant on your own computer with Docker. For trying it out and for
+# development only: it uses the development sign-in (no Google account) and a database with no
+# password. Never use this file for real candidate data or in production (see docs/deploy/README.md).
+#
+# Everything in Docker (nothing else to install):
+#
+#     docker compose up
+#
+#   then open http://localhost:5173 and choose "Development sign-in". The first start takes a few
+#   minutes (it installs dependencies, creates the tables and imports the 207 bundled questions).
+#   Test users: admin@, organiser@, interviewer@ and reviewer@example.test.
+#   To be several people at once, sign in as different users in separate browser profiles or a
+#   private window.
+#
+# Only the database in Docker, the app with Node.js on your machine:
+#
+#     docker compose up -d db
+#     cp .env.example .env
+#     export DATABASE_URL=postgres://ia@127.0.0.1:54329/ia_dev
+#     npm install && npm run db:migrate && npm run db:seed && npm run db:dev-users && npm run dev
+#
+# Stop:                       docker compose down
+# Stop and delete all data:   docker compose down -v
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ia
+      POSTGRES_DB: ia_dev
+      # No password: the port below is published on this computer only (127.0.0.1).
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ia -d ia_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://ia@db:5432/ia_dev
+      SESSION_SECRET: local-docker-only-not-a-secret-0123456789abcdef
+      PUBLIC_URL: http://localhost:5173
+      BOOTSTRAP_ADMINS: admin@example.test
+      DEV_SIGN_IN: "true"
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - .:/app
+      # Dependencies live in a Docker volume, so they are built for Linux and do not mix with any
+      # node_modules folder on your own machine.
+      - app-node-modules:/app/node_modules
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        npm ci
+        npm run db:migrate
+        npm run db:seed
+        npm run db:dev-users
+        npm run -s dev:server &
+        exec npx vite --host 0.0.0.0
+
+volumes:
+  db-data:
+  app-node-modules:
