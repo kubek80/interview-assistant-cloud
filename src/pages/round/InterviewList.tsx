@@ -5,6 +5,7 @@ import type { InterviewSummary } from '../../shared/api';
 import { Badge, Button, ConfirmDialog, Dialog, Field, Icon, MenuButton, TextArea, TextInput, buttonClass, useToast, type Tone } from '../../ui';
 import { dayLabel, localDay } from '../../domain/team';
 import { MAX_PLAN_NOTE, STATUS_LABELS, namesList } from '../../domain/rounds';
+import { waitingFor } from '../../domain/live';
 import { candidateLabel, groupByDay } from '../dashboard/logic';
 import { PanelPicker } from './PanelPicker';
 
@@ -76,6 +77,8 @@ export function InterviewList({
                             {STATUS_LABELS[i.status]}
                           </Badge>
                         )}
+                        {/* LIVE-4, TEAM-6: who the interview still waits for. */}
+                        {i.status === 'waiting' && waitingFor(i.panel).length > 0 && <span className="small muted" data-testid="row-waiting">Waiting for {namesList(waitingFor(i.panel))}</span>}
                         {!i.questionSet.isRoundDefault && i.state === 'planned' && (
                           <Badge tone="neutral" icon="info">
                             Different questions
@@ -148,11 +151,11 @@ export function InterviewList({
   );
 }
 
-/** "You and Olive Organiser", "You", or "with Ben Ng and Cy Park" when I am not on the panel. */
+/** "You and Olive Organiser", "You, Ben Ng and Cy Park", "You", or "with Ben Ng and Cy Park" when I am not on the panel. */
 export function panelText(i: Pick<InterviewSummary, 'panel'>, meId: string | undefined): string {
   const others = i.panel.filter((p) => p.id !== meId).map((p) => p.name);
   if (others.length === i.panel.length) return `with ${namesList(others)}`;
-  return others.length ? `You and ${namesList(others)}` : 'You';
+  return namesList(['You', ...others]);
 }
 
 /** TEAM-2: change the day, time, interviewers and note of a planned interview. */

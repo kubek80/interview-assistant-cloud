@@ -5,7 +5,7 @@
 The hosted version ([Hosted version](#/docs/13-hosted-version)) replaces the v1 plan below. It is built in three steps:
 
 1. **Foundation (built):** the server, the PostgreSQL database and its migrations, Google sign-in, users and roles with the Users page, the question bank in the database with its import scripts, deployment to Google Cloud, and the test set-up.
-2. **Rounds and interviews (next):** hiring rounds and their teams, planning, interviewing together live, scorecards, the debrief and panel decision, and the summary.
+2. **Rounds and interviews (being built):** hiring rounds and their teams, planning, interviewing together live and scorecards are built; the debrief and panel decision, and the summary, are next.
 3. **The rest:** transcripts, recordings and the AI second opinion on the server, importing local-app files, the retention job, privacy requests, and a final verification pass.
 
 Until a step is built, its screens say "Coming in the next step", and the [Verification](#/docs/10-verification) page lists its requirements as not built yet.

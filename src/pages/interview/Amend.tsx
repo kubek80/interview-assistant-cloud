@@ -4,13 +4,15 @@ import { Card, Alert } from '../../ui/Card';
 import { ReasonDialog } from '../../ui/Dialog';
 import { TextArea } from '../../ui/Field';
 import { DocLink } from '../../docs/DocLink';
-import { RepoError, amendAnswer, amendOverall, type AmendAnswerPatch } from '../../db';
+import { RepoError, amendRecord } from '../../db';
 import { scoreLabel } from '../../domain/rubric';
-import { RECOMMENDATION_LABELS, type Answer, type OverallAssessment, type Question, type Session } from '../../domain/types';
+import { RECOMMENDATION_LABELS, type Answer, type NoteEntry, type OverallAssessment, type Question, type Score, type Session } from '../../domain/types';
 import { ScoreControl } from './ScoreControl';
 import { NoteStamp } from './Notes';
 import { OverallFields } from './OverallFields';
 import { describeAnswerAmendment, draftFromAnswer, draftNotes, type AnswerDraft } from './logic';
+
+type AmendAnswerPatch = { score?: Score | null; notes?: NoteEntry[] };
 
 /** RepoError details (e.g. which finish rule the change would break) folded into one message for ReasonDialog. */
 function withDetails(e: unknown): Error {
@@ -55,7 +57,10 @@ export function AmendAnswerForm({ session, question, position, answer, onDone }:
     const notes = draftNotes(draft);
     if (JSON.stringify(notes) !== JSON.stringify(answer.notes)) patch.notes = notes;
     try {
-      await amendAnswer(session.id, question.id, patch, reason);
+      await amendRecord(session.id, {
+        reason,
+        question: { id: question.id, ...(patch.score !== undefined ? { score: patch.score } : {}), ...(patch.notes ? { notes: patch.notes.map((n) => ({ atSec: n.atSec, text: n.text, by: n.by ?? null })) } : {}) },
+      });
     } catch (e) {
       throw withDetails(e);
     }
@@ -160,7 +165,7 @@ export function OverallPanel({ session }: { session: Session }) {
     if (draft.recommendation !== o.recommendation) patch.recommendation = draft.recommendation;
     if (draft.rationale.trim() !== o.rationale.trim()) patch.rationale = draft.rationale.trim();
     try {
-      await amendOverall(session.id, patch, reason);
+      await amendRecord(session.id, { reason, overall: patch });
     } catch (e) {
       throw withDetails(e);
     }

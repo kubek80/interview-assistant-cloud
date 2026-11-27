@@ -272,6 +272,6 @@ export function registerRoundRoutes(app: FastifyInstance, ctx: AppContext): void
   // FLOW-1, FLOW-34, TEAM-16: the Dashboard: every interview in the rounds I am on.
   route(app, ctx, { method: 'GET', url: '/api/my/interviews', access: { action: 'rounds.list' }, handler: ({ actor }) => rounds.myInterviews(ctx.db, actor) });
 
-  // Step 2b adds: POST /api/interviews/:id/start (consent confirmed once, LIVE-6, FLOW-10), the live
-  // state, records, answers, notes, decisions and the summary. Deliberately absent here.
+  // Starting, the live state, records, answers, notes and scorecards: server/interviews/routes.ts.
+  // Panel decisions, hand-entered judgements and the summary come with the debrief (next step).
 }

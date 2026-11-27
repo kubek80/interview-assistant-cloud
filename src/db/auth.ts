@@ -1,7 +1,7 @@
 // Who is signed in (AUTH-1…AUTH-6). The session itself is an HttpOnly cookie the page never sees.
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, api } from './http';
-import { queryClient } from './queryClient';
+import { queryClient, throwIfFatal } from './queryClient';
 import type { AuthOptions, DevUser, Me } from '../shared/api';
 
 /** The signed-in person; null when nobody is signed in; undefined while loading. */
@@ -16,7 +16,7 @@ export function useMe(): Me | null | undefined {
     staleTime: 60_000,
     retry: (n, err) => !(err instanceof ApiError && err.status < 500 && err.status > 0) && n < 3,
   });
-  if (q.isError) throw q.error;
+  throwIfFatal(q);
   return q.data;
 }
 

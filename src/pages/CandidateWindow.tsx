@@ -1,25 +1,34 @@
 import { useParams } from 'react-router';
-import { useSession, usePlan } from '../db';
+import { usePresentView } from '../db';
 import { useDocumentTitle } from '../ui/hooks';
 import { CandidateQuestion } from './interview/CandidateQuestion';
-import { candidateDisplay } from './interview/logic';
+import type { CandidateDisplay } from './interview/logic';
+import type { PresentView } from '../shared/api';
 import '../styles/pages/interview.css';
 
+/** FLOW-11: what the candidate may see: the panel's question number and text, or a neutral message. */
+export function presentDisplay(v: PresentView | null): CandidateDisplay {
+  if (!v) return { kind: 'waiting', message: 'There is nothing to show here.' };
+  if (v.state === 'planned') return { kind: 'waiting', message: 'The interview will begin shortly.' };
+  if (v.state === 'paused') return { kind: 'waiting', message: 'The interview is paused. We will continue shortly.' };
+  if (v.state === 'completed') return { kind: 'waiting', message: 'The interview has finished. Thank you.' };
+  if (v.position == null || v.text == null) return { kind: 'waiting', message: 'The interview will begin shortly.' };
+  return { kind: 'question', position: v.position, total: v.total, text: v.text };
+}
+
 /**
- * Route: /present/:sessionId. Candidate-facing window with NO app chrome (FLOW-11): only the
- * question number and text, following the interviewer's current question live (Dexie liveQuery
- * also reacts to changes made in another window). A neutral message before the start, while paused
- * and after submission. Nothing about key points, red flags, probes, scores or notes is loaded here.
+ * Route: /interviews/:id/present (FLOW-11, LIVE-7). The candidate-facing window, with no app chrome:
+ * only the number and text of the panel's current question, following it live for everyone. It needs
+ * sign-in and a place on the round like every screen, and its endpoint returns nothing else (no key
+ * points, red flags, probes, scores or notes ever reach this window).
  */
 export default function CandidateWindow() {
-  const { sessionId } = useParams();
-  const session = useSession(sessionId);
-  const plan = usePlan(session?.planId);
+  const { id } = useParams();
+  const view = usePresentView(id);
   useDocumentTitle('Candidate view');
-  const loading = session === undefined || (session !== null && plan === undefined);
   return (
-    <main className="candidate-window" aria-busy={loading || undefined}>
-      {loading ? <h1 className="candidate-question__waiting">Loading…</h1> : <CandidateQuestion display={candidateDisplay(session, plan)} />}
+    <main className="candidate-window" aria-busy={view === undefined || undefined}>
+      {view === undefined ? <h1 className="candidate-question__waiting">Loading…</h1> : <CandidateQuestion display={presentDisplay(view)} />}
     </main>
   );
 }

@@ -54,18 +54,13 @@ const specPages = readdirSync(DOCS)
  * "Not built yet"). The local app's tests for them are in e2e-local/ and src/db-local/, ready to port.
  */
 const NOT_BUILT_YET: readonly string[] = [
-  // Step 2b: interviewing together live, scorecards, debrief and decision, summary (step 2a built rounds,
-  // question sets and planning).
-  'OV-1', 'OV-4', 'FLOW-11', 'FLOW-12', 'FLOW-13', 'FLOW-14', 'FLOW-15', 'FLOW-16', 'FLOW-17',
-  'FLOW-18', 'FLOW-19', 'FLOW-20', 'FLOW-21', 'FLOW-22', 'FLOW-23', 'FLOW-24', 'FLOW-25', 'FLOW-27',
-  'FLOW-28', 'FLOW-30', 'FLOW-31', 'FLOW-32', 'UX-4', 'UX-5', 'UX-6', 'RES-1',
-  'RES-2', 'RES-3', 'SCORE-1', 'SCORE-2', 'SCORE-3', 'SCORE-4', 'SCORE-5', 'SCORE-6', 'SCORE-7', 'SCORE-8',
-  'SCORE-9', 'SCORE-10', 'SCORE-11', 'PRIV-4', 'AUD-4', 'KEY-1', 'KEY-2',
-  'A11Y-4', 'A11Y-5', 'DATA-1', 'DATA-5', 'DATA-6', 'DATA-2', 'DATA-3', 'DATA-4', 'MVP-1', 'MVP-2',
-  'PANEL-2', 'PANEL-3', 'PANEL-4', 'PANEL-5', 'TEAM-6',
+  // Step 2b, second part: the debrief with everyone's judgement side by side, panel score and spread, the
+  // panel decision, judgements entered on someone's behalf, the Comparison screen and the Summary (step 2a
+  // built rounds, question sets and planning; the first part of 2b built interviewing together and scorecards).
+  'FLOW-28', 'FLOW-30', 'SCORE-11', 'DATA-1', 'DATA-4', 'PANEL-5', 'TEAM-6',
   'TEAM-7', 'TEAM-8', 'TEAM-9', 'TEAM-10', 'TEAM-11', 'TEAM-12', 'SUM-1', 'SUM-2', 'SUM-3', 'SUM-5', 'SUM-6',
-  'HOST-6', 'ROUND-6', 'LIVE-1', 'LIVE-2', 'LIVE-3',
-  'LIVE-4', 'LIVE-5', 'LIVE-6', 'LIVE-7', 'LIVE-8', 'LIVE-9', // Step 3: transcripts, recordings and AI on the server, local-file import, retention job, privacy requests.
+  'ROUND-6', 'LIVE-9',
+  // Step 3: transcripts, recordings and AI on the server, local-file import, retention job, privacy requests.
   'FLOW-29', 'PRIV-5', 'PRIV-6', 'AUD-1', 'TR-1', 'TR-2', 'TR-3', 'TR-4', 'AI-1', 'AI-2', 'AI-3', 'AI-4',
   'AI-5', 'AI-6', 'AI-7', 'AI-8', 'AI-9', 'AI-10', 'AI-11', 'AI-12', 'SUM-4', 'TEAM-14', 'DB-5', 'HPRIV-2',
   'HPRIV-3', 'HPRIV-5', 'HPRIV-6',

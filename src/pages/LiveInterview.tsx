@@ -1,39 +1,25 @@
-import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
-import {
-  goToQuestion,
-  nextQuestion,
-  pauseSession,
-  previousQuestion,
-  resumeSession,
-  setProbeHandled,
-  setScore,
-  skipQuestion,
-  startSession,
-  toggleFlag,
-  toggleKeyPoint,
-  toggleRedFlag,
-  unskipQuestion,
-  useSessionBundle,
-  useTracks,
-} from '../db';
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type MutableRefObject } from 'react';
+import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { changeRecord, sendCommand, useClockOffset, useInterview, useLiveRecords, useLiveState, useOutbox, usePresence } from '../db';
 import { Button, IconButton, buttonClass } from '../ui/Button';
 import { MenuButton, type MenuItem } from '../ui/MenuButton';
 import { EmptyState, PageHeader } from '../ui/Card';
 import { Checkbox } from '../ui/Field';
-import { Dialog, ReasonDialog } from '../ui/Dialog';
+import { ReasonDialog } from '../ui/Dialog';
 import { Icon } from '../ui/Icon';
 import { ItemText } from '../ui/ItemText';
 import { useToast } from '../ui/Toast';
 import { isTextEntry, useHotkeys } from '../ui/hotkeys';
-import { useDocumentTitle, useNow } from '../ui/hooks';
+import { useDocumentTitle, useNow, useOnline } from '../ui/hooks';
 import { formatDate, formatDateTime, formatSeconds } from '../ui/format';
 import { DocLink, HelpInNewTabProvider, HelpLink } from '../docs/DocLink';
 import { STOPPED_TIMER, elapsedMs, overallTimerStatus, questionTimerStatus } from '../domain/timer';
 import { scoreLabel } from '../domain/rubric';
 import { formatCandidateKey } from '../domain/plan';
 import { needsNote } from '../domain/validation';
-import { descriptionOf, type Answer, type InterviewPlan, type Question, type Score, type Session } from '../domain/types';
+import { adjacentQuestion, movesEveryone, toDomainAnswers } from '../domain/live';
+import { descriptionOf, type Question, type Score } from '../domain/types';
+import type { InterviewDetail, LiveRecords, LiveState, Me, RecordDetail } from '../shared/api';
 import { TimerDisplay, useTimerAnnouncements } from './interview/Timers';
 import { RubricList, ScoreControl } from './interview/ScoreControl';
 import { NoteComposer, NotesList } from './interview/Notes';
@@ -41,23 +27,28 @@ import { ProgressList } from './interview/ProgressList';
 import { ShortcutsDialog } from './interview/ShortcutsDialog';
 import { FinishDialog, errorMessage } from './interview/FinishDialog';
 import { AmendAnswerForm, OverallPanel } from './interview/Amend';
-import { PreStart } from './interview/PreStart';
 import { CandidateQuestion } from './interview/CandidateQuestion';
 import { useNoteDraft } from './interview/useNoteDraft';
-import { InterviewersDialog } from './interview/InterviewersDialog';
-import { TranscriptPanel } from './transcript/TranscriptPanel';
-import { formatNames, interviewersOf } from '../domain/interviewers';
+import { PanelStrip, PeopleLine } from './interview/PanelParts';
+import { formatNames } from '../domain/interviewers';
 import { activeShortcutKeys, candidateDisplay, explainSuggestion, progressCounts, progressItems, shortRole } from './interview/logic';
+import { leadChangeMessage, panelMarks, toPlan, toSession } from './interview/liveModel';
 import { questionMeta } from './setup/logic';
 import '../styles/pages/interview.css';
 
-/** Route: /interview/:sessionId (FLOW-10..23, RES-1/2, RUB-1..5, KEY-1/2, AUD-4). */
-export default function LiveInterview() {
-  const { sessionId } = useParams();
-  const bundle = useSessionBundle(sessionId);
+/**
+ * Route: /interviews/:id/live (LIVE-1…LIVE-8, FLOW-11…FLOW-23, RES-1…RES-3, RUB-1…RUB-5, KEY-1, KEY-2,
+ * UX-4, UX-5, AUD-4). Everyone on the panel sees the same question and timers; each scores their own
+ * record. The lead's Next, Previous, jumps and Pause move everyone; anyone else's look on their own.
+ */
+export default function LiveInterview({ me }: { me: Me }) {
+  const { id } = useParams();
+  const interview = useInterview(id);
+  const live = useLiveState(id);
+  const records = useLiveRecords(id);
   useDocumentTitle('Live interview');
 
-  if (bundle === undefined) {
+  if (interview === undefined || live === undefined || records === undefined) {
     return (
       <>
         <PageHeader title="Live interview" />
@@ -67,22 +58,22 @@ export default function LiveInterview() {
       </>
     );
   }
-  if (bundle === null) {
+  if (interview === null || live === null || records === null) {
     return (
       <>
         <PageHeader title="Interview not found" />
-        <EmptyState title="There is no interview with this link on this device." actions={<Link to="/">Go to the dashboard</Link>} />
+        <EmptyState title="This interview does not exist, was cancelled, or is in a round you are not on." actions={<Link to="/">Go to the Dashboard</Link>} />
       </>
     );
   }
-  // FLOW-27: an imported panelist session is only shown through the Debrief, which applies blind scoring.
-  if (bundle.session.origin !== 'local') return <Navigate to={`/debrief/${bundle.session.id}`} replace />;
-  return <Interview session={bundle.session} plan={bundle.plan} answers={bundle.answers} />;
+  // Not started, not joined, or on someone else's screen: the interview page says what to do.
+  const mine = records.mine;
+  if (live.state === 'planned' || !mine || mine.ownerId !== me.id) return <Navigate to={`/interviews/${interview.id}`} replace />;
+  return <Interview me={me} interview={interview} live={live} records={records} mine={mine} />;
 }
 
 /** Per-tab memory of the candidate-view toggle, so a reload while sharing the screen does not reveal the interviewer pane. */
-function useCandidateViewFlag(sessionId: string): [boolean, (v: boolean) => void] {
-  const key = `ia.candidateView.${sessionId}`;
+function useTabFlag(key: string): [boolean, (v: boolean) => void] {
   const [value, setValue] = useState(() => {
     try {
       return sessionStorage.getItem(key) === '1';
@@ -105,12 +96,9 @@ function useCandidateViewFlag(sessionId: string): [boolean, (v: boolean) => void
   return [value, set];
 }
 
-/**
- * PANEL-3: who is making notes, remembered for this interview in this tab (survives a reload).
- * Only names still on the interview are kept; '' means "not marked".
- */
-function useNoteAuthor(sessionId: string, names: readonly string[]): [string, (v: string) => void] {
-  const key = `ia.noteBy.${sessionId}`;
+/** PANEL-3: who is making notes on a shared screen, remembered for this interview in this tab. */
+function useNoteAuthor(recordId: string, names: readonly string[]): [string, (v: string) => void] {
+  const key = `ia.noteBy.${recordId}`;
   const [value, setValue] = useState(() => {
     try {
       return sessionStorage.getItem(key) ?? '';
@@ -133,30 +121,20 @@ function useNoteAuthor(sessionId: string, names: readonly string[]): [string, (v
   return [names.length > 1 && names.includes(value) ? value : '', set];
 }
 
-function openCandidateWindow(sessionId: string) {
-  const url = `${window.location.pathname}${window.location.search}#/present/${sessionId}`;
+function openCandidateWindow(interviewId: string) {
+  const url = `${window.location.pathname}${window.location.search}#/interviews/${interviewId}/present`;
   window.open(url, '_blank', 'popup,width=1280,height=800,noopener');
 }
 
 const focusQuestionHeading = () => {
-  // After React commits and any dialog has returned focus to its opener.
-  // Never steal focus from a field the interviewer has already moved to (e.g. pressed "/" quickly).
+  // After React commits and any dialog has returned focus to its opener; never steal focus from a field.
   setTimeout(() => {
     if (isTextEntry(document.activeElement)) return;
     document.getElementById('question-heading')?.focus();
   }, 60);
 };
 
-interface InterviewProps {
-  session: Session;
-  plan: InterviewPlan;
-  answers: Answer[];
-}
-
-/**
- * UX-4: the bottom bar is fixed to the window. Its height is published as --dock-h so the page can
- * leave room for it (nothing is ever hidden behind it) and toasts sit above it.
- */
+/** UX-4: the bottom bar is fixed to the window; its height is published as --dock-h so nothing hides behind it. */
 function useDockHeight(el: HTMLElement | null) {
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -173,11 +151,8 @@ function useDockHeight(el: HTMLElement | null) {
 }
 
 /**
- * UX-4, BANK-15: the checklist card (what to look for, red flags) is never taller than the
- * room between the bars, so it never makes the page scroll: when a question's lists do not all fit,
- * the card scrolls inside itself (with a cue) while the bars and the question stay put. Publishes
- * --live-pane-max (the room below the card's top, unscrolled, down to the bottom bar) and
- * --live-bar-h (the sticky top bar's height, 0 when it does not stick) for the stylesheet.
+ * UX-4, BANK-15: the checklist card is never taller than the room between the bars: when a question's
+ * lists do not all fit, the card scrolls inside itself (with a cue) while the bars and the question stay put.
  */
 function useChecklistHeight(body: HTMLElement | null, dock: HTMLElement | null) {
   useLayoutEffect(() => {
@@ -192,8 +167,6 @@ function useChecklistHeight(body: HTMLElement | null, dock: HTMLElement | null) 
         const barH = sticky && bar ? bar.getBoundingClientRect().height : 0;
         const top = body.getBoundingClientRect().top + window.scrollY;
         const dockH = dock ? dock.getBoundingClientRect().height : 0;
-        // The page keeps this much room above the bottom bar (.app-main's padding), so a card of
-        // this height never makes the page scroll.
         const main = body.closest<HTMLElement>('.app-main');
         const room = main ? parseFloat(getComputedStyle(main).paddingBottom) - dockH : NaN;
         const gap = Number.isFinite(room) && room > 0 ? room : 24;
@@ -217,17 +190,12 @@ function useChecklistHeight(body: HTMLElement | null, dock: HTMLElement | null) 
   }, [body, dock]);
 }
 
-/** UX-4: a question longer than this (characters) is set a size smaller, so it does not crowd the screen. */
+/** UX-4: a question longer than this (characters) is set a size smaller. */
 const LONG_QUESTION_CHARS = 120;
-
-/** Height of the cue at the bottom of the checklist card, in px (padding and a 24px button). */
+/** Height of the cue at the bottom of the checklist card, in px. */
 const CUE_ROOM = 40;
 
-/**
- * UX-4: when the checklist card scrolls inside itself, a cue at its bottom edge says what is below
- * (usually the last red flags) and scrolls to it. Hidden when everything is in view. Each new
- * question starts at the top of the card.
- */
+/** UX-4: when the checklist card scrolls inside itself, a cue at its bottom edge says what is below. */
 function PaneMoreCue({ pane, questionId }: { pane: HTMLElement | null; questionId: string }) {
   const [below, setBelow] = useState<{ label: string; target: HTMLElement } | null>(null);
   useLayoutEffect(() => {
@@ -238,7 +206,6 @@ function PaneMoreCue({ pane, questionId }: { pane: HTMLElement | null; questionI
     const update = () => {
       const hidden = pane.scrollHeight - pane.scrollTop - pane.clientHeight > 2;
       if (!hidden) return setBelow(null);
-      // Anything ending below this line is under the cue (or the card's edge), so it counts as below.
       const edge = pane.getBoundingClientRect().bottom - CUE_ROOM;
       const groups = [...pane.querySelectorAll<HTMLElement>('.evidence__group')];
       const isBelow = (g: HTMLElement) => [...g.querySelectorAll('li')].some((li) => li.getBoundingClientRect().bottom > edge);
@@ -274,125 +241,176 @@ function PaneMoreCue({ pane, questionId }: { pane: HTMLElement | null; questionI
   );
 }
 
-function Interview({ session, plan, answers }: InterviewProps) {
+interface InterviewProps {
+  me: Me;
+  interview: InterviewDetail;
+  live: LiveState;
+  records: LiveRecords;
+  mine: RecordDetail;
+}
+
+function Interview({ me, interview, live, records, mine }: InterviewProps) {
   const navigate = useNavigate();
   const { toast, announce } = useToast();
-  const tracks = useTracks();
-  const trackName = tracks?.find((t) => t.id === plan.trackId)?.name ?? plan.name;
-  const [candidateView, setCandidateView] = useCandidateViewFlag(session.id);
+  const online = useOnline();
+  const plan = useMemo(() => toPlan(interview.set), [interview.set]);
+  const ids = useMemo(() => plan.questions.map((q) => q.id), [plan]);
+  const session = useMemo(() => toSession(interview, mine, live), [interview, mine, live]);
+  const answers = useMemo(() => toDomainAnswers(mine, mine.id), [mine]);
+  const [candidateView, setCandidateView] = useTabFlag(`ia.candidateView.${interview.id}`);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [skipOpen, setSkipOpen] = useState(false);
   const [amending, setAmending] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [peopleOpen, setPeopleOpen] = useState(false);
-  const [attachOpen, setAttachOpen] = useState(false);
   const [rubricOpen, setRubricOpen] = useState(false);
-  const names = interviewersOf(session);
-  const [noteBy, setNoteBy] = useNoteAuthor(session.id, names);
+  /** LIVE-2: the question I look at on my own (null: I follow the panel). */
+  const [browsing, setBrowsing] = useState<string | null>(null);
+  const names = mine.names;
+  const [noteBy, setNoteBy] = useNoteAuthor(mine.id, names);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const typingRef = useRef<() => boolean>(() => false);
   const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
   const [bodyEl, setBodyEl] = useState<HTMLElement | null>(null);
   const [paneEl, setPaneEl] = useState<HTMLElement | null>(null);
 
-  const state = session.state;
+  const readOnly = mine.state === 'submitted';
+  const state = live.state;
   const running = state === 'in_progress';
-  const live = state === 'in_progress' || state === 'paused';
-  const readOnly = state === 'submitted';
-  const now = useNow(1000, running);
+  const isLive = (state === 'in_progress' || state === 'paused') && !readOnly;
+  /** I lead (LIVE-2); my moves reach everyone only while I am online. */
+  const iLead = live.leadUserId === me.id;
+  const leading = movesEveryone(live, me.id, online);
+  const offset = useClockOffset();
+  const now = useNow(1000, running && !readOnly) + offset;
+  const nameOf = useCallback((uid: string) => live.panel.find((p) => p.id === uid)?.name ?? 'Someone', [live.panel]);
+
+  useOutbox(me.id, useCallback((m: string) => toast(m, 'error'), [toast]));
+  usePresence(interview.id, isLive);
+
+  // ---- Which question is on screen (LIVE-2)
+  const panelQ = live.currentQuestionId;
+  const shownId = browsing ?? panelQ ?? ids[0];
+  const index = Math.max(0, ids.indexOf(shownId));
+  const question: Question | undefined = plan.questions[index];
+  const panelIndex = panelQ ? ids.indexOf(panelQ) : -1;
+  const lookingAway = isLive && browsing != null && browsing !== panelQ;
+
+  // Caught up with the panel: follow it again.
+  useEffect(() => {
+    if (browsing && browsing === panelQ) setBrowsing(null);
+  }, [browsing, panelQ]);
+
+  // LIVE-2, A11Y-2: the panel moved. Announce it once; if I am in the middle of a note, I stay where I am.
+  const prevPanelQ = useRef(panelQ);
+  useEffect(() => {
+    const prev = prevPanelQ.current;
+    prevPanelQ.current = panelQ;
+    if (!isLive || !panelQ || prev === panelQ) return;
+    const pos = ids.indexOf(panelQ) + 1;
+    if (browsing == null && prev && typingRef.current() && !leading) {
+      setBrowsing(prev);
+      toast(`The panel moved on to question ${pos}. You stay on question ${ids.indexOf(prev) + 1} while you finish your note.`, 'info');
+    } else if (browsing == null) {
+      announce(`Question ${pos} of ${ids.length}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the panel's question changes
+  }, [panelQ]);
+
+  // LIVE-2: the lead changed. Say so once (the previous lead sees that it happened).
+  const prevLead = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const msg = leadChangeMessage(prevLead.current, live.leadUserId, me.id, nameOf);
+    prevLead.current = live.leadUserId;
+    if (msg && isLive) toast(msg, 'info');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the lead changes
+  }, [live.leadUserId]);
+
+  // A paused or resumed interview is announced to followers once (the lead hears it from their own action).
+  const prevState = useRef(state);
+  useEffect(() => {
+    if (prevState.current !== state && isLive && !leading) announce(state === 'paused' ? `${nameOf(live.leadUserId ?? '')} paused the interview. Timers stopped.` : 'The interview resumed. Timers running.');
+    prevState.current = state;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the state changes
+  }, [state]);
 
   const answersById = useMemo(() => new Map(answers.map((a) => [a.questionId, a])), [answers]);
-  const index = plan.questions.findIndex((q) => q.id === session.currentQuestionId);
-  const question: Question | undefined = plan.questions[index >= 0 ? index : 0];
   const answer = question ? answersById.get(question.id) : undefined;
   const items = useMemo(() => progressItems(plan, answers), [plan, answers]);
-
   const onError = useCallback((e: unknown) => toast(errorMessage(e), 'error'), [toast]);
   useDockHeight(dockEl);
   useChecklistHeight(bodyEl, dockEl);
 
-  // A new question starts at the top of the page (on small screens the page may be scrolled down to the notes).
   const questionId = question?.id;
   useEffect(() => {
     if (window.scrollY > 0) window.scrollTo({ top: 0 });
   }, [questionId]);
 
-  // AI-12: /interview/:id?amend=<questionId> (from "worth discussing" on the scorecard) opens the
-  // usual amend step for that question, which asks for a reason (AUD-4). Nothing is pre-filled.
-  const [params, setParams] = useSearchParams();
-  const amendParam = params.get('amend');
-  useEffect(() => {
-    if (!amendParam) return;
-    const next = new URLSearchParams(params);
-    next.delete('amend');
-    setParams(next, { replace: true });
-    if (!readOnly || !plan.questions.some((q) => q.id === amendParam)) return;
-    goToQuestion(session.id, amendParam)
-      .then(() => {
-        setAmending(amendParam);
-        setTimeout(() => document.querySelector<HTMLElement>('.amend-form')?.scrollIntoView({ block: 'center' }), 60);
-      })
-      .catch(onError);
-  }, [amendParam, params, setParams, readOnly, plan.questions, session.id, onError]);
-  const run = useCallback(
-    (fn: () => Promise<unknown>) => {
-      fn().catch(onError);
-    },
-    [onError],
-  );
-
-  // ---- Timers (FLOW-19, RES-2, A11Y-4): derived from stored timestamps on every tick.
-  const overallMs = elapsedMs(session.timer, now);
+  // ---- Timers (FLOW-19, RES-2, A11Y-4): server timestamps, corrected for this computer's clock.
+  const overallMs = elapsedMs(live.timer, now);
   const overallStatus = overallTimerStatus(overallMs, plan.timeBudgetMin);
-  const questionMs = elapsedMs(answer?.timer ?? STOPPED_TIMER, now);
+  const questionMs = elapsedMs((question && live.questionTimers[question.id]) || STOPPED_TIMER, now);
   const questionStatus = question ? questionTimerStatus(questionMs, question.timeMin) : 'normal';
-  useTimerAnnouncements(live && question ? { questionId: question.id, overall: overallStatus, question: questionStatus, paused: !running } : null);
+  useTimerAnnouncements(isLive && question ? { questionId: question.id, overall: overallStatus, question: questionStatus, paused: !running } : null);
+  const elapsedSec = useCallback(() => Math.floor(elapsedMs(live.timer, Date.now() + offset) / 1000), [live.timer, offset]);
 
-  // ---- Actions
+  // ---- Record changes (LIVE-1, RES-1): shown at once, saved through the outbox.
+  const change = useCallback((...ops: Parameters<typeof changeRecord>[2]) => changeRecord(me.id, mine.id, ops), [me.id, mine.id]);
+
+  // ---- Moving (LIVE-2): the lead moves everyone; anyone else looks on their own.
   const goTo = useCallback(
-    (questionId: string) =>
-      run(async () => {
-        setAmending(null);
-        await goToQuestion(session.id, questionId);
-        const pos = plan.questions.findIndex((q) => q.id === questionId) + 1;
-        announce(`Question ${pos} of ${plan.questions.length}`);
-      }),
-    [run, session.id, plan.questions, announce],
+    (target: string, how: 'step' | 'jump' = 'jump') => {
+      setAmending(null);
+      const pos = ids.indexOf(target) + 1;
+      if (readOnly) {
+        setBrowsing(target);
+        announce(`Question ${pos} of ${ids.length}`);
+        return;
+      }
+      if (leading && panelQ) {
+        setBrowsing(null);
+        sendCommand(interview.id, { type: 'move', from: panelQ, to: target })
+          .then(() => announce(`Question ${pos} of ${ids.length}. The panel follows you.`))
+          .catch((e) => {
+            onError(e);
+            setBrowsing(null);
+          });
+        return;
+      }
+      setBrowsing(target === panelQ ? null : target);
+      if (target === panelQ) announce(`Back with the panel on question ${pos}.`);
+      else if (live.leadUserId === me.id && !online) toast(`You’re offline, so the panel can’t follow you. You’re looking at question ${pos} on your own.`, 'warning');
+      else if (how === 'step' || target !== panelQ) announce(`Looking at question ${pos} on your own. The panel is on question ${panelIndex + 1}.`);
+    },
+    [ids, readOnly, leading, panelQ, interview.id, announce, onError, live.leadUserId, me.id, online, toast, panelIndex],
   );
   const step = useCallback(
-    (dir: 1 | -1) =>
-      run(async () => {
-        setAmending(null);
-        const id = await (dir === 1 ? nextQuestion : previousQuestion)(session.id);
-        if (id) announce(`Question ${plan.questions.findIndex((q) => q.id === id) + 1} of ${plan.questions.length}`);
-        else if (dir === 1) toast(readOnly ? 'This is the last question.' : 'This is the last question. Choose Finish when you are ready.', 'info');
-        else toast('This is the first question.', 'info');
-      }),
-    [run, session.id, plan.questions, announce, toast, readOnly],
+    (dir: 1 | -1) => {
+      const target = adjacentQuestion(ids, shownId, dir);
+      if (!target) return toast(dir === 1 ? (readOnly ? 'This is the last question.' : 'This is the last question. Choose Finish when you are ready.') : 'This is the first question.', 'info');
+      goTo(target, 'step');
+    },
+    [ids, shownId, goTo, toast, readOnly],
   );
-
-  const chooseScore = (score: Score) => question && run(() => setScore(session.id, question.id, score));
-  const flag = () => question && run(() => toggleFlag(session.id, question.id));
-  const start = () => {
-    setBusy(true);
-    startSession(session.id)
-      .then(() => {
-        announce('Interview started. Timers are running.');
-        focusQuestionHeading();
-      })
-      .catch(onError)
-      .finally(() => setBusy(false));
+  const follow = () => {
+    setBrowsing(null);
+    announce(`Back with the panel on question ${panelIndex + 1}.`);
+    focusQuestionHeading();
   };
-  const togglePause = () =>
-    run(async () => {
-      if (running) {
-        await pauseSession(session.id);
-        announce('Interview paused. Timers stopped.');
-      } else {
-        await resumeSession(session.id);
-        announce('Interview resumed. Timers running.');
-      }
-    });
+  const takeLead = () => {
+    if (!online) return toast('You’re offline, so you can’t take the lead now. Your own marks are still kept.', 'warning');
+    sendCommand(interview.id, { type: 'lead' })
+      .then(() => setBrowsing(null))
+      .catch(onError);
+  };
+  const togglePause = () => {
+    if (!online) return toast('You’re offline, so the panel can’t follow you. Pause again when the connection is back.', 'warning');
+    sendCommand(interview.id, { type: running ? 'pause' : 'resume' })
+      .then(() => announce(running ? 'Interview paused for everyone. Timers stopped.' : 'Interview resumed for everyone. Timers running.'))
+      .catch(onError);
+  };
+
+  const chooseScore = (score: Score) => question && !readOnly && change({ t: 'score', q: question.id, v: score });
+  const flag = () => question && !readOnly && change({ t: 'flag', q: question.id, on: !answer?.flagged });
   const toggleCandidateView = () => {
     setCandidateView(!candidateView);
     announce(candidateView ? 'Interviewer view' : 'Candidate view: only the question is shown');
@@ -402,8 +420,8 @@ function Interview({ session, plan, answers }: InterviewProps) {
     notesRef.current?.scrollIntoView({ block: 'nearest' });
   };
 
-  // ---- Hotkeys (KEY-1, KEY-2: the hook ignores text fields, modifiers and open dialogs)
-  const allowed = activeShortcutKeys({ state: state === 'planned' ? 'planned' : readOnly ? 'readonly' : 'live', candidateView });
+  // ---- Hotkeys (KEY-1, KEY-2): N and P move the panel only for the lead; for anyone else they look on their own.
+  const allowed = activeShortcutKeys({ state: readOnly ? 'readonly' : 'live', candidateView });
   const handlers: Record<string, () => void> = {
     '1': () => chooseScore(1),
     '2': () => chooseScore(2),
@@ -425,30 +443,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
   };
   useHotkeys(Object.fromEntries(allowed.map((k) => [k, handlers[k]])), { allowInText: ['Escape'], enabled: !amending });
 
-  const shortcutsDialog = (
-    <>
-      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      {state !== 'submitted' && <InterviewersDialog open={peopleOpen} onClose={() => setPeopleOpen(false)} session={session} />}
-    </>
-  );
-
-  // ---- Planned (FLOW-10)
-  if (state === 'planned') {
-    return (
-      <div className="live live--planned">
-        <PreStart
-          session={session}
-          plan={plan}
-          trackName={trackName}
-          busy={busy}
-          onStart={start}
-          onOpenCandidateWindow={() => openCandidateWindow(session.id)}
-          onEditInterviewers={() => setPeopleOpen(true)}
-        />
-        {shortcutsDialog}
-      </div>
-    );
-  }
+  const shortcutsDialog = <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />;
 
   if (!question) {
     return (
@@ -459,12 +454,11 @@ function Interview({ session, plan, answers }: InterviewProps) {
     );
   }
 
-  // ---- Candidate view (FLOW-11): only the question number and text. No bars: the progress strip
-  // shows scores and the bottom bar the score control.
+  // ---- Candidate view (FLOW-11): only the question number and text of the panel's question.
   if (candidateView) {
     return (
       <div className="live live--candidate">
-        <CandidateQuestion display={candidateDisplay(readOnly ? { ...session, state: 'in_progress' } : session, plan)} />
+        <CandidateQuestion display={candidateDisplay({ ...session, currentQuestionId: panelQ, state: readOnly ? 'in_progress' : session.state }, plan)} />
         <div className="candidate-exit">
           <Button size="sm" variant="ghost" icon="eye-off" aria-keyshortcuts="C" title="Key C" onClick={toggleCandidateView}>
             Back to interviewer view
@@ -484,15 +478,15 @@ function Interview({ session, plan, answers }: InterviewProps) {
   const missingNote = needsNote(answer);
   const counts = progressCounts(items);
   const allResolved = counts.resolved === counts.total && counts.needsNote === 0;
-  const key = formatCandidateKey(session.candidate);
+  const key = formatCandidateKey({ initials: interview.candidate.name, requisitionId: interview.candidate.requisitionId });
   const isAmending = amending === question.id && !!answer;
+  const marks = panelMarks(question, records.others);
 
-  // UX-9: one primary action at a time. Paused: Resume. Everything resolved: Finish. On the last
-  // question: Finish (in Next's place). Otherwise: Next.
-  const nextIsFinish = live && onLast;
+  // UX-9: one primary action at a time. Paused (lead): Resume. Everything resolved: Finish. On the last question: Finish. Otherwise: Next.
+  const nextIsFinish = isLive && onLast;
   const primary: 'resume' | 'finish-top' | 'next' | 'finish-bottom' | 'scorecard' = readOnly
     ? 'scorecard'
-    : state === 'paused'
+    : state === 'paused' && iLead
       ? 'resume'
       : nextIsFinish
         ? 'finish-bottom'
@@ -502,9 +496,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
 
   const menuItems: MenuItem[] = [
     { label: 'Candidate view', icon: 'eye', shortcut: 'C', onSelect: toggleCandidateView },
-    { label: 'Open candidate window', icon: 'window', onSelect: () => openCandidateWindow(session.id) },
-    ...(editable ? [{ label: 'Interviewers…', icon: 'edit' as const, onSelect: () => setPeopleOpen(true) }] : []),
-    { label: 'Transcript & recording…', icon: 'doc', onSelect: () => setAttachOpen(true) },
+    { label: 'Open candidate window', icon: 'window', onSelect: () => openCandidateWindow(interview.id) },
     { label: 'Keyboard shortcuts', icon: 'help', shortcut: '?', onSelect: () => setShortcutsOpen(true) },
   ];
 
@@ -536,10 +528,13 @@ function Interview({ session, plan, answers }: InterviewProps) {
     </p>
   );
 
+  const nextLabel = leading ? 'Next question for everyone (N)' : 'Next question, on your own (N)';
+  const prevLabel = leading ? 'Previous question for everyone (P)' : 'Previous question, on your own (P)';
+
   return (
-    <HelpInNewTabProvider value={live}>
-      <div className={`live live--${state}`}>
-        {/* ---- Top bar (UX-5): who, overall time, progress, pause, More, Finish */}
+    <HelpInNewTabProvider value={isLive}>
+      <div className={`live live--${readOnly ? 'submitted' : state}`}>
+        {/* ---- Top bar (UX-5): who and who is here, overall time, progress, pause or take the lead, More, Finish */}
         <div className="live-bar">
           <div className="live-bar__who">
             <div className="live-bar__line">
@@ -547,64 +542,69 @@ function Interview({ session, plan, answers }: InterviewProps) {
                 <span className="visually-hidden">Live interview: </span>
                 {key}
               </h1>
-              <span className="live-bar__role" title={trackName}>
-                {shortRole(trackName)}
+              <span className="live-bar__role" title={interview.trackName}>
+                {shortRole(interview.trackName)}
               </span>
             </div>
-            <p className="live-bar__people">
-              with {formatNames(names)}
-            </p>
+            {readOnly ? <p className="live-bar__people">{names.length > 1 ? `with ${formatNames(names)}` : `by ${names[0]}`}</p> : <PeopleLine live={live} meId={me.id} now={now} />}
           </div>
-          {live && <TimerDisplay inline label="Overall" elapsedMs={overallMs} limitMin={plan.timeBudgetMin} status={overallStatus} paused={!running} />}
+          {isLive && <TimerDisplay inline label="Overall" elapsedMs={overallMs} limitMin={plan.timeBudgetMin} status={overallStatus} paused={!running} />}
           {readOnly && (
-            <p className="live-bar__submitted" title={formatDateTime(session.submittedAt)}>
-              <Icon name="check" /> Submitted {formatDate(session.submittedAt)}
+            <p className="live-bar__submitted" title={formatDateTime(mine.submittedAt)}>
+              <Icon name="check" /> Submitted {formatDate(mine.submittedAt)}
             </p>
           )}
-          <ProgressList items={items} currentId={question.id} onJump={goTo} />
+          <ProgressList items={items} currentId={question.id} panelId={isLive && lookingAway ? panelQ : null} onJump={(qid) => goTo(qid)} />
           <div className="live-bar__actions">
-            {live && (
-              <Button icon={running ? 'pause' : 'play'} onClick={togglePause}>
-                {running ? 'Pause' : 'Resume'}
-              </Button>
-            )}
+            {isLive &&
+              (iLead ? (
+                <Button icon={running ? 'pause' : 'play'} onClick={togglePause} title={running ? 'Pause the interview for everyone' : 'Resume the interview for everyone'}>
+                  {running ? 'Pause' : 'Resume'}
+                </Button>
+              ) : (
+                <Button icon="lead" onClick={takeLead} data-testid="take-lead" title="Lead: your Next, Previous and Pause will move everyone">
+                  Take the lead
+                </Button>
+              ))}
             <MenuButton label="More" items={menuItems} />
-            {live && !nextIsFinish && (
+            {isLive && !nextIsFinish && (
               <Button variant={primary === 'finish-top' ? 'primary' : 'default'} onClick={() => setFinishOpen(true)}>
                 Finish…
               </Button>
             )}
             {readOnly && (
-              <Link to={`/scorecard/${session.id}`} className={buttonClass('primary')}>
+              <Link to={`/scorecard/${mine.id}`} className={buttonClass('primary')}>
                 View scorecard
               </Link>
             )}
           </div>
         </div>
 
-        {state === 'paused' && (
+        {state === 'paused' && isLive && (
           <div className="paused-banner" role="status">
             <Icon name="pause" />
             <p className="grow">
-              <span className="paused-banner__title">Paused.</span> Both timers are stopped. You can still look back and add notes.
+              <span className="paused-banner__title">Paused{iLead ? '' : ` by ${nameOf(live.leadUserId ?? '')}`}.</span> Both timers are stopped for everyone. You can still look back and add notes.
             </p>
-            <Button variant="primary" icon="play" onClick={togglePause}>
-              Resume
-            </Button>
+            {iLead && (
+              <Button variant="primary" icon="play" onClick={togglePause}>
+                Resume
+              </Button>
+            )}
           </div>
         )}
         {readOnly && (
           <p className="live-readonly">
             <Icon name="info" />
             <span>
-              This interview is submitted and read-only. To change a score, a note or the overall assessment, use <strong>Amend</strong> and give a reason.
+              Your record is submitted and read-only. To change a score, a note or the overall assessment, use <strong>Amend</strong> and give a reason.
             </span>
             <DocLink req="AUD-4" />
           </p>
         )}
 
         <div ref={setBodyEl} className="live-body">
-          {/* ---- The question, how to steer, the probe, and notes (left) */}
+          {/* ---- The question, how to steer, the probe, notes and the panel's marks (left) */}
           <section className="question-pane" aria-labelledby="question-heading">
             <div className="question-pane__meta">
               <h2 id="question-heading" tabIndex={-1} className="question-pane__number">
@@ -615,10 +615,19 @@ function Interview({ session, plan, answers }: InterviewProps) {
                 {category?.mustHave && ' · must-have'}
               </span>
             </div>
+            {lookingAway && (
+              <p className="browsing" data-testid="browsing">
+                <Icon name="eye" />
+                <span>
+                  <strong>Looking on your own.</strong> The panel is on question {panelIndex + 1}.
+                </span>
+                <Button size="sm" onClick={follow}>
+                  Follow the panel
+                </Button>
+              </p>
+            )}
             <p className={`question-text${question.text.length > LONG_QUESTION_CHARS ? ' question-text--long' : ''}`}>{question.text}</p>
             <SteeringNote question={question} />
-            {/* The probe is asked after the question, so it sits with it; this leaves the checklist
-                card the room for the whole of "what to look for" and the red flags (UX-4). */}
             <fieldset className="probe">
               <legend className="probe__heading">
                 <Icon name="help" /> Probe{question.probes.length === 1 ? '' : 's'}: ask next
@@ -628,12 +637,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
                   <li key={i}>{p}</li>
                 ))}
               </ul>
-              <Tick
-                label="Handled the probe without help"
-                checked={!!answer?.probeHandled}
-                editable={editable}
-                onChange={(e) => run(() => setProbeHandled(session.id, question.id, e.target.checked))}
-              />
+              <Tick label="Handled the probe without help" checked={!!answer?.probeHandled} editable={editable} onChange={(e) => change({ t: 'probe', q: question.id, on: e.target.checked })} />
             </fieldset>
             {answer?.skipped && (
               <div className="skip-banner" role="status">
@@ -642,7 +646,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
                   <span className="skip-banner__title">Skipped.</span> Reason: {answer.skipReason}
                 </p>
                 {editable && (
-                  <Button size="sm" onClick={() => run(() => unskipQuestion(session.id, question.id))}>
+                  <Button size="sm" onClick={() => change({ t: 'unskip', q: question.id })}>
                     Undo skip
                   </Button>
                 )}
@@ -671,10 +675,11 @@ function Interview({ session, plan, answers }: InterviewProps) {
                   <LiveNotes
                     key={question.id}
                     ref={notesRef}
-                    sessionId={session.id}
+                    typingRef={typingRef}
+                    userId={me.id}
+                    record={mine}
                     questionId={question.id}
-                    answer={answer}
-                    onError={onError}
+                    elapsedSec={elapsedSec}
                     authors={names}
                     by={noteBy}
                     onByChange={setNoteBy}
@@ -684,6 +689,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
                 )}
               </section>
             )}
+            {marks.length > 0 && <PanelStrip question={question} marks={marks} hidden={records.hidden} />}
           </section>
 
           {/* ---- What to listen for (right): key points and red flags */}
@@ -693,7 +699,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
               <ul className="checklist">
                 {question.lookFor.map((k, i) => (
                   <li key={i}>
-                    <Tick label={k} checked={!!answer?.coveredKeyPoints.includes(i)} editable={editable} onChange={() => run(() => toggleKeyPoint(session.id, question.id, i))} />
+                    <Tick label={k} checked={!!answer?.coveredKeyPoints.includes(i)} editable={editable} onChange={(e) => change({ t: 'kp', q: question.id, i, on: e.target.checked })} />
                   </li>
                 ))}
               </ul>
@@ -710,7 +716,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
                 <ul className="checklist">
                   {question.redFlags.map((r, i) => (
                     <li key={i}>
-                      <Tick label={r} checked={!!answer?.redFlagsSeen.includes(i)} editable={editable} onChange={() => run(() => toggleRedFlag(session.id, question.id, i))} />
+                      <Tick label={r} checked={!!answer?.redFlagsSeen.includes(i)} editable={editable} onChange={(e) => change({ t: 'rf', q: question.id, i, on: e.target.checked })} />
                     </li>
                   ))}
                 </ul>
@@ -721,7 +727,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
           </section>
         </div>
 
-        {readOnly && <OverallPanel key={session.submittedAt} session={session} />}
+        {readOnly && <OverallPanel key={mine.submittedAt} session={session} />}
 
         {/* ---- Bottom bar (UX-4): always in view. Previous · score · rubric, flag, skip · time · Next */}
         <section ref={setDockEl} className="live-dock" aria-label="Score and move on">
@@ -744,8 +750,9 @@ function Interview({ session, plan, answers }: InterviewProps) {
                 {rubricOpen ? 'Hide the rubric' : 'Rubric'}
               </button>
             </div>
-            <Button className="live-dock__prev" icon="chevron-left" aria-keyshortcuts="P" title="Previous question (P)" onClick={() => step(-1)} disabled={index <= 0}>
+            <Button className="live-dock__prev" icon="chevron-left" aria-keyshortcuts="P" title={prevLabel} onClick={() => step(-1)} disabled={index <= 0}>
               <span className="btn__text">Previous</span>
+              <span className="visually-hidden">{leading ? ' for everyone' : ', on your own'}</span>
             </Button>
             <div className="live-dock__tools">
               {editable && (
@@ -775,7 +782,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
                 </Button>
               )}
             </div>
-            {live ? (
+            {isLive && !lookingAway ? (
               <TimerDisplay
                 inline
                 label="This question"
@@ -787,7 +794,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
               />
             ) : (
               <p className="live-dock__spent">
-                <span className="live-dock__spent-label">Time spent</span> {formatSeconds(answer?.elapsedSec ?? 0)}
+                <span className="live-dock__spent-label">Time spent</span> {formatSeconds(Math.floor(questionMs / 1000))}
               </p>
             )}
             <div className="live-dock__score">
@@ -809,9 +816,7 @@ function Interview({ session, plan, answers }: InterviewProps) {
                     describedBy="score-hint"
                     onChange={chooseScore}
                   />
-                  {editable && answer?.score != null && (
-                    <IconButton icon="x" size="sm" label="Clear score" className="live-dock__clear" onClick={() => run(() => setScore(session.id, question.id, null))} />
-                  )}
+                  {editable && answer?.score != null && <IconButton icon="x" size="sm" label="Clear score" className="live-dock__clear" onClick={() => change({ t: 'score', q: question.id, v: null })} />}
                 </div>
               )}
             </div>
@@ -820,15 +825,9 @@ function Interview({ session, plan, answers }: InterviewProps) {
                 Finish…
               </Button>
             ) : (
-              <Button
-                className="live-dock__next"
-                variant={primary === 'next' ? 'primary' : 'default'}
-                aria-keyshortcuts="N"
-                title="Next question (N)"
-                onClick={() => step(1)}
-                disabled={onLast}
-              >
-                Next <Icon name="chevron-right" />
+              <Button className="live-dock__next" variant={primary === 'next' ? 'primary' : 'default'} aria-keyshortcuts="N" title={nextLabel} onClick={() => step(1)} disabled={onLast}>
+                Next
+                <span className="visually-hidden">{leading ? ' for everyone' : ', on your own'}</span> <Icon name="chevron-right" />
               </Button>
             )}
           </div>
@@ -843,45 +842,44 @@ function Interview({ session, plan, answers }: InterviewProps) {
           initialValue={answer?.skipReason ?? ''}
           onCancel={() => setSkipOpen(false)}
           onSubmit={async (reason) => {
-            await skipQuestion(session.id, question.id, reason);
+            change({ t: 'skip', q: question.id, reason });
             setSkipOpen(false);
             announce(`Question ${position} skipped.`);
           }}
         />
-        {live && (
+        {isLive && (
           <FinishDialog
             open={finishOpen}
+            userId={me.id}
             onClose={() => setFinishOpen(false)}
             session={session}
             plan={plan}
             answers={answers}
             onJump={(qid) => {
               setFinishOpen(false);
-              goTo(qid);
+              // Going to a question to resolve it is my own business: it never moves the panel.
+              setBrowsing(qid === panelQ ? null : qid);
               focusQuestionHeading();
             }}
             onSubmitted={() => {
               setFinishOpen(false);
-              toast('Interview submitted.', 'success');
-              navigate(`/scorecard/${session.id}`);
+              toast('Your record is submitted.', 'success');
+              navigate(`/scorecard/${mine.id}`);
             }}
           />
         )}
         {shortcutsDialog}
-        {/* TR-1, TR-2: out of the way during the interview; the scorecard is the main place afterwards. */}
-        <Dialog open={attachOpen} onClose={() => setAttachOpen(false)} title="Transcript and recording" wide>
-          <TranscriptPanel session={session} plan={plan} />
-        </Dialog>
       </div>
     </HelpInNewTabProvider>
   );
 }
 
 interface LiveNotesProps {
-  sessionId: string;
+  userId: string;
+  record: RecordDetail;
   questionId: string;
-  answer: Answer | undefined;
-  onError: (e: unknown) => void;
+  elapsedSec: () => number;
+  typingRef: MutableRefObject<() => boolean>;
   /** PANEL-3 */
   authors: readonly string[];
   by: string;
@@ -889,25 +887,28 @@ interface LiveNotesProps {
 }
 
 /** FLOW-15: add (saved while typing), list, edit and delete notes before submitting. */
-const LiveNotes = forwardRef<HTMLTextAreaElement, LiveNotesProps>(function LiveNotes({ sessionId, questionId, answer, onError, authors, by, onByChange }, ref) {
-  const draft = useNoteDraft(sessionId, questionId, onError, by);
+const LiveNotes = forwardRef<HTMLTextAreaElement, LiveNotesProps>(function LiveNotes({ userId, record, questionId, elapsedSec, typingRef, authors, by, onByChange }, ref) {
+  const draft = useNoteDraft(userId, record.id, questionId, elapsedSec, by);
+  typingRef.current = draft.typing;
+  const notes = record.notes.filter((n) => n.questionId === questionId);
+  const hideIndex = draft.draftId ? notes.findIndex((n) => n.id === draft.draftId) : -1;
   return (
     <div className="notes-pane__body">
-      <NoteComposer ref={ref} value={draft.text} onChange={draft.change} onAdd={() => void draft.finish()} showLabel={false} authors={authors} by={by} onByChange={onByChange} />
+      <NoteComposer ref={ref} value={draft.text} onChange={draft.change} onAdd={() => draft.finish()} showLabel={false} authors={authors} by={by} onByChange={onByChange} />
       <NotesList
-        notes={answer?.notes ?? []}
-        hideIndex={draft.draftIndex}
+        notes={notes.map((n) => ({ atSec: n.atSec, text: n.text, ...(n.by ? { by: n.by } : {}) }))}
+        hideIndex={hideIndex >= 0 ? hideIndex : null}
         emptyText=""
         collapse
         editable
-        onSave={(i, text) => draft.updateEntry(questionId, i, text)}
-        onDelete={(i) => draft.removeEntry(questionId, i)}
+        onSave={(i, text) => draft.updateEntry(notes[i].id, text)}
+        onDelete={(i) => draft.removeEntry(notes[i].id)}
       />
     </div>
   );
 });
 
-/** A key point, red flag or probe tick: a checkbox while editable, a plain marked item when read-only (clearer than a disabled box). */
+/** A key point, red flag or probe tick: a checkbox while editable, a plain marked item when read-only. */
 function Tick({ label, checked, editable, onChange }: { label: string; checked: boolean; editable: boolean; onChange: (e: ChangeEvent<HTMLInputElement>) => void }) {
   // BANK-15: a key point's or red flag's leading label is emphasised so the list can be scanned.
   if (editable) return <Checkbox label={<ItemText text={label} />} checked={checked} onChange={onChange} />;
@@ -922,11 +923,7 @@ function Tick({ label, checked, editable, onChange }: { label: string; checked: 
   );
 }
 
-/**
- * FLOW-12, BANK-8: the question's description, for the interviewer to read out or paraphrase when
- * the candidate has not understood the question. Interviewer pane only (FLOW-11: never on the
- * candidate view or window). Plans locked before descriptions existed have none: nothing is shown.
- */
+/** FLOW-12, BANK-8: the question's description, for the interviewer to read out or paraphrase. Never on the candidate view. */
 function SteeringNote({ question }: { question: Question }) {
   const text = descriptionOf(question);
   if (!text) return null;

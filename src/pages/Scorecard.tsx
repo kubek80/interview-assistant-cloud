@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
-import { exportScorecard, exportSessionFile, useAiSecondOpinion, usePanel, usePanelRecordFor, useSessionBundle, useTracks, useTranscript } from '../db';
-import { DecisionNote } from './panel/PanelParts';
-import { enteredLabel } from '../domain/decision';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { Link, useParams } from 'react-router';
+import { recordExported, useScorecard } from '../db';
 import { formatCandidateKey, shortFingerprint } from '../domain/plan';
 import { scoreLabel } from '../domain/rubric';
+import { computeScorecard, type Scorecard as ScorecardResult } from '../domain/scoring';
+import { scorecardCsv, scorecardMarkdown, exportFileName } from '../domain/export';
+import { toDomainAnswers } from '../domain/live';
 import { RECOMMENDATION_LABELS, type InterviewPlan, type Session } from '../domain/types';
-import type { Scorecard as ScorecardData } from '../domain/scoring';
+import type { ScorecardData } from '../shared/api';
 import {
   Alert,
   BandBadge,
@@ -32,22 +33,22 @@ import type { MenuItem } from '../ui';
 import { CategoryChart, CategoryTable } from './scorecard/CategoryChart';
 import { QuestionTable } from './scorecard/QuestionTable';
 import { capNote } from './scorecard/model';
-import { AiSection, useAiReport } from './scorecard/AiSection';
-import { TranscriptPanel } from './transcript/TranscriptPanel';
-import type { FocusLineRequest } from './transcript/TranscriptViewer';
+import { toPlan, toSession } from './interview/liveModel';
+import { interviewersLabel, interviewersOf } from '../domain/interviewers';
 import '../styles/pages/scorecard.css';
 import '../styles/pages/print.css';
-import { interviewersLabel, interviewersOf } from '../domain/interviewers';
 
-/** Route: /scorecard/:sessionId (FLOW-24, FLOW-25, FLOW-31, FLOW-32, SCORE-3…10). */
+/**
+ * Route: /scorecard/:recordId (FLOW-24, FLOW-25, FLOW-31, FLOW-32, SCORE-1…SCORE-10, LIVE-3). One panel
+ * member's record, worked out by the scoring module unchanged. Its owner sees it always; the rest of
+ * the round once it is submitted, and when the round hides scores, once their own is submitted too
+ * (the server decides). The side-by-side debrief is a separate screen.
+ */
 export default function Scorecard() {
-  const { sessionId } = useParams();
-  const bundle = useSessionBundle(sessionId);
-  // FLOW-27: an imported panelist's scorecard stays hidden until your own interview is submitted.
-  const panel = usePanel(sessionId);
+  const { recordId } = useParams();
+  const data = useScorecard(recordId);
   useDocumentTitle('Scorecard');
-  const { title, subtitle, actions, body } = scorecardContent(bundle, panel);
-  // One stable h1 (A11Y-2): it is focused on route change and keeps focus as data loads.
+  const { title, subtitle, actions, body } = scorecardContent(data);
   return (
     <div className="scorecard">
       <PageHeader title={title} subtitle={subtitle} actions={actions} />
@@ -56,11 +57,8 @@ export default function Scorecard() {
   );
 }
 
-function scorecardContent(
-  bundle: ReturnType<typeof useSessionBundle>,
-  panel: ReturnType<typeof usePanel>,
-): { title: string; subtitle?: string; actions?: ReactNode; body: ReactNode } {
-  if (bundle === undefined || (bundle?.session.origin === 'imported' && panel === undefined)) {
+function scorecardContent(data: ScorecardData | null | 'hidden' | undefined): { title: string; subtitle?: string; actions?: ReactNode; body: ReactNode } {
+  if (data === undefined) {
     return {
       title: 'Scorecard',
       body: (
@@ -70,76 +68,64 @@ function scorecardContent(
       ),
     };
   }
-  if (bundle === null) {
+  if (data === 'hidden') {
     return {
       title: 'Scorecard',
       body: (
-        <EmptyState title="This interview was not found on this device." actions={<Link to="/">Go to the dashboard</Link>}>
-          <p>It may have been deleted by a deletion request or the retention purge.</p>
-        </EmptyState>
+        <Alert tone="info" title="Hidden until you have submitted yours.">
+          <p>
+            This round has interviewers rate independently, so other people’s scores are shown once your own record of this interview is submitted. <DocLink req="LIVE-3" />
+          </p>
+        </Alert>
       ),
     };
   }
-  const { session, plan, scorecard } = bundle;
-  const key = formatCandidateKey(session.candidate);
-
-  if (session.state !== 'submitted') {
+  if (data === null) {
+    return {
+      title: 'Scorecard',
+      body: <EmptyState title="This scorecard was not found, is not submitted yet, or is in a round you are not on." actions={<Link to="/">Go to the Dashboard</Link>} />,
+    };
+  }
+  const { record, interview } = data;
+  const key = formatCandidateKey({ initials: interview.candidate.name, requisitionId: interview.candidate.requisitionId });
+  if (record.state !== 'submitted') {
     return {
       title: 'Scorecard',
       subtitle: `Candidate ${key}`,
       body: (
-        <Alert tone="info" title="The scorecard is available once the interview is submitted.">
+        <Alert tone="info" title="The scorecard is available once the record is submitted.">
           <p>
-            Finish the interview first: score or skip every question, then give an overall rating, recommendation and rationale.{' '}
-            <DocLink req="FLOW-22" />
+            Finish the interview first: score or skip every question, then give an overall rating, recommendation and rationale. <DocLink req="FLOW-22" />
           </p>
           <p>
-            <Link to={`/interview/${session.id}`}>Back to the interview</Link>
-          </p>
-        </Alert>
-      ),
-    };
-  }
-
-  const entry = panel?.entries.find((e) => e.session.id === session.id);
-  if (session.origin === 'imported' && (!entry || entry.hidden)) {
-    return {
-      title: 'Scorecard',
-      subtitle: `Candidate ${key} · panelist ${interviewersLabel(session)}`,
-      body: (
-        <Alert tone="info" title="Hidden until your own interview is submitted (blind scoring).">
-          <p>
-            Interviewers rate independently. This scorecard from another interviewer is shown once your own interview of this candidate,
-            with the same questions, is submitted. <DocLink req="FLOW-27" />
-          </p>
-          <p>
-            <Link to={`/debrief/${session.id}`}>Go to the debrief</Link>
+            <Link to={`/interviews/${interview.id}/live`}>Back to the interview</Link>
           </p>
         </Alert>
       ),
     };
   }
-
   return {
     title: `Scorecard: ${key}`,
-    actions: <ScorecardActions session={session} />,
-    subtitle:
-      session.origin === 'imported'
-        ? `Imported from panelist ${interviewersLabel(session)}. Read-only.`
-        : session.origin === 'entered'
-          ? `${enteredLabel(session)}, ${formatDateTime(session.enteredAt)}. Read-only: correct it from the candidate summary.`
-          : `Submitted ${formatDateTime(session.submittedAt)}`,
-    body: <ScorecardView session={session} plan={plan} scorecard={scorecard} />,
+    subtitle: `${data.mine ? '' : `${record.names.join(', ')} · `}Submitted ${formatDateTime(record.submittedAt)}`,
+    actions: <ScorecardActions data={data} />,
+    body: <ScorecardBody data={data} />,
   };
 }
 
+function useModel(data: ScorecardData) {
+  return useMemo(() => {
+    const plan = toPlan(data.interview.set);
+    const session = toSession(data.interview, data.record, null, data.startedAt);
+    const answers = toDomainAnswers(data.record, data.record.id, data.elapsedSec);
+    return { plan, session, scorecard: computeScorecard(plan, answers) };
+  }, [data]);
+}
 
-/** UX-9: the scorecard's actions. One primary (the debrief, the next step); the exports in one menu (FLOW-31, FLOW-32). */
-function ScorecardActions({ session }: { session: Session }) {
+/** UX-9: one primary (back to the interview's page, with the panel); the exports in one menu (FLOW-31, FLOW-32). */
+function ScorecardActions({ data }: { data: ScorecardData }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
-  // Other people's records (imported, or entered here on their behalf) are read-only here.
-  const imported = session.origin !== 'local';
+  const { plan, session, scorecard } = useModel(data);
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -152,87 +138,68 @@ function ScorecardActions({ session }: { session: Session }) {
   };
   const exportFile = (format: 'markdown' | 'csv') =>
     run(async () => {
-      const f = await exportScorecard(session.id, format);
-      downloadFile(f.fileName, f.mime, f.text);
+      // FLOW-32: recorded in the audit log before the file is given out.
+      await recordExported(data.record.id, format);
+      if (format === 'markdown') downloadFile(exportFileName('scorecard', data.record.id.slice(0, 8), 'md'), 'text/markdown', scorecardMarkdown(plan, session, scorecard));
+      else downloadFile(exportFileName('scorecard', data.record.id.slice(0, 8), 'csv'), 'text/csv', scorecardCsv(scorecard));
       toast(`Scorecard exported as ${format === 'markdown' ? 'Markdown' : 'CSV'}. The export is recorded in the audit log.`, 'success');
     });
   const print = () =>
     run(async () => {
-      await exportScorecard(session.id, 'print'); // FLOW-32: audited before the print dialog opens.
+      await recordExported(data.record.id, 'print');
       window.print();
     });
-  const exportSession = () =>
-    run(async () => {
-      const f = await exportSessionFile(session.id);
-      downloadFile(f.fileName, f.mime, f.text);
-      toast('Interview file exported. Share it with the other interviewers for the debrief.', 'success');
-    });
-
   const exportItems: MenuItem[] = [
     { label: 'Markdown', icon: 'download', onSelect: () => void exportFile('markdown') },
     { label: 'CSV, one row per question', icon: 'download', onSelect: () => void exportFile('csv') },
     { label: 'Print or save as PDF', icon: 'doc', onSelect: () => void print() },
-    ...(!imported ? [{ label: 'Interview file for the debrief', icon: 'download' as const, onSelect: () => void exportSession() }] : []),
   ];
-
   return (
     <>
-      {!imported && (
-        <Link className={buttonClass('ghost')} to={`/interview/${session.id}`}>
+      {data.mine && (
+        <Link className={buttonClass('ghost')} to={`/interviews/${data.interview.id}/live`}>
           <Icon name="edit" /> Amend (reason required)
         </Link>
       )}
       <MenuButton label="Export" items={exportItems.map((i) => ({ ...i, disabled: busy }))} />
-      <Link className={buttonClass('primary')} to={`/debrief/${session.id}`}>
-        Debrief <Icon name="arrow-right" />
+      <Link className={buttonClass('primary')} to={`/interviews/${data.interview.id}`}>
+        The interview and its panel <Icon name="arrow-right" />
       </Link>
     </>
   );
 }
 
-function ScorecardView({ session, plan, scorecard }: { session: Session; plan: InterviewPlan; scorecard: ScorecardData }) {
-  const tracks = useTracks();
-  const trackName = tracks?.find((t) => t.id === plan.trackId)?.name ?? plan.trackId;
+function ScorecardBody({ data }: { data: ScorecardData }) {
+  const { plan, session, scorecard } = useModel(data);
+  return <ScorecardView session={session} plan={plan} scorecard={scorecard} trackName={data.interview.trackName} setName={data.interview.set.name} />;
+}
+
+type SectionId = 'summary' | 'questions';
+const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
+  { id: 'summary', label: 'Summary' },
+  { id: 'questions', label: 'Questions' },
+];
+
+function ScorecardView({ session, plan, scorecard, trackName, setName }: { session: Session; plan: InterviewPlan; scorecard: ScorecardResult; trackName: string; setName: string }) {
   const key = formatCandidateKey(session.candidate);
   const cap = capNote(scorecard);
-  const imported = session.origin !== 'local';
-  // TEAM-12: the panel decision is the outcome, shown beside this interviewer's own figures.
-  const record = usePanelRecordFor(session.id);
-  // AI-9: the data layer returns the AI result only for a submitted local session.
-  const aiView = useAiSecondOpinion(session.id);
-  const transcript = useTranscript(session.id);
-  const report = useAiReport(plan, scorecard, aiView);
-  const [focusLine, setFocusLine] = useState<FocusLineRequest | null>(null);
-  const [params] = useSearchParams();
-  const sections = imported ? SECTIONS.filter((x) => x.id === 'summary' || x.id === 'questions') : SECTIONS;
+  const names = interviewersOf(session);
   const goTo = useCallback((id: SectionId) => {
     const h = document.getElementById(`sc-${id}-h`);
     if (!h) return;
     h.scrollIntoView({ block: 'start' });
     h.focus({ preventScroll: true });
   }, []);
-  const jumpToLine = useCallback(
-    (line: number) => {
-      setFocusLine((f) => ({ line, nonce: (f?.nonce ?? 0) + 1 }));
-    },
-    [],
-  );
-  // Deep link: /scorecard/:id?section=ai (from the transcript panel).
-  const wanted = params.get('section') as SectionId | null;
-  useEffect(() => {
-    if (wanted && SECTIONS.some((x) => x.id === wanted)) setTimeout(() => goTo(wanted), 50);
-  }, [wanted, goTo]);
 
   return (
     <>
       <nav className="sc-nav no-print" aria-label="Scorecard sections">
         <span className="small muted">On this page:</span>
         <ul>
-          {sections.map((x) => (
+          {SECTIONS.map((x) => (
             <li key={x.id}>
               <button type="button" className="sc-nav__link" onClick={() => goTo(x.id)}>
                 {x.label}
-                {x.id === 'ai' && report?.comparison.worthDiscussing.length ? <span className="sc-nav__count"> ({report.comparison.worthDiscussing.length} to discuss)</span> : null}
               </button>
             </li>
           ))}
@@ -252,10 +219,10 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
           <dd>{trackName}</dd>
         </div>
         <div>
-          <dt>{interviewersOf(session).length > 1 ? 'Interviewers' : 'Interviewer'}</dt>
+          <dt>{names.length > 1 ? 'Interviewers' : 'Interviewer'}</dt>
           <dd>
             {interviewersLabel(session)}
-            {interviewersOf(session).length > 1 && <span className="muted small"> (one shared scorecard)</span>}
+            {names.length > 1 && <span className="muted small"> (one shared scorecard)</span>}
           </dd>
         </div>
         <div>
@@ -263,8 +230,8 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
           <dd>{formatDate(session.startedAt ?? session.createdAt)}</dd>
         </div>
         <div>
-          <dt>Question set</dt>
-          <dd>{plan.name}</dd>
+          <dt>Questions</dt>
+          <dd>{setName}</dd>
         </div>
         <div>
           <dt>
@@ -276,22 +243,21 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
         </div>
       </dl>
 
-      {record?.decision && <DecisionNote decision={record.decision} to={`/candidate/${session.id}`} />}
-
       <section className="sc-summary" aria-labelledby="sc-summary-h">
         <Card className="sc-figure" title="Overall" level={3}>
-          <p className="sc-big tabular">{formatPct(scorecard.overallPct)}</p>
+          <p className="sc-big tabular" data-testid="sc-overall">
+            {formatPct(scorecard.overallPct)}
+          </p>
           <p className="small">
             Weighted over {scorecard.answeredCount} of {scorecard.plannedCount} answered questions. <DocLink req="SCORE-3" />
           </p>
           <p className="small">
-            Coverage <strong className="tabular">{formatCoverage(scorecard.coverage)}</strong> of planned weight (70% needed for a
-            band). <DocLink req="SCORE-6" />
+            Coverage <strong className="tabular" data-testid="sc-coverage">{formatCoverage(scorecard.coverage)}</strong> of planned weight (70% needed for a band). <DocLink req="SCORE-6" />
           </p>
         </Card>
 
         <Card className="sc-figure" title="Advisory band" level={3}>
-          <p>
+          <p data-testid="sc-band">
             <BandBadge band={scorecard.band} insufficientEvidence={scorecard.insufficientEvidence} capped={scorecard.capApplied} />
           </p>
           <p className="small">
@@ -304,12 +270,12 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
           </p>
         </Card>
 
-        <Card className="sc-figure sc-decision" title="Interviewer’s decision" level={3}>
+        <Card className="sc-figure sc-decision" title={names.length > 1 ? 'Interviewers’ decision' : 'Interviewer’s decision'} level={3}>
           <dl className="sc-decision__list">
             <div>
               <dt>Recommendation</dt>
               <dd>
-                <strong>{session.overall.recommendation ? RECOMMENDATION_LABELS[session.overall.recommendation] : '–'}</strong>
+                <strong data-testid="sc-recommendation">{session.overall.recommendation ? RECOMMENDATION_LABELS[session.overall.recommendation] : '–'}</strong>
               </dd>
             </div>
             <div>
@@ -318,25 +284,21 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
             </div>
           </dl>
           <p className="small muted">
-            Recorded by {interviewersLabel(session)}{interviewersOf(session).length > 1 ? ', on behalf of all of them' : ''}. <DocLink req="FLOW-25" />
+            Recorded by {interviewersLabel(session)}
+            {names.length > 1 ? ', on behalf of all of them' : ''}. <DocLink req="FLOW-25" />
           </p>
         </Card>
       </section>
 
       <section className="sc-rationale" aria-labelledby="sc-rationale-h">
         <h2 id="sc-rationale-h">Rationale</h2>
-        {session.overall.rationale.trim() ? (
-          <p className="pre-wrap sc-rationale__text">{session.overall.rationale}</p>
-        ) : (
-          <p className="muted">None given.</p>
-        )}
+        {session.overall.rationale.trim() ? <p className="pre-wrap sc-rationale__text">{session.overall.rationale}</p> : <p className="muted">None given.</p>}
       </section>
 
       {scorecard.insufficientEvidence && (
         <Alert tone="warning" title="Insufficient evidence: no band is shown.">
           <p>
-            Only {formatCoverage(scorecard.coverage)} of the planned question weight was answered; at least 70% is needed. The
-            percentage is still shown. <DocLink req="SCORE-6" />
+            Only {formatCoverage(scorecard.coverage)} of the planned question weight was answered; at least 70% is needed. The percentage is still shown. <DocLink req="SCORE-6" />
           </p>
         </Alert>
       )}
@@ -361,7 +323,7 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
         <Card title="Strengths" level={3} actions={<DocLink req="SCORE-5" className="no-print" />}>
           <p className="small muted">Categories averaging 3.0 or more.</p>
           {scorecard.strengths.length ? (
-            <ul className="sc-list">
+            <ul className="sc-list" data-testid="sc-strengths">
               {scorecard.strengths.map((s) => (
                 <li key={s.category.id}>
                   <Icon name="check" /> {s.category.name} <span className="muted">(average {formatAverage(s.average)})</span>
@@ -375,13 +337,11 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
         <Card title="Concerns" level={3} actions={<DocLink req="SCORE-5" className="no-print" />}>
           <p className="small muted">Categories averaging 2.0 or less, and must-have categories with no evidence.</p>
           {scorecard.concerns.length ? (
-            <ul className="sc-list">
+            <ul className="sc-list" data-testid="sc-concerns">
               {scorecard.concerns.map((c) => (
                 <li key={c.category.id}>
                   <Icon name="alert" /> {c.category.name}{' '}
-                  <span className="muted">
-                    {c.reason === 'no-evidence' ? '(must-have, no evidence: no answered questions)' : `(average ${formatAverage(c.average)})`}
-                  </span>
+                  <span className="muted">{c.reason === 'no-evidence' ? '(must-have, no evidence: no answered questions)' : `(average ${formatAverage(c.average)})`}</span>
                 </li>
               ))}
             </ul>
@@ -395,7 +355,7 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
         <h2 id="sc-questions-h" className="sc-part" tabIndex={-1}>
           Questions
         </h2>
-        <QuestionTable scorecard={scorecard} ai={report} />
+        <QuestionTable scorecard={scorecard} />
       </section>
 
       <section className="sc-section sc-lists" aria-labelledby="sc-sf-h">
@@ -423,8 +383,7 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
             <ul className="sc-list">
               {scorecard.flagged.map((r) => (
                 <li key={r.question.id}>
-                  <Icon name="flag" /> <strong>Q{r.index + 1}.</strong> {r.question.text}{' '}
-                  {r.skipped ? <Badge tone="warning">Skipped</Badge> : r.score ? <span className="muted">(score {r.score})</span> : null}
+                  <Icon name="flag" /> <strong>Q{r.index + 1}.</strong> {r.question.text} {r.skipped ? <Badge tone="warning">Skipped</Badge> : r.score ? <span className="muted">(score {r.score})</span> : null}
                 </li>
               ))}
             </ul>
@@ -435,38 +394,9 @@ function ScorecardView({ session, plan, scorecard }: { session: Session; plan: I
       </section>
 
       <p className="sc-footnote small muted">
-        The band is advisory. People record every score and the final decision. Percentages are rounded to whole numbers and
-        averages to one decimal place; thresholds use unrounded values. <DocLink req="SCORE-10" className="no-print" />
+        The band is advisory. People record every score and the final decision. Percentages are rounded to whole numbers and averages to one decimal place; thresholds use unrounded values.{' '}
+        <DocLink req="SCORE-10" className="no-print" />
       </p>
-
-      {!imported && (
-        <section className="sc-section sc-ai-section" aria-labelledby="sc-ai-h">
-          <h2 id="sc-ai-h" className="sc-part" tabIndex={-1}>
-            AI second opinion <span className="sc-part__note">not a decision</span>
-          </h2>
-          <AiSection session={session} plan={plan} human={scorecard} report={report} view={aiView} transcript={transcript} onJumpToLine={(line) => {
-            jumpToLine(line);
-            goTo('transcript');
-          }} />
-        </section>
-      )}
-
-      {!imported && (
-        <section className="sc-section no-print" aria-labelledby="sc-transcript-h">
-          <h2 id="sc-transcript-h" className="sc-part" tabIndex={-1}>
-            Transcript and recording
-          </h2>
-          <TranscriptPanel session={session} plan={plan} focusLine={focusLine} headingLevel={2} />
-        </section>
-      )}
     </>
   );
 }
-
-type SectionId = 'summary' | 'questions' | 'ai' | 'transcript';
-const SECTIONS: ReadonlyArray<{ id: SectionId; label: string }> = [
-  { id: 'summary', label: 'Summary' },
-  { id: 'questions', label: 'Questions' },
-  { id: 'ai', label: 'AI second opinion' },
-  { id: 'transcript', label: 'Transcript and recording' },
-];

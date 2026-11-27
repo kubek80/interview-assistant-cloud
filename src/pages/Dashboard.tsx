@@ -138,11 +138,13 @@ function PrimaryAction({ action, quiet }: { action: ReturnType<typeof primaryAct
 
 /** FLOW-34: an interview I am in the middle of is the most prominent thing on the page. */
 function ContinueCard({ interview, meId }: { interview: InterviewSummary; meId: string }) {
+  // LIVE-8: someone on the panel who has not joined yet joins it (it is running without them).
+  const joined = interview.panel.find((p) => p.id === meId)?.status === 'joined';
   return (
     <section className="continue" aria-labelledby={`continue-${interview.id}`}>
       <div className="continue__body">
         <h2 className="continue__title" id={`continue-${interview.id}`}>
-          <Icon name="clock" /> In progress
+          <Icon name="clock" /> {interview.state === 'paused' ? 'Paused' : 'In progress'}
         </h2>
         <p className="continue__who">
           <strong className="continue__key">{candidateLabel(interview)}</strong>
@@ -152,8 +154,8 @@ function ContinueCard({ interview, meId }: { interview: InterviewSummary; meId: 
         </p>
       </div>
       <div className="continue__actions">
-        <Link to={`/interviews/${interview.id}/live`} className={buttonClass('primary', 'lg')}>
-          <Icon name="play" /> Continue the interview
+        <Link to={joined ? `/interviews/${interview.id}/live` : `/interviews/${interview.id}`} className={buttonClass('primary', 'lg')}>
+          <Icon name="play" /> {joined ? 'Continue the interview' : 'Join the interview'}
         </Link>
       </div>
     </section>

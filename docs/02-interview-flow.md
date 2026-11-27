@@ -51,7 +51,7 @@ An interview moves through eight steps. Each step lists the requirements the app
 
 Several interviewers at one machine share one scorecard (see [Interviewers, transcripts and AI](#/docs/11-interviewers-transcripts-ai)). Panel members who score on their own computers each keep their own record, and the debrief shows them side by side (`LIVE-1`, `LIVE-9`).
 
-- `FLOW-27` Other panel members' judgements are shown as soon as they are recorded. Independent scoring is optional: a setting for each round, chosen by its organiser, "Hide other people's scores until they have submitted", is off by default (`LIVE-3`). When it is on, another panel member's judgement for an interview shows only their name and whether they have submitted until your own record for that interview is submitted.
+- `FLOW-27` Other panel members' judgements are shown as soon as they are recorded. Independent scoring is optional: a setting for each round, chosen by its organiser, "Hide other people's scores until you have submitted yours", is off by default (`LIVE-3`). When it is on, another panel member's judgement for an interview shows only their name, which questions they have scored and whether they have submitted, until your own record for that interview is submitted (or the interview is complete).
 - `FLOW-28` The debrief shows each panelist's percentage and band, per-category averages side by side, the panel score (the median of the percentages) and a warning when the spread (highest minus lowest) is above 20 points.
 - `FLOW-29` An interview's panel is the round members the plan names (`ROUND-4`, `LIVE-5`); their judgements belong to that interview, so nothing has to be matched up afterwards. Judgements imported from local-app files are matched to an interview of the round only when the candidate (name or initials plus requisition id, ignoring case and extra spaces) and the plan fingerprint both match (`DB-5`).
 - `FLOW-30` The Comparison screen shows a matrix of candidates against categories. Candidates can be compared only if they had the same plan (same fingerprint); the screen makes you choose a plan first and shows only that plan's submitted sessions.
@@ -77,6 +77,6 @@ These hold at a laptop-sized window (1280 by 800) and are checked like any other
 
 ## Resilience
 
-- `RES-1` Every change is saved automatically to the server as it is made (`HOST-6`). Reloading or closing the page at any point loses nothing: the session reopens at the same question with the same ticks, score, notes and flags.
+- `RES-1` Every change is saved automatically to the server as it is made (`HOST-6`). Reloading or closing the page at any point loses nothing: the interview reopens at the panel's current question (`LIVE-8`) with the same ticks, score, notes and flags.
 - `RES-2` Timers survive a reload. They are derived from stored timestamps, not from in-memory counters.
 - `RES-3` When the connection is lost the screen says plainly that it is offline or reconnecting; changes made meanwhile are kept in the browser and sent when the connection returns (`HOST-6`).

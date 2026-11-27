@@ -31,6 +31,8 @@
     display: grid;
     grid-template-columns: minmax(9rem, 16rem) auto minmax(0, 1fr) auto;
     grid-template-areas: 'who timer progress actions';
+    /* Room for 14 question chips beside "Take the lead" as well as beside "Pause" (UX-4). */
+    column-gap: var(--space-4);
   }
   .live-bar__who { grid-area: who; }
   .live-bar > .timer, .live-bar__submitted { grid-area: timer; }
@@ -623,3 +625,66 @@
   .live-dock__hint .suggestion { flex: 0 1 auto; min-width: 0; }
   .live-dock__hint .suggestion > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+/* ---------- Interviewing together (LIVE-2, LIVE-3): people, private browsing, the panel strip ---------- */
+/* The panel in the top bar's second line, where "with …" was: no extra height. */
+.people-line { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow: hidden; }
+.person { display: inline-flex; align-items: center; gap: 0.3em; min-width: 0; white-space: nowrap; color: var(--color-text-muted); }
+.person__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: 999px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+}
+/* Here now: a filled circle (shape as well as colour, A11Y-3). */
+.person--here .person__dot { border-style: solid; border-color: var(--color-success); background: var(--color-success-bg); color: var(--color-success); }
+.person--here .person__name { color: var(--color-text); }
+.person__lead { display: inline-flex; align-items: center; gap: 0.15em; padding: 0 0.35em; border-radius: var(--radius-sm); background: var(--color-accent-soft); color: var(--color-accent); font-size: var(--text-xs); font-weight: 650; }
+.person__lead .icon { width: 0.85em; height: 0.85em; }
+
+/* Looking at another question on my own: one calm line in the question card. */
+.browsing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  background: var(--color-accent-soft);
+  color: var(--color-heading);
+  font-size: var(--text-sm);
+}
+.browsing > .icon { color: var(--color-accent); }
+.browsing > span { flex: 1 1 auto; }
+/* The panel's question in the strip, while I look elsewhere: a dashed ring. */
+.progress__item--panel { outline: 2px dashed var(--color-accent); outline-offset: 1px; }
+
+/* LIVE-3: the others' marks for this question, under my notes. */
+.panel-strip { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--color-border); font-size: var(--text-sm); }
+.panel-strip__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); color: var(--color-text-muted); }
+.panel-strip__head > .icon { align-self: center; flex: none; }
+.panel-strip__summary { margin: 0; flex: 1 1 auto; min-width: 0; }
+.panel-strip__label { font-weight: 650; color: var(--color-heading); }
+.panel-strip__score { color: var(--color-heading); }
+.panel-strip__score--none { font-weight: 500; color: var(--color-text-muted); }
+.panel-strip__hidden { color: var(--color-text-muted); }
+.panel-strip__toggle { font-size: var(--text-sm); }
+.panel-strip__body { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-2); margin-top: var(--space-2); }
+.panel-strip__body[hidden] { display: none; }
+.panel-strip__card { padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface-2); }
+.panel-strip__who { margin: 0 0 var(--space-1); }
+.panel-strip__ticks, .panel-strip__notes { list-style: none; margin: 0 0 var(--space-1); padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.panel-strip__ticks li { display: flex; gap: 0.35em; align-items: baseline; }
+.panel-strip__ticks .icon { flex: none; color: var(--color-success); }
+.panel-strip__ticks--flags .icon { color: var(--color-danger); }

@@ -18,6 +18,9 @@ import RoundPage from '../pages/round/RoundPage';
 import NewInterview from '../pages/NewInterview';
 import PlanSeveral from '../pages/PlanSeveral';
 import ReadyScreen from '../pages/interview/PreStart';
+import LiveInterview from '../pages/LiveInterview';
+import CandidateWindow from '../pages/CandidateWindow';
+import Scorecard from '../pages/Scorecard';
 import { useRounds } from '../db';
 import ComingNext from '../pages/ComingNext';
 import Reviews from '../pages/Reviews';
@@ -147,6 +150,8 @@ function SignedInApp() {
   return (
     <LiveProvider>
       <Routes>
+        {/* FLOW-11, LIVE-7: the candidate window has no app chrome at all. */}
+        <Route path="interviews/:id/present" element={<CandidateWindow />} />
         <Route element={<Layout me={me} />}>
           <Route index element={me.role === 'reviewer' ? <Navigate to="/to-review" replace /> : <Dashboard me={me} />} />
           <Route path="rounds" element={<Only permission="rounds.list" me={me}><Rounds me={me} /></Only>} />
@@ -155,8 +160,8 @@ function SignedInApp() {
           <Route path="rounds/:roundId/plan" element={<Only permission="rounds.list" me={me}><PlanSeveral /></Only>} />
           <Route path="rounds/:roundId/:section" element={<Only permission="rounds.list" me={me}><RoundPage me={me} /></Only>} />
           <Route path="interviews/:id" element={<Only permission="rounds.list" me={me}><ReadyScreen /></Only>} />
-          {/* Step 2b: the live interview (starting it records the consent, LIVE-6). */}
-          <Route path="interviews/:id/live" element={<Interviews me={me} title="Interview" />} />
+          <Route path="interviews/:id/live" element={<Only permission="rounds.list" me={me}><LiveInterview me={me} /></Only>} />
+          <Route path="scorecard/:recordId" element={<Only permission="rounds.list" me={me}><Scorecard /></Only>} />
           <Route path="bank" element={<QuestionBank />} />
           <Route path="bank/:trackId" element={<QuestionBank />} />
           <Route
@@ -220,12 +225,11 @@ function SignedInApp() {
           {/* Steps 2 and 3 of the hosted build: the routes exist so links keep working. */}
           <Route path="new" element={<Only permission="rounds.list" me={me}><ChooseRound me={me} what="new" /></Only>} />
           <Route path="plan" element={<Only permission="rounds.list" me={me}><ChooseRound me={me} what="plan" /></Only>} />
-          <Route path="scorecard/:sessionId" element={<Interviews me={me} title="Scorecard" />} />
-          <Route path="debrief/:sessionId" element={<Interviews me={me} title="Debrief" />} />
+          {/* The next step: the side-by-side debrief and panel decision (LIVE-9), from an interview's page. */}
+          <Route path="debrief/:interviewId" element={<Interviews me={me} title="Debrief" />} />
           <Route path="compare" element={<Interviews me={me} title="Compare candidates" />} />
           <Route path="summary" element={<Interviews me={me} title="Summary" />} />
           <Route path="candidate/:ref" element={<Interviews me={me} title="Candidate" />} />
-          <Route path="present/:sessionId" element={<Interviews me={me} title="Candidate window" />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

@@ -218,7 +218,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext): void 
       method: 'POST',
       url: '/api/auth/dev/sign-in',
       access: { public: true },
-      rateLimitPerMinute: 120,
+      // Development and tests only (refused in production, AUTH-6): the end-to-end suite signs in
+      // many browser contexts from one address at once.
+      rateLimitPerMinute: 1000,
       body: z.object({ email: z.email().max(254), returnTo: z.string().max(400).optional() }).strict(),
       handler: async ({ req, reply, body }) => {
         try {

@@ -14,7 +14,7 @@
 //   ['round', 'interview', id]            one interview (ready screen)
 import { useQuery } from '@tanstack/react-query';
 import { api } from './http';
-import { orNull, queryClient } from './queryClient';
+import { orNull, queryClient, throwIfFatal } from './queryClient';
 import { useLiveTopics } from './live';
 import { useMe } from './auth';
 import type {
@@ -39,7 +39,7 @@ const refresh = () => queryClient.invalidateQueries({ queryKey: ['round'] });
 function useData<T>(key: readonly unknown[], fn: () => Promise<T>, enabled = true): T | undefined {
   // Round data changes as others plan: refetch whenever a screen opens (live events cover the rest).
   const q = useQuery({ queryKey: key, queryFn: fn, enabled, staleTime: 0 });
-  if (q.isError) throw q.error;
+  throwIfFatal(q);
   return q.data;
 }
 
@@ -95,7 +95,7 @@ export function useMyInterviews(rounds: readonly { id: string; myRole: RoundRole
 export function useInterview(id: string | undefined): InterviewDetail | null | undefined {
   const q = useQuery({ queryKey: ['round', 'interview', id], queryFn: () => orNull(api.get<InterviewDetail>(`/api/interviews/${id}`)), enabled: !!id, staleTime: 0 });
   useLiveTopics(q.data ? `round:${q.data.roundId}` : '');
-  if (q.isError) throw q.error;
+  throwIfFatal(q);
   return q.data;
 }
 
@@ -165,4 +165,4 @@ export async function cancelInterview(id: string, reason?: string): Promise<void
   await refresh();
 }
 
-// Step 2b: `startInterview(id)` (consent confirmed once for the interview, LIVE-6) belongs here.
+// Starting, joining and everything in a running interview: src/db/interview.ts.

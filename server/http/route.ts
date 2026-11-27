@@ -58,8 +58,14 @@ export interface RouteDef<P extends z.ZodType, Q extends z.ZodType, B extends z.
   body?: B;
   /** Bytes; default 100 kB (server-wide limit in app.ts). */
   bodyLimit?: number;
-  /** Rate limit for this route: requests per minute per client address. */
+  /** Rate limit for this route: requests per minute per client address (or per person, see rateLimitBy). */
   rateLimitPerMinute?: number;
+  /**
+   * 'ip' (default) counts per client address: for sign-in, before anyone is known. 'person' counts per
+   * signed-in person, after the access check: for chatty endpoints (autosave, presence) used by many
+   * people behind one office address, where a per-address limit would throttle a whole office.
+   */
+  rateLimitBy?: 'ip' | 'person';
   handler: (h: Handled<z.infer<P>, z.infer<Q>, z.infer<B>>) => Promise<unknown> | unknown;
 }
 
@@ -147,10 +153,14 @@ export function route<P extends z.ZodType = typeof EMPTY, Q extends z.ZodType = 
     bodyLimit: def.bodyLimit,
     config: { access: def.access },
     preHandler: async (req) => {
-      if (def.rateLimitPerMinute && !ctx.rateLimiter.check(`${def.url}|${req.ip}`, def.rateLimitPerMinute)) {
-        throw new ApiError(429, 'rate_limited', 'Too many attempts. Wait a minute and try again.');
-      }
+      const limited = (key: string) => {
+        if (def.rateLimitPerMinute && !ctx.rateLimiter.check(`${def.method} ${def.url}|${key}`, def.rateLimitPerMinute)) {
+          throw new ApiError(429, 'rate_limited', 'Too many attempts. Wait a minute and try again.');
+        }
+      };
+      if (def.rateLimitBy !== 'person') limited(req.ip);
       await checkAccess(req, ctx, def.access);
+      if (def.rateLimitBy === 'person') limited(req.actor?.id ?? req.ip);
     },
     handler: async (req, reply) => {
       const params = parse(def.params, req.params, 'address');

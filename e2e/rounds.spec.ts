@@ -1,7 +1,6 @@
 // ROUND-1…ROUND-5, FLOW-2…FLOW-9, FLOW-33, FLOW-34, TEAM-1, TEAM-2, TEAM-15, TEAM-16, UX-1…UX-3, UX-7…UX-9,
 // PANEL-1, PRIV-1, HOST-5: hiring rounds, their questions and planning interviews, in the real build.
 import AxeBuilder from '@axe-core/playwright';
-import pg from 'pg';
 import type { Browser, BrowserContext } from '@playwright/test';
 import { ADMIN, expect, signIn, test, uniqueEmail, type Guard, type Page } from './fixtures';
 
@@ -36,7 +35,6 @@ async function as(browser: Browser, guard: Guard, who: string, path = '/', viewp
 }
 
 const run = Date.now().toString(36);
-const db = () => new pg.Client({ connectionString: process.env.E2E_DATABASE_URL });
 
 async function axe(page: Page) {
   const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
@@ -120,13 +118,13 @@ test('ROUND-1 ROUND-3 UX-2 UX-3 FLOW-2 FLOW-4 FLOW-5 FLOW-6 FLOW-7 FLOW-10 FLOW-
   await expect(page.getByText(/Notes and ratings from this interview are recorded/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start interview' })).toBeFocused();
   expect(page.url()).not.toMatch(/Ana|Diaz/); // PRIV-3: random ids only
-  // FLOW-7, FLOW-10: Start needs the confirmation; starting itself is the next step (nothing is recorded yet).
+  // FLOW-7, FLOW-10: Start needs the confirmation; starting opens the live interview (e2e/live.spec.ts goes on from there).
   await page.getByRole('button', { name: 'Start interview' }).click();
   await expect(page.getByRole('alert')).toContainText('Read the text above to the candidate');
   await expect(page.getByLabel(/I confirm the candidate has been told/)).toBeFocused();
   await page.getByLabel(/I confirm the candidate has been told/).check();
   await page.getByRole('button', { name: 'Start interview' }).click();
-  await expect(page.getByText('Coming in the next step')).toBeVisible();
+  await expect(page.locator('#question-heading')).toHaveText(/^Question 1 of 14/);
 
   // FLOW-8: the round's questions are now fixed.
   await page.goto(`/#/rounds/${roundId}/questions`);
@@ -139,7 +137,8 @@ test('ROUND-1 ROUND-3 UX-2 UX-3 FLOW-2 FLOW-4 FLOW-5 FLOW-6 FLOW-7 FLOW-10 FLOW-
   await page.getByRole('button', { name: 'Plan 25 interviews' }).click();
   await expect(page.getByTestId('plan-done')).toContainText('25 interviews planned');
   await page.getByRole('link', { name: 'See the round’s interviews' }).click();
-  await expect(page.getByTestId('round-counts')).toContainText('26 upcoming');
+  await expect(page.getByTestId('round-counts')).toContainText('25 upcoming');
+  await expect(page.getByTestId('round-counts')).toContainText('1 in progress'); // the one started above
 
   // FLOW-9: changing fixed questions makes a new set for future interviews, with a plain warning.
   await page.goto(`/#/rounds/${roundId}/questions`);
@@ -203,12 +202,9 @@ test('ROUND-4 TEAM-2 TEAM-16 ROUND-2 FLOW-1 FLOW-34 UX-9: an interviewer sees th
   expect((await call(page, 'PATCH', `/api/rounds/${roundId}`, { name: 'Mine now' })).status).toBe(403);
   expect((await call(page, 'POST', `/api/rounds/${roundId}/interviews`, { candidate: { name: 'X' }, panel: [ivy.id] })).status).toBe(403);
 
-  // FLOW-34: an interview in progress (started in step 2b) is the most prominent action.
-  const c = db();
-  await c.connect();
+  // FLOW-34: an interview I have started (consent confirmed, LIVE-6) is the most prominent action.
   const mine = (await call(page, 'GET', '/api/my/interviews')).body.find((i: { onMyPanel: boolean; roundId: string }) => i.onMyPanel && i.roundId === roundId);
-  await c.query(`UPDATE interviews SET state = 'in_progress', started_at = now() WHERE id = $1`, [mine.id]);
-  await c.end();
+  expect((await call(page, 'POST', `/api/interviews/${mine.id}/start`, { consent: true })).status).toBe(200);
   await page.goto('/#/');
   await expect(page.getByRole('link', { name: 'Continue the interview' })).toBeVisible();
   await expect(page.getByTestId('dash-counts')).toContainText('39 upcoming · 1 in progress');

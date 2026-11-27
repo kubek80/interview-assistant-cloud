@@ -20,15 +20,12 @@
   },
   "include": ["src", "vite.config.ts", "e2e", "playwright.config.ts"],
   // The browser app. The server has its own project (server/tsconfig.json).
-  // Excluded until steps 2 and 3 port them to the HTTP data layer (README "Porting a screen"):
+  // Excluded until steps 2 and 3 port them (step 2b ported the live interview, the candidate window and the scorecard) to the HTTP data layer (README "Porting a screen"):
   // the local app's IndexedDB layer, its end-to-end tests, and the screens that still use it.
   "exclude": [
     "src/db-local",
     "e2e-local",
     "src/ai",
-    "src/pages/LiveInterview.tsx",
-    "src/pages/CandidateWindow.tsx",
-    "src/pages/Scorecard.tsx",
     "src/pages/Debrief.tsx",
     "src/pages/Comparison.tsx",
     "src/pages/Summary.tsx",
@@ -39,22 +36,10 @@
     "src/pages/compare",
     "src/pages/dashboard/Sessions.tsx",
     "src/pages/team/Attendance.tsx",
-    "src/pages/interview/Amend.tsx",
-    "src/pages/interview/CandidateQuestion.tsx",
-    "src/pages/interview/FinishDialog.tsx",
     "src/pages/interview/InterviewersDialog.tsx",
-    "src/pages/interview/Notes.tsx",
-    "src/pages/interview/OverallFields.tsx",
-    "src/pages/interview/ProgressList.tsx",
-    "src/pages/interview/ScoreControl.tsx",
-    "src/pages/interview/ShortcutsDialog.tsx",
-    "src/pages/interview/Timers.tsx",
-    "src/pages/interview/useNoteDraft.ts",
-    "src/pages/interview/logic.ts",
-    "src/pages/interview/logic.test.ts",
+    "src/pages/scorecard/AiSection.tsx",
     "src/pages/debrief",
     "src/pages/panel",
-    "src/pages/scorecard",
     "src/pages/summary",
     "src/pages/transcript"
   ]

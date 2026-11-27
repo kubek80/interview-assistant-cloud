@@ -164,8 +164,8 @@ function truncate(s: string, max = 60): string {
 
 export const SHORTCUTS: ReadonlyArray<{ keys: string[]; action: string }> = [
   { keys: ['1', '2', '3', '4'], action: 'Set the score' },
-  { keys: ['N'], action: 'Next question' },
-  { keys: ['P'], action: 'Previous question' },
+  { keys: ['N'], action: 'Next question (moves everyone when you lead; otherwise only what you see)' },
+  { keys: ['P'], action: 'Previous question (the same)' },
   { keys: ['F'], action: 'Flag or unflag the question' },
   { keys: ['S'], action: 'Skip the question (asks for a reason)' },
   { keys: ['C'], action: 'Toggle the candidate view' },

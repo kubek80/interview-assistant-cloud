@@ -444,8 +444,12 @@ legend { padding: 0; font-weight: 600; margin-bottom: var(--space-2); color: var
 .app-exit:hover { background: var(--color-surface-2); color: var(--color-heading); }
 .app-exit__note { display: inline-flex; align-items: center; gap: 0.3em; font-size: var(--text-sm); color: var(--color-text-muted); }
 .app-exit__note .icon { color: var(--color-success); }
+/* RES-3: saving, or offline with changes kept here (text and icon, not colour alone). */
+.app-exit__note--busy .icon { color: var(--color-text-muted); }
+.app-exit__note--warn { color: var(--color-warning); font-weight: 600; }
+.app-exit__note--warn .icon { color: var(--color-warning); }
 @media (max-width: 40rem) {
-  .app-exit__note { display: none; }
+  .app-exit__note:not(.app-exit__note--warn) { display: none; }
 }
 
 /* ---------- Menu button (A11Y-1) ---------- */

@@ -6,7 +6,7 @@ import { Field, TextArea } from '../../ui/Field';
 import { Icon } from '../../ui/Icon';
 import { useToast } from '../../ui/Toast';
 import { DocLink } from '../../docs/DocLink';
-import { RepoError, setOverall, skipRemaining, submitSession, unskipQuestion } from '../../db';
+import { RepoError, changeRecord, submitRecord } from '../../db';
 import { canFinish } from '../../domain/validation';
 import type { Answer, InterviewPlan, OverallAssessment, Session } from '../../domain/types';
 import { OverallFields, type OverallErrors } from './OverallFields';
@@ -15,6 +15,8 @@ import { finishSummary, unresolvedSentence } from './logic';
 
 interface FinishDialogProps {
   open: boolean;
+  /** The signed-in person (the record's owner); their changes go through their outbox (HOST-6). */
+  userId: string;
   onClose: () => void;
   session: Session;
   plan: InterviewPlan;
@@ -30,7 +32,7 @@ interface FinishDialogProps {
  * reason"; a 1 or 4 without a note as compact jump links. Then the overall rating, recommendation and
  * rationale (autosaved, RES-1), on behalf of every interviewer (PANEL-4), and Submit.
  */
-export function FinishDialog({ open, onClose, session, plan, answers, onJump, onSubmitted }: FinishDialogProps) {
+export function FinishDialog({ open, userId, onClose, session, plan, answers, onJump, onSubmitted }: FinishDialogProps) {
   const { announce } = useToast();
   const [overall, setLocal] = useState<OverallAssessment>(session.overall);
   const [showErrors, setShowErrors] = useState(false);
@@ -62,7 +64,7 @@ export function FinishDialog({ open, onClose, session, plan, answers, onJump, on
     timer.current = null;
     const patch = pending.current;
     pending.current = null;
-    if (patch) await setOverall(session.id, patch);
+    if (patch) changeRecord(userId, session.id, [{ t: 'overall', ...patch }]);
   };
 
   // Save on unmount/close too.
@@ -100,7 +102,12 @@ export function FinishDialog({ open, onClose, session, plan, answers, onJump, on
       return;
     }
     try {
-      const ids = await skipRemaining(session.id, reason);
+      const ids = summary.unresolved.map((u) => u.questionId);
+      changeRecord(
+        userId,
+        session.id,
+        ids.map((q) => ({ t: 'skip' as const, q, reason: reason.trim() })),
+      );
       setLastSkip({ ids, reason: reason.trim() });
       setSkipping(false);
       setReason('');
@@ -115,7 +122,11 @@ export function FinishDialog({ open, onClose, session, plan, answers, onJump, on
   const undoSkip = async () => {
     if (!lastSkip) return;
     try {
-      for (const id of lastSkip.ids) await unskipQuestion(session.id, id);
+      changeRecord(
+        userId,
+        session.id,
+        lastSkip.ids.map((q) => ({ t: 'unskip' as const, q })),
+      );
       announce('The skips were undone.');
       setLastSkip(null);
       setTimeout(() => document.getElementById('finish-problems')?.focus(), 0);
@@ -141,8 +152,8 @@ export function FinishDialog({ open, onClose, session, plan, answers, onJump, on
     setBusy(true);
     try {
       await flush();
-      await setOverall(session.id, overall);
-      await submitSession(session.id);
+      changeRecord(userId, session.id, [{ t: 'overall', rating: overall.rating, recommendation: overall.recommendation, rationale: overall.rationale }]);
+      await submitRecord(userId, session.id);
       onSubmitted();
     } catch (e) {
       setError({ message: errorMessage(e), details: e instanceof RepoError ? e.details : [] });
@@ -308,5 +319,5 @@ export function FinishDialog({ open, onClose, session, plan, answers, onJump, on
 }
 
 export function errorMessage(e: unknown): string {
-  return e instanceof Error ? e.message : 'Something went wrong. Your work is still saved on this device.';
+  return e instanceof Error ? e.message : 'Something went wrong. Your changes are kept and sent when the server can be reached.';
 }

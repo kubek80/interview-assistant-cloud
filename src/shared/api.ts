@@ -456,3 +456,184 @@ export interface ChangeInterviewInput {
   note?: string;
   recordingNotice?: boolean;
 }
+
+// ---- Interviewing together (LIVE-1…LIVE-8, HOST-5, HOST-6) ----
+//
+// The shared interview (state, current question, lead, timers) lives on the interviews row; each
+// panel member's own record (ticks, scores, notes, overall assessment) in records/answers/notes.
+// Times inside these shapes are epoch milliseconds of the *server's* clock (the database's), and
+// every response carries `serverNow` so the browser can correct for its own clock (RES-2).
+
+/** DATA-3: elapsed = accumulatedMs + (now - runningSince) while running (server epoch ms). */
+export interface TimerJson {
+  accumulatedMs: number;
+  runningSince: number | null;
+}
+
+export interface LivePanelMember {
+  id: string;
+  name: string;
+  status: PanelMember['status'];
+  /** Their own record (null until they join, or when they share someone else's screen). */
+  recordId: string | null;
+  recordState: 'draft' | 'submitted' | null;
+  /** LIVE-5, PANEL-2: they score on this person's record (shared screen), else null. */
+  onRecordOf: string | null;
+  /** LIVE-3: last heartbeat from an open interview screen (server epoch ms), or null. */
+  seenAt: number | null;
+}
+
+/** GET /api/interviews/:id/live: the shared state everyone in the interview follows (LIVE-2). */
+export interface LiveState {
+  id: string;
+  roundId: string;
+  /** Increases with every change to the shared state (optimistic concurrency, HOST-5). */
+  version: number;
+  state: 'planned' | 'in_progress' | 'paused' | 'completed';
+  currentQuestionId: string | null;
+  /** LIVE-2: who moves everyone; null before anyone on the panel has joined. */
+  leadUserId: string | null;
+  timer: TimerJson;
+  /** Per-question soft timers, by question id (FLOW-19, RES-2). */
+  questionTimers: Record<string, TimerJson>;
+  startedAt: string | null;
+  completedAt: string | null;
+  /** LIVE-6: confirmed once for the interview, by whoever started it. */
+  consent: { at: string; byName: string; recordingNotice: boolean } | null;
+  panel: LivePanelMember[];
+  /** LIVE-3: the round hides other people's marks until you have submitted yours. */
+  hideOthers: boolean;
+  me: {
+    onPanel: boolean;
+    status: PanelMember['status'] | null;
+    /** My own record, when I have joined. */
+    recordId: string | null;
+    /** I score on this panel member's screen (their record carries my name). */
+    onRecordOf: string | null;
+    /** I may start it (a panel member, or an organiser of the round). */
+    canStart: boolean;
+    /** I may mark panel members as "did not take part" (organisers of the round). */
+    canMark: boolean;
+  };
+  serverNow: number;
+}
+
+export interface AnswerJson {
+  questionId: string;
+  score: import('../domain/types').Score | null;
+  coveredKeyPoints: number[];
+  redFlagsSeen: number[];
+  probeHandled: boolean;
+  flagged: boolean;
+  skipped: boolean;
+  skipReason: string | null;
+}
+
+export interface NoteJson {
+  /** Chosen by the browser (a random UUID) so a note sent twice is stored once (HOST-6). */
+  id: string;
+  questionId: string;
+  /** FLOW-15: elapsed interview time when the note was started. */
+  atSec: number;
+  text: string;
+  /** PANEL-3: which of the record's names made it. */
+  by: string | null;
+}
+
+export interface OverallJson {
+  rating: import('../domain/types').Score | null;
+  recommendation: import('../domain/types').Recommendation | null;
+  rationale: string;
+}
+
+/** What a record holds; the browser and the server apply RecordOps to it with the same code. */
+export interface RecordData {
+  answers: AnswerJson[];
+  notes: NoteJson[];
+  overall: OverallJson;
+}
+
+export interface RecordDetail extends RecordData {
+  id: string;
+  interviewId: string;
+  ownerId: string;
+  /** LIVE-5, PANEL-4: everyone the record speaks for, the owner first. */
+  names: string[];
+  /** Other panel members sharing the owner's screen (user ids). */
+  sharedWith: string[];
+  state: 'draft' | 'submitted';
+  submittedAt: string | null;
+  version: number;
+}
+
+/** LIVE-3: another panel member's record as I may see it. */
+export interface OtherRecord {
+  id: string;
+  ownerId: string;
+  names: string[];
+  state: 'draft' | 'submitted';
+  /** Questions they have scored or skipped (always shown: "Ben has scored it"). */
+  resolved: string[];
+  /** Their marks: null while the round hides them from me (the server never sends them). */
+  marks: RecordData | null;
+}
+
+/** GET /api/interviews/:id/records */
+export interface LiveRecords {
+  mine: RecordDetail | null;
+  others: OtherRecord[];
+  /** LIVE-3, FLOW-27: others' marks are hidden from me until I submit mine. */
+  hidden: boolean;
+  serverNow: number;
+}
+
+/**
+ * One change to my own record (LIVE-1, FLOW-13…FLOW-18, FLOW-22). Every op sets a value rather than
+ * toggling one, so sending it twice, or from two tabs, never undoes anything (HOST-6).
+ */
+export type RecordOp =
+  | { t: 'score'; q: string; v: import('../domain/types').Score | null }
+  | { t: 'kp'; q: string; i: number; on: boolean }
+  | { t: 'rf'; q: string; i: number; on: boolean }
+  | { t: 'probe'; q: string; on: boolean }
+  | { t: 'flag'; q: string; on: boolean }
+  | { t: 'skip'; q: string; reason: string }
+  | { t: 'unskip'; q: string }
+  | { t: 'note.add'; id: string; q: string; atSec: number; text: string; by: string | null }
+  | { t: 'note.edit'; id: string; text: string; by?: string | null }
+  | { t: 'note.del'; id: string }
+  | { t: 'overall'; rating?: import('../domain/types').Score | null; recommendation?: import('../domain/types').Recommendation | null; rationale?: string };
+
+export type LiveCommand =
+  /** "Move from question A to question B": refused unless the panel is on A (or already on B). */
+  | { type: 'move'; from: string; to: string }
+  | { type: 'pause' }
+  | { type: 'resume' }
+  /** LIVE-2: take the lead with one click. */
+  | { type: 'lead' };
+
+/** AUD-4: an amendment to a submitted record, with its reason. */
+export interface AmendInput {
+  reason: string;
+  question?: { id: string; score?: import('../domain/types').Score | null; notes?: Array<{ id?: string; atSec: number; text: string; by?: string | null }> };
+  overall?: Partial<OverallJson>;
+}
+
+/** GET /api/records/:id: one record with what its scorecard needs (FLOW-24). */
+export interface ScorecardData {
+  record: RecordDetail;
+  interview: InterviewDetail;
+  /** Per-question time spent (seconds), from the shared timers. */
+  elapsedSec: Record<string, number>;
+  startedAt: string | null;
+  /** I own it (I may amend it, AUD-4). */
+  mine: boolean;
+}
+
+/** GET /api/interviews/:id/present: what the candidate window may show (FLOW-11, LIVE-7). */
+export interface PresentView {
+  state: 'planned' | 'in_progress' | 'paused' | 'completed';
+  position: number | null;
+  total: number;
+  text: string | null;
+}

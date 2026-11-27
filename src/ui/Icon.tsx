@@ -41,6 +41,8 @@ const PATHS = {
   'arrow-right': 'M5 12h14m0 0l-6-6m6 6l-6 6',
   minus: 'M5 12h14',
   steer: 'M12 22a10 10 0 100-20 10 10 0 000 20zm4-14l-2.5 5.5L8 16l2.5-5.5L16 8z',
+  users: 'M9 11a4 4 0 100-8 4 4 0 000 8zm-7 10a7 7 0 0114 0M16 3.5a4 4 0 010 7M22 21a7 7 0 00-4-6.3',
+  lead: 'M4 20h16M5 16l-1-9 5 4 3-6 3 6 5-4-1 9H5z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

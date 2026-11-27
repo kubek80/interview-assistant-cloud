@@ -4,6 +4,8 @@ import { progressCounts, type ProgressItem } from './logic';
 interface ProgressListProps {
   items: ProgressItem[];
   currentId: string | null;
+  /** LIVE-2: the panel's question, when I am looking at another one on my own. */
+  panelId?: string | null;
   onJump: (questionId: string) => void;
 }
 
@@ -13,7 +15,7 @@ interface ProgressListProps {
  * and in full by its accessible name and tooltip, never by colour alone (A11Y-3). The legend is in
  * the shortcuts dialog, so it does not take space on every question.
  */
-export function ProgressList({ items, currentId, onJump }: ProgressListProps) {
+export function ProgressList({ items, currentId, panelId = null, onJump }: ProgressListProps) {
   const c = progressCounts(items);
   const current = items.find((it) => it.questionId === currentId);
   return (
@@ -41,17 +43,18 @@ export function ProgressList({ items, currentId, onJump }: ProgressListProps) {
       <ol className="progress__list">
         {items.map((it) => {
           const isCurrent = it.questionId === currentId;
+          const isPanel = it.questionId === panelId;
           return (
             <li key={it.questionId}>
               <button
                 type="button"
-                className={`progress__item progress__item--${it.status}${it.needsNote ? ' progress__item--needs-note' : ''}${it.flagged ? ' progress__item--flagged' : ''}`}
+                className={`progress__item progress__item--${it.status}${it.needsNote ? ' progress__item--needs-note' : ''}${it.flagged ? ' progress__item--flagged' : ''}${isPanel ? ' progress__item--panel' : ''}`}
                 aria-current={isCurrent ? 'step' : undefined}
-                title={`Question ${it.position}: ${it.summary}`}
+                title={`Question ${it.position}: ${it.summary}${isPanel ? ' (the panel is here)' : ''}`}
                 onClick={() => onJump(it.questionId)}
               >
                 {/* Named by its content, not aria-label, so the name always contains the visible number (WCAG 2.5.3). */}
-                <span className="visually-hidden">{`Question ${it.position}: ${it.summary}${isCurrent ? ' (current)' : ''}`}</span>
+                <span className="visually-hidden">{`Question ${it.position}: ${it.summary}${isCurrent ? ' (current)' : ''}${isPanel ? ' (the panel is here)' : ''}`}</span>
                 <span className="progress__num" aria-hidden="true">
                   {it.position}
                 </span>

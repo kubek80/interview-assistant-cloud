@@ -99,7 +99,8 @@ export function QuestionTable({ scorecard, ai }: { scorecard: Scorecard; ai?: Ai
                     <ul className="sc-cell-list">
                       {notes.map((n, i) => (
                         <li key={i}>
-                          <span className="mono small muted">[{formatSeconds(n.atSec)}]</span> <span className="pre-wrap">{n.text}</span>
+                          <span className="mono small muted">[{formatSeconds(n.atSec)}]</span> {n.by && <strong>{n.by}: </strong>}
+                          <span className="pre-wrap">{n.text}</span>
                         </li>
                       ))}
                     </ul>

@@ -16,6 +16,8 @@
 | `Esc` | Leave the notes field or close a dialog |
 | `?` | Show this list |
 
+In an interview with a panel, `N` and `P` (like Next and Previous) move everyone only for the panel member who leads; for anyone else they change only what that person sees (`LIVE-2`).
+
 - `KEY-2` Shortcuts never fire while typing in a text field, and never when a modifier key (Ctrl, Alt, Cmd) is held.
 
 ## Accessibility

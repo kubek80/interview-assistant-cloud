@@ -29,3 +29,13 @@
 .ready__qmeta { display: block; font-size: var(--text-sm); color: var(--color-text-muted); }
 /* TEAM-1: the note for the interviewers on a planned interview. */
 .ready__note { display: flex; gap: var(--space-2); align-items: baseline; margin: var(--space-2) 0 0; overflow-wrap: anywhere; }
+/* LIVE-4: the interview's page once it has started: who is in, who has submitted, who it waits for. */
+.ready__status p { margin: 0 0 var(--space-2); }
+.ready__consented .icon { color: var(--color-success); }
+.panel-status { list-style: none; margin: 0 0 var(--space-2); padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.panel-status__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
+.panel-status__name { min-width: 9rem; font-weight: 600; color: var(--color-heading); }
+/* LIVE-5: someone on the panel sharing this screen. */
+.ready__with { margin-top: var(--space-3); }
+.ready__with-list { margin: var(--space-2) 0 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.ready__with-list[hidden] { display: none; }

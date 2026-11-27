@@ -96,6 +96,7 @@ export const ROUND_ACTIONS = [
   'round.audit', // read the round's audit entries
   'round.export', // export the round's reports
   'interview.take_part', // join an interview on its panel and keep one's own record
+  'record.amend', // AUD-4: change one's own submitted record, with a reason (the route checks ownership)
 ] as const;
 export type RoundAction = (typeof ROUND_ACTIONS)[number];
 
@@ -108,7 +109,7 @@ export interface RoundAccess {
 }
 
 /** Changes a closed round allows (ROUND-5): reading, and a few things for organisers with a reason. */
-const ALLOWED_WHEN_CLOSED: ReadonlySet<RoundAction> = new Set(['round.read', 'round.audit', 'round.export', 'round.manage', 'round.decide']);
+const ALLOWED_WHEN_CLOSED: ReadonlySet<RoundAction> = new Set(['round.read', 'round.audit', 'round.export', 'round.manage', 'round.decide', 'record.amend']);
 
 /**
  * ROUND-2: people see only the rounds they are on; administrators see every round. Within a round,
@@ -130,6 +131,10 @@ export function canInRound(actor: Actor | null, action: RoundAction, round: Roun
       return true;
     case 'interview.take_part':
       return true; // the route also checks that the actor is on that interview's panel
+    case 'record.amend':
+      // AUD-4: the owner amends their own record (the route checks ownership). ROUND-5: in a closed
+      // round only its organisers (and administrators) may still correct their judgements.
+      return round.state === 'open' || member === 'organiser';
     case 'round.manage':
     case 'round.plan':
     case 'round.decide':

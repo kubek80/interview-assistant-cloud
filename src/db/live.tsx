@@ -59,6 +59,11 @@ export function LiveProvider({ children, enabled = true }: { children: ReactNode
           if (ev.topic.startsWith('user:')) {
             // "rounds": I was added to or removed from a round; anything else may change my permissions.
             void queryClient.invalidateQueries({ queryKey: [ev.kind === 'rounds' ? 'round' : 'me'] });
+          } else if (ev.topic.startsWith('interview:')) {
+            // LIVE-2: refetch only what the event is about (the shared state, or the records).
+            const parts = ev.kind === 'records' ? ['records'] : ['state', 'present'];
+            for (const part of parts) void queryClient.invalidateQueries({ queryKey: [ev.topic, part] });
+            if (ev.kind === 'records') void queryClient.invalidateQueries({ queryKey: ['record'] });
           } else void refetch(ev.topic === 'rounds' || ev.topic.startsWith('round:') ? 'round' : ev.topic);
         } catch {
           /* ignore */

@@ -29,3 +29,16 @@ export function orNull<T>(p: Promise<T>): Promise<T | null> {
     throw err;
   });
 }
+
+/**
+ * HOST-6: whether a failed query should replace the screen with an error. A lost connection or a
+ * server that is restarting is not worth it while the screen still has data to show: it keeps
+ * showing it and the query is retried (and refetched when the live connection is back).
+ */
+export function isTransient(err: unknown): boolean {
+  return err instanceof ApiError && (err.code === 'network' || err.status >= 500 || err.status === 429);
+}
+
+export function throwIfFatal(q: { isError: boolean; error: unknown; data: unknown }): void {
+  if (q.isError && !(q.data !== undefined && isTransient(q.error))) throw q.error;
+}

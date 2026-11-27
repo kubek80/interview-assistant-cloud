@@ -20,13 +20,26 @@ import type { LiveEvent } from '../../src/shared/api';
 const HEARTBEAT_MS = 20_000;
 
 const ROUND_TOPIC = /^round:([0-9a-f-]{36})$/;
+const INTERVIEW_TOPIC = /^interview:([0-9a-f-]{36})$/;
+/** Topics inside a round: left out silently when not allowed (ids cannot be probed), re-checked every heartbeat. */
+const IN_ROUND = (t: string) => ROUND_TOPIC.test(t) || INTERVIEW_TOPIC.test(t);
 
-/** Which topics a person may follow. `round:<id>`: round.read on that round (ROUND-2). */
+async function roundTopicAllowed(ctx: AppContext, actor: Actor, roundId: string): Promise<boolean> {
+  const access = await loadRoundAccess(ctx, actor.id, roundId);
+  return !!access && (actor.role === 'admin' || !!access.memberRole) && canInRound(actor, 'round.read', access);
+}
+
+/**
+ * Which topics a person may follow. `round:<id>`: round.read on that round (ROUND-2).
+ * `interview:<id>` (LIVE-2): round.read on the interview's round; its events carry no data.
+ */
 export async function topicAllowed(ctx: AppContext, actor: Actor, topic: string): Promise<boolean> {
   const m = ROUND_TOPIC.exec(topic);
-  if (m) {
-    const access = await loadRoundAccess(ctx, actor.id, m[1]);
-    return !!access && (actor.role === 'admin' || !!access.memberRole) && canInRound(actor, 'round.read', access);
+  if (m) return roundTopicAllowed(ctx, actor, m[1]);
+  const im = INTERVIEW_TOPIC.exec(topic);
+  if (im) {
+    const i = await ctx.db.selectFrom('interviews').select('round_id').where('id', '=', im[1]).where('state', '!=', 'cancelled').executeTakeFirst();
+    return !!i && roundTopicAllowed(ctx, actor, i.round_id);
   }
   // A new round exists: only administrators see every round (members hear of theirs on user:<id>).
   if (topic === 'rounds') return actor.role === 'admin';
@@ -52,9 +65,9 @@ export function registerLiveRoutes(app: FastifyInstance, ctx: AppContext, opts: 
       const requested: string[] = [];
       for (const t of asked) {
         if (await topicAllowed(ctx, actor, t)) requested.push(t);
-        else if (!ROUND_TOPIC.test(t)) throw invalid(`You cannot follow "${t}".`);
+        else if (!IN_ROUND(t)) throw invalid(`You cannot follow "${t}".`);
       }
-      const roundTopics = requested.filter((t) => ROUND_TOPIC.test(t));
+      const roundTopics = requested.filter(IN_ROUND);
       const topics = [...new Set([...requested, `user:${actor.id}`])];
       const token = sessionTokenOf(req, ctx.config);
 

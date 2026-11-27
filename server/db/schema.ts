@@ -221,6 +221,58 @@ export interface InterviewPanelTable {
   marked_by: string | null;
 }
 
+// ---- Records of panel members (migrations 0002 and 0005, LIVE-1, LIVE-5) ----
+
+export interface RecordsTable {
+  id: Generated<string>;
+  interview_id: string;
+  owner_user_id: string | null;
+  names: ColumnType<string[], string | undefined, string>;
+  origin: Generated<'live' | 'entered' | 'imported'>;
+  entered_by: string | null;
+  entered_at: TimestampNull;
+  state: Generated<'draft' | 'submitted'>;
+  overall_rating: number | null;
+  recommendation: 'strong_hire' | 'hire' | 'lean_no_hire' | 'no_hire' | null;
+  rationale: string | null;
+  submitted_at: TimestampNull;
+  version: Generated<number>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  shared_with: ColumnType<string[], string | undefined, string>;
+}
+
+export interface AnswersTable {
+  record_id: string;
+  question_id: string;
+  score: number | null;
+  covered_key_points: ColumnType<number[], string | undefined, string>;
+  red_flags_seen: ColumnType<number[], string | undefined, string>;
+  probe_handled: Generated<boolean>;
+  flagged: Generated<boolean>;
+  skipped: Generated<boolean>;
+  skip_reason: string | null;
+  version: Generated<number>;
+  updated_at: Generated<Date>;
+}
+
+export interface NotesTable {
+  id: Generated<string>;
+  record_id: string;
+  question_id: string;
+  at_sec: number;
+  text: string;
+  by_name: string | null;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface InterviewPresenceTable {
+  interview_id: string;
+  user_id: string;
+  seen_at: Timestamp;
+}
+
 // ---- Question review (migration 0003, REVIEW-1 to REVIEW-7) ----
 
 export interface ReviewRequestsTable {
@@ -313,6 +365,10 @@ export interface Database {
   candidates: CandidatesTable;
   interviews: InterviewsTable;
   interview_panel: InterviewPanelTable;
+  records: RecordsTable;
+  answers: AnswersTable;
+  notes: NotesTable;
+  interview_presence: InterviewPresenceTable;
   review_requests: ReviewRequestsTable;
   review_request_items: ReviewRequestItemsTable;
   review_request_reviewers: ReviewRequestReviewersTable;
