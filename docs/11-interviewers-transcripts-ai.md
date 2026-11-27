@@ -6,7 +6,7 @@ This page covers three things added after the first pilot build: several intervi
 
 An interview can be run by several interviewers sitting together at one machine. They fill in **one shared scorecard**.
 
-- `PANEL-1` Interviewers are named when the interview is set up (New interview, under "More options"). The first is the signed-in person; more can be added with one click. Names must be different from each other. Interviewers can be added or removed in the live interview until it is submitted (at least one remains); every change is recorded in the audit log.
+- `PANEL-1` The panel is chosen when the interview is planned (New interview, beside the candidate): the members of the round's team who will take part, the signed-in person ticked first, each added with one click. Panel members can be added or removed in the live interview until it is submitted (at least one remains); every change is recorded in the audit log.
 - `PANEL-2` There is one record for the interview: one set of ticked key points and red flags, scores, notes, flags and skips, and one overall rating, recommendation and rationale, agreed by the interviewers present. There are no separate records per interviewer on one machine and nothing to switch between.
 - `PANEL-3` When more than one interviewer is named, a note can be marked with who made it. The note field offers the interviewers' names and remembers the last choice; the name is shown with the note and in exports. Marking is optional.
 - `PANEL-4` The interviewers' names are shown wherever the interviewer is shown: the live interview, the Dashboard, the scorecard, the debrief, the Comparison screen and exports. The finish step lists the names and says the rating and recommendation are recorded on behalf of all of them.

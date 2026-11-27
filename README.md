@@ -4,10 +4,10 @@ Interview Assistant runs structured interviews: vetted questions, one 1-4 rating
 
 The **local app** (the MVP pilot: a single-page app with no server, data in the browser, panels exchanging files) lives in its own repository, `interview-assistant`, and is unchanged. This repository started as a copy of it.
 
-**Status: step 1 of 3 is built.**
+**Status: step 1 and the first half of step 2 (2a) are built.**
 
 1. **Foundation (built):** server, database schema and migrations for the whole data model, Google sign-in and sessions, users and roles with the Users page, the question bank in the database (API, import scripts, the bank screens), **question reviewers and the review workflow** (proposals, comments, review requests: `REVIEW-1` to `REVIEW-7`), the audit log, configuration, Dockerfile, CI, deployment guide, development and test tooling.
-2. **Next:** hiring rounds, planning, interviewing together live, scorecards, debrief and decision, summary. Until then those screens say "Coming in the next step".
+2. **Step 2a (built):** hiring rounds with their teams, settings, closing and reopening (`ROUND-1` to `ROUND-5`); each round's question set, drawn when the round is created and edited in place, fixed when its first interview is planned (`FLOW-2` to `FLOW-9`); planning interviews one at a time or by pasting a list, changing and cancelling them (`TEAM-1`, `TEAM-2`, `TEAM-15`); the Dashboard (`FLOW-1`, `FLOW-34`, `TEAM-16`); the ready screen up to "Start interview". **Step 2b (next):** interviewing together live, scorecards, debrief and decision, summary. Until then those screens say "Coming in the next step".
 3. **Later:** transcripts, recordings and AI on the server, importing local-app files, the retention job, privacy requests, final verification.
 
 ## Documentation is the specification
@@ -83,7 +83,7 @@ Server tests: `vitest.server.config.ts` migrates a template database once (`serv
 | `src/` | The browser app: `app/` shell and routes, `pages/` screens, `ui/` primitives, `db/` the HTTP data layer, `docs/` the in-app docs |
 | `src/domain/`, `src/shared/` | Pure code and API types shared with the server |
 | `src/db-local/`, `e2e-local/` | The local app's IndexedDB data layer and end-to-end tests, kept for reference while screens are ported; not built, not run |
-| `server/` | `main.ts` (start), `cli.ts` (migrate, seed, import), `app.ts`, `config.ts`, `auth/`, `authz/`, `users/`, `bank/`, `audit/`, `settings/`, `live/`, `http/`, `db/` (pool, Kysely types, migration runner, `migrations/*.sql`), `test/` |
+| `server/` | `main.ts` (start), `cli.ts` (migrate, seed, import), `app.ts`, `config.ts`, `auth/`, `authz/`, `users/`, `bank/`, `review/`, `rounds/` (rounds, teams, question sets, planned interviews), `audit/`, `settings/`, `live/`, `http/`, `db/` (pool, Kysely types, migration runner, `migrations/*.sql`), `test/` |
 | `e2e/` | Playwright tests of the hosted build |
 | `seed/`, `schema/` | The bundled track files and their JSON Schema (`npm run gen:schema` regenerates `src/domain/generated/`) |
 | `scripts/` | `dev-db.sh`, `dev.mjs`, `e2e-server.mjs`, `validate-seed.mjs`, `gen-track-validator.mjs` |
@@ -138,6 +138,23 @@ Server, inside the transaction that makes the change: `await publish(trx, { topi
 ### (d) Run the database and the tests
 
 `npm run db:start` once per machine boot; then `npm run test:server`, `npm test` and `npm run e2e` (it builds first). `TEST_DATABASE_URL` points the server and end-to-end tests at any PostgreSQL 16 whose user may create databases (CI uses a service container).
+
+### (e) How interviews hang off rounds (for step 2b)
+
+Tables (migrations 0002 and 0004; Kysely types in `server/db/schema.ts`; logic in `server/rounds/service.ts`):
+
+- `rounds` → `round_members` (the team: `organiser` or `interviewer`), `default_question_set_id` (the round's current set), `hide_others_scores` (`LIVE-3`, stored, not applied yet), `state` and `retention_until`.
+- `question_sets` (`round_id`): `questions` (full question snapshots, `src/domain/types` `Question[]`), `categories` (weights and must-have), `time_budget_min`, `fingerprint` (the comparison code, `planFingerprint`), `fixed_at` (null while the round's set is still being edited; set by `fixSet` when the first interview using it is planned; never changes afterwards), `version`.
+- `candidates` (`round_id`, `display_name`, `requisition_id`, `key` = `candidateKey()`, unique per round): one candidate can have several interviews.
+- `interviews` (`round_id`, `candidate_id`, `question_set_id`, `state` planned → in_progress/paused → completed, or cancelled; `scheduled_date` and `scheduled_time` as typed; `note`, `recording_notice`, `retention_until`; the shared live state is already there: `consent_at`/`consent_by`, `lead_user_id`, `current_question_id`, `timer_accumulated_ms`/`timer_running_since`, `question_timers`, `started_at`, `completed_at`, `version`).
+- `interview_panel` (`interview_id`, `user_id`, `status` expected/joined/submitted/did_not_take_part): who takes part. `src/domain/rounds.ts` `interviewStatus()` turns state + panel statuses into upcoming / in progress / waiting for judgements / finished for every list and count.
+- Per-person records go in `records` (one `origin = 'live'` record per panel member, unique per interview and owner) with `answers` and `notes`; the panel decision in `panel_decisions`; written summaries in `written_summaries` (per candidate). Shared live state goes on the `interviews` row (bump `version`), published on `round:<roundId>` (or a new `interview:<id>` topic, allowed when `round.read` on its round and the person is on the panel).
+
+API (all in `server/rounds/routes.ts`): `GET/POST /api/rounds`, `GET/PATCH /api/rounds/:roundId`, `POST …/close`, `POST …/reopen`, `GET …/audit`, `GET …/team-options`, `PUT/DELETE …/members/:userId`, `GET/PUT …/question-set`, `GET /api/question-sets/:id`, `GET/POST …/interviews`, `POST …/interviews/bulk`, `GET/PATCH /api/interviews/:id`, `POST /api/interviews/:id/cancel`, `GET /api/my/interviews`. The round of an interview or set is looked up from the database (`roundOfInterview`, `roundOfSet`); cancelled interviews answer 404.
+
+Browser (`src/db/rounds.ts`): query keys all start with `'round'` (listed at the top of that file), so any `round:<id>` event, the admin-only `rounds` topic, and the person's own `user:<id>` "rounds" event (added to or removed from a round) refetch them. Screens: `src/pages/Rounds.tsx`, `src/pages/round/*` (round page, `InterviewList`, `QuestionSetPanel`, `PanelPicker`), `src/pages/NewInterview.tsx`, `src/pages/PlanSeveral.tsx`, `src/pages/Dashboard.tsx`, `src/pages/interview/PreStart.tsx` (the ready screen).
+
+**The seam for step 2b:** "Start interview" on the ready screen only checks the confirmation box and goes to `/interviews/:id/live` (a "Coming in the next step" page); nothing is recorded. Add `startInterview(id)` to `src/db/rounds.ts` and `POST /api/interviews/:id/start` (`interview.take_part`; consent stored once with who confirmed it, `LIVE-6`; state `in_progress`; timers), call it in `start()` in `PreStart.tsx`, and replace the `interviews/:id/live` route in `src/app/App.tsx`. The Dashboard's Continue card already links there for interviews in progress.
 
 ## Security notes
 

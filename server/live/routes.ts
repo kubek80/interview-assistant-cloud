@@ -11,22 +11,30 @@
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context';
-import { route } from '../http/route';
+import { loadRoundAccess, route } from '../http/route';
 import { invalid } from '../http/errors';
-import { can, type Actor } from '../authz/policy';
+import { can, canInRound, type Actor } from '../authz/policy';
 import { lookupSession, sessionTokenOf } from '../auth/sessions';
 import type { LiveEvent } from '../../src/shared/api';
 
 const HEARTBEAT_MS = 20_000;
 
-/** Which topics a person may follow. Step 2 adds `round:<id>` (round.read on that round). */
+const ROUND_TOPIC = /^round:([0-9a-f-]{36})$/;
+
+/** Which topics a person may follow. `round:<id>`: round.read on that round (ROUND-2). */
 export async function topicAllowed(ctx: AppContext, actor: Actor, topic: string): Promise<boolean> {
+  const m = ROUND_TOPIC.exec(topic);
+  if (m) {
+    const access = await loadRoundAccess(ctx, actor.id, m[1]);
+    return !!access && (actor.role === 'admin' || !!access.memberRole) && canInRound(actor, 'round.read', access);
+  }
+  // A new round exists: only administrators see every round (members hear of theirs on user:<id>).
+  if (topic === 'rounds') return actor.role === 'admin';
   if (topic === 'bank') return can(actor, 'bank.read');
   if (topic === 'users') return can(actor, 'users.read');
   if (topic === 'audit') return can(actor, 'audit.read');
   if (topic === 'reviews') return can(actor, 'bank.review') || can(actor, 'reviews.respond') || can(actor, 'bank.comment');
   if (topic === `user:${actor.id}`) return true;
-  void ctx;
   return false;
 }
 
@@ -36,11 +44,18 @@ export function registerLiveRoutes(app: FastifyInstance, ctx: AppContext, opts: 
     method: 'GET',
     url: '/api/live',
     access: { signedIn: true },
-    query: z.object({ topic: z.union([z.string().max(80), z.array(z.string().max(80)).max(20)]) }).strict(),
+    query: z.object({ topic: z.union([z.string().max(80), z.array(z.string().max(80)).max(50)]) }).strict(),
     handler: async ({ req, reply, actor, query }) => {
-      const requested = [...new Set(Array.isArray(query.topic) ? query.topic : [query.topic])];
-      for (const t of requested) if (!(await topicAllowed(ctx, actor, t))) throw invalid(`You cannot follow "${t}".`);
-      const topics = [...requested, `user:${actor.id}`];
+      const asked = [...new Set(Array.isArray(query.topic) ? query.topic : [query.topic])];
+      // A round the person is not on (or no longer on) is left out silently, exactly like one that
+      // does not exist (ROUND-2: ids cannot be probed); anything else not allowed is refused.
+      const requested: string[] = [];
+      for (const t of asked) {
+        if (await topicAllowed(ctx, actor, t)) requested.push(t);
+        else if (!ROUND_TOPIC.test(t)) throw invalid(`You cannot follow "${t}".`);
+      }
+      const roundTopics = requested.filter((t) => ROUND_TOPIC.test(t));
+      const topics = [...new Set([...requested, `user:${actor.id}`])];
       const token = sessionTokenOf(req, ctx.config);
 
       reply.hijack();
@@ -80,6 +95,8 @@ export function registerLiveRoutes(app: FastifyInstance, ctx: AppContext, opts: 
             send('revoked', {});
             return close();
           }
+          // Removed from a round meanwhile: end the stream; the browser reconnects without it.
+          for (const t of roundTopics) if (!(await topicAllowed(ctx, still.actor, t))) return close();
           if (!closed) res.write(': ping\n\n');
         } catch {
           /* a database hiccup: try again next beat */

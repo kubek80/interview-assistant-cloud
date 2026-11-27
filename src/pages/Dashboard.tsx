@@ -1,110 +1,169 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
-import { RepoError, deletePlanDraft, useCandidateDrafts, usePlannedInterviews, usePlans, useSessions, useTracks } from '../db';
-import type { InterviewPlan, Session, Track } from '../domain/types';
-import { Button, ConfirmDialog, Field, HelpLink, Icon, PageHeader, Select, TextInput, buttonClass, formatDate, useDocumentTitle, useToast } from '../ui';
-import { clearLegacyCandidateDraft } from './setup/candidateDraft';
-import {
-  NO_FILTER,
-  STATUS_LABELS,
-  dashboardModel,
-  filterItems,
-  isFiltered,
-  sessionCounts,
-  splitPlans,
-  unfinishedSessions,
-  type DashboardFilter,
-  type DashboardModel,
-  type InterviewStatus,
-} from './dashboard/logic';
-import { useExportPlan } from './dashboard/planFiles';
-import { ContinueCard, RecentInterviews } from './dashboard/Sessions';
-import { Upcoming } from './dashboard/Upcoming';
-import { useImportFiles } from './team/ImportFiles';
+import { Link, useNavigate } from 'react-router';
+import { useMyInterviews, useRounds } from '../db';
+import type { InterviewSummary, Me, RoundSummary } from '../shared/api';
+import { Button, Field, HelpLink, Icon, MenuButton, PageHeader, Select, TextInput, buttonClass, useDocumentTitle } from '../ui';
+import { STATUS_LABELS } from '../domain/rounds';
+import { localDay, whenLabel } from '../domain/team';
+import { NO_FILTER, candidateLabel, dashboardModel, filterInterviews, isFiltered, primaryAction, type DashboardModel, type ListFilter } from './dashboard/logic';
+import { InterviewList, panelText } from './round/InterviewList';
 import '../styles/pages/setup.css';
 import '../styles/pages/dashboard.css';
+import '../styles/pages/rounds.css';
 
 /** TEAM-16: the search and filters appear once there are this many interviews (or a filter is set). */
 const FILTER_FROM = 8;
 
 /**
- * Route: / (FLOW-1, FLOW-9, FLOW-34, UX-9, TEAM-2, TEAM-16). Glanceable: the unfinished interview to
- * continue (the most prominent action), a one-line count, Upcoming grouped by day, the other
- * interviews with who has submitted, then a quiet area for question sets, set-ups and the bank.
- * "Import files" takes any of the app's files (invitations, interview files, question sets).
+ * Route: / (FLOW-1, FLOW-34, ROUND-4, TEAM-2, TEAM-16, UX-9). For the signed-in person: an interview
+ * they are in the middle of (the most prominent action), a one-line count, their own upcoming
+ * interviews first (grouped by day, soonest first), then the rest of their rounds' upcoming
+ * interviews, then started and finished ones. One primary action: "New interview" for an organiser
+ * (straight into their round when they organise just one), their next interview for an interviewer.
  */
-export default function Dashboard() {
+export default function Dashboard({ me }: { me: Me }) {
   useDocumentTitle('Dashboard');
-  const tracks = useTracks();
-  const sessions = useSessions();
-  const plans = usePlans();
-  const planned = usePlannedInterviews();
-  const importer = useImportFiles();
-  const [filter, setFilter] = useState<DashboardFilter>(NO_FILTER);
-  const trackNames = useMemo(() => new Map((tracks ?? []).map((t) => [t.id, t.name])), [tracks]);
-  const plansById = useMemo(() => new Map((plans ?? []).map((p) => [p.id, p])), [plans]);
-  const model = useMemo(() => (sessions && plans && planned ? dashboardModel(sessions, plans, planned) : undefined), [sessions, plans, planned]);
-  const unfinished = useMemo(() => unfinishedSessions(sessions ?? []), [sessions]);
-  const current: Session | undefined = unfinished[0];
-  const currentPlan = current ? plansById.get(current.planId) : undefined;
-  const firstRun = sessions !== undefined && sessions.length === 0;
+  const rounds = useRounds({ all: false });
+  const items = useMyInterviews(rounds);
+  const [filter, setFilter] = useState<ListFilter>(NO_FILTER);
+  const [othersOpen, setOthersOpen] = useState(false);
+  const model = useMemo(() => (items ? dashboardModel(items, me.id) : undefined), [items, me.id]);
   const filtered = isFiltered(filter);
-  const upcoming = useMemo(() => filterItems(model?.upcoming ?? [], filter), [model, filter]);
-  const interviews = useMemo(() => (model ? filterItems(model.interviews, filter) : undefined), [model, filter]);
-  const total = model ? model.upcoming.length + model.interviews.length : 0;
+  const shown = useMemo(() => (model ? { my: filterInterviews(model.myUpcoming, filter), other: filterInterviews(model.otherUpcoming, filter), rest: filterInterviews(model.others, filter) } : undefined), [model, filter]);
+  const myRounds = (rounds ?? []).filter((r) => r.myRole);
+  const canPlanIn = useMemo(() => new Set(myRounds.filter((r) => r.state === 'open' && r.myRole === 'organiser').map((r) => r.id)), [myRounds]);
+  const canCreate = me.permissions.includes('rounds.create');
+  // The round's name on each row only when the interviews shown come from more than one round.
+  const manyRounds = new Set((items ?? []).map((i) => i.roundId)).size > 1;
+  const total = items?.length ?? 0;
+  const action = rounds && model ? primaryAction(myRounds, model, canCreate) : null;
+  const first = (me.name ?? '').split(/\s+/)[0];
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        actions={
-          <div className="cluster dash-actions">
-            {importer.trigger}
-            {!firstRun && (
-              <>
-                <Link to="/plan" className={buttonClass('ghost')}>
-                  <Icon name="folder" /> Plan several
-                </Link>
-                <Link to="/new" className={buttonClass(current ? 'default' : 'primary', current ? 'md' : 'lg')} data-testid="new-interview">
-                  <Icon name="plus" /> New interview
-                </Link>
-              </>
-            )}
-          </div>
-        }
-      />
-      {importer.results}
-      {current && (
-        <ContinueCard
-          session={current}
-          plan={currentPlan}
-          trackName={currentPlan ? (trackNames.get(currentPlan.trackId) ?? currentPlan.trackId) : ''}
-          others={unfinished.length - 1}
-        />
-      )}
-      {firstRun ? (
-        <Welcome />
-      ) : (
+      <PageHeader title="Dashboard" subtitle={first ? `Welcome, ${first}.` : undefined} actions={action && !model?.continuing.length ? <PrimaryAction action={action} /> : action ? <PrimaryAction action={action} quiet /> : undefined} />
+      {model?.continuing.map((i) => <ContinueCard key={i.id} interview={i} meId={me.id} />)}
+      {rounds && items && myRounds.length === 0 ? (
+        <Welcome canCreate={canCreate} isAdmin={me.role === 'admin'} />
+      ) : model && shown ? (
         <>
-          {model && (total >= FILTER_FROM || filtered) && <Overview model={model} filter={filter} onFilter={setFilter} tracks={tracks ?? []} />}
-          {model && model.upcoming.length > 0 && (
-            <Upcoming items={upcoming} trackNames={trackNames} filtered={filtered} showRole={!filter.trackId && new Set(upcoming.map((i) => i.trackId)).size > 1} />
+          {(total >= FILTER_FROM || filtered) && <Overview model={model} filter={filter} onFilter={setFilter} rounds={myRounds} />}
+          <section aria-labelledby="dash-mine" className="dash-section">
+            <div className="dash-section-head">
+              <h2 id="dash-mine" tabIndex={-1}>
+                Your upcoming interviews
+              </h2>
+              <span className="muted small">{shown.my.length}</span>
+            </div>
+            <InterviewList
+              items={shown.my}
+              showRound={manyRounds}
+              canPlan={(i) => canPlanIn.has(i.roundId)}
+              page={20}
+              emptyText={filtered ? 'None of yours matches.' : 'You are not on the panel of any upcoming interview.'}
+              testId="my-row"
+            />
+          </section>
+          {(model.otherUpcoming.length > 0 || filtered) && (
+            <section aria-labelledby="dash-others" className="dash-section">
+              <div className="dash-section-head">
+                <h2 id="dash-others">Other upcoming interviews in your rounds</h2>
+                {(filtered || canPlanIn.size > 0) && <span className="muted small">{shown.other.length}</span>}
+                {/* Others' interviews matter less to an interviewer: folded away unless searching or planning. */}
+                {!filtered && !canPlanIn.size && (
+                  <Button size="sm" variant="ghost" aria-expanded={othersOpen} aria-controls="dash-others-list" onClick={() => setOthersOpen(!othersOpen)}>
+                    {othersOpen ? 'Hide' : `Show ${shown.other.length}`}
+                  </Button>
+                )}
+              </div>
+              <div id="dash-others-list" hidden={!filtered && !canPlanIn.size && !othersOpen}>
+                <InterviewList items={shown.other} showRound={manyRounds} canPlan={(i) => canPlanIn.has(i.roundId)} page={10} emptyText="None matches." testId="other-upcoming-row" />
+              </div>
+            </section>
           )}
-          {!(model && model.upcoming.length > 0 && model.interviews.filter((i) => i.session.id !== current?.id).length === 0) && (
-            <RecentInterviews items={interviews} trackNames={trackNames} exclude={current?.id} filtered={filtered} />
+          {shown.rest.length > 0 && (
+            <section aria-labelledby="dash-rest" className="dash-section">
+              <div className="dash-section-head">
+                <h2 id="dash-rest">Started and finished</h2>
+                <span className="muted small">{shown.rest.length}</span>
+              </div>
+              <InterviewList items={shown.rest} showRound={manyRounds} canPlan={() => false} page={10} emptyText="" testId="other-row" />
+            </section>
           )}
+          <p className="dash-rounds-link small">
+            <Link to="/rounds">Your rounds</Link> · <HelpLink slug="12-planning-and-panels">How planning works</HelpLink>
+          </p>
         </>
+      ) : (
+        <p className="muted">Loading…</p>
       )}
-      <MoreSection plans={plans} sessions={sessions} tracks={tracks} trackNames={trackNames} />
     </>
   );
 }
 
-/** TEAM-16: a one-line count, search by candidate, and filters by role, requisition and state. */
-function Overview({ model, filter, onFilter, tracks }: { model: DashboardModel; filter: DashboardFilter; onFilter: (f: DashboardFilter) => void; tracks: Track[] }) {
+function PrimaryAction({ action, quiet }: { action: ReturnType<typeof primaryAction>; quiet?: boolean }) {
+  const navigate = useNavigate();
+  const v = quiet ? 'default' : 'primary';
+  switch (action.kind) {
+    case 'new-in-round':
+      return (
+        <>
+          <Link to={`/rounds/${action.round.id}/plan`} className={buttonClass('ghost')}>
+            <Icon name="folder" /> Plan several
+          </Link>
+          <Link to={`/rounds/${action.round.id}/new`} className={buttonClass(v, quiet ? 'md' : 'lg')} data-testid="new-interview">
+            <Icon name="plus" /> New interview <span className="visually-hidden">in {action.round.name}</span>
+          </Link>
+        </>
+      );
+    case 'choose-round':
+      return <MenuButton label="New interview" icon="plus" variant={v} size={quiet ? 'md' : 'lg'} items={action.rounds.map((r) => ({ label: r.name, onSelect: () => navigate(`/rounds/${r.id}/new`) }))} />;
+    case 'create-round':
+      return (
+        <Link to="/rounds?create=1" className={buttonClass(v, quiet ? 'md' : 'lg')}>
+          <Icon name="plus" /> New round
+        </Link>
+      );
+    case 'next-interview':
+      return (
+        <Link to={`/interviews/${action.interview.id}`} className={buttonClass(v, quiet ? 'md' : 'lg', 'dash-next')} data-testid="next-interview">
+          <Icon name="play" /> Your next interview: {candidateLabel(action.interview)}
+          {action.interview.date && <>, {whenLabel(action.interview, localDay(new Date()))}</>}
+        </Link>
+      );
+    default:
+      return null;
+  }
+}
+
+/** FLOW-34: an interview I am in the middle of is the most prominent thing on the page. */
+function ContinueCard({ interview, meId }: { interview: InterviewSummary; meId: string }) {
+  return (
+    <section className="continue" aria-labelledby={`continue-${interview.id}`}>
+      <div className="continue__body">
+        <h2 className="continue__title" id={`continue-${interview.id}`}>
+          <Icon name="clock" /> In progress
+        </h2>
+        <p className="continue__who">
+          <strong className="continue__key">{candidateLabel(interview)}</strong>
+        </p>
+        <p className="continue__meta">
+          {interview.roundName} · {panelText(interview, meId)}
+        </p>
+      </div>
+      <div className="continue__actions">
+        <Link to={`/interviews/${interview.id}/live`} className={buttonClass('primary', 'lg')}>
+          <Icon name="play" /> Continue the interview
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/** TEAM-16: a one-line count, search by candidate, and filters by round and state. */
+function Overview({ model, filter, onFilter, rounds }: { model: DashboardModel; filter: ListFilter; onFilter: (f: ListFilter) => void; rounds: RoundSummary[] }) {
   const c = model.counts;
-  const reqs = useMemo(() => [...new Set([...model.upcoming, ...model.interviews].map((i) => i.requisition).filter(Boolean))].sort(), [model]);
-  const parts: Array<[InterviewStatus, number]> = [
+  const parts: Array<[keyof typeof STATUS_LABELS, number]> = [
     ['upcoming', c.upcoming],
     ['in-progress', c['in-progress']],
     ['waiting', c.waiting],
@@ -124,19 +183,16 @@ function Overview({ model, filter, onFilter, tracks }: { model: DashboardModel; 
         <Field label="Find a candidate" className="dash-filters__search">
           <TextInput type="search" value={filter.text} onChange={(e) => onFilter({ ...filter, text: e.target.value })} placeholder="Name or initials" autoComplete="off" />
         </Field>
-        <Field label="Role">
-          <Select value={filter.trackId} onChange={(e) => onFilter({ ...filter, trackId: e.target.value })} options={[{ value: '', label: 'All roles' }, ...tracks.map((t) => ({ value: t.id, label: t.name }))]} />
-        </Field>
-        {reqs.length > 0 && (
-          <Field label="Requisition">
-            <Select value={filter.requisition} onChange={(e) => onFilter({ ...filter, requisition: e.target.value })} options={[{ value: '', label: 'All' }, ...reqs.map((r) => ({ value: r, label: r }))]} />
+        {rounds.length > 1 && (
+          <Field label="Round">
+            <Select value={filter.roundId} onChange={(e) => onFilter({ ...filter, roundId: e.target.value })} options={[{ value: '', label: 'All rounds' }, ...rounds.map((r) => ({ value: r.id, label: r.name }))]} />
           </Field>
         )}
         <Field label="State">
           <Select
             value={filter.status}
-            onChange={(e) => onFilter({ ...filter, status: e.target.value as DashboardFilter['status'] })}
-            options={[{ value: '', label: 'All' }, ...(Object.keys(STATUS_LABELS) as InterviewStatus[]).map((k) => ({ value: k, label: STATUS_LABELS[k] }))]}
+            onChange={(e) => onFilter({ ...filter, status: e.target.value as ListFilter['status'] })}
+            options={[{ value: '', label: 'All' }, ...parts.map(([k]) => ({ value: k, label: STATUS_LABELS[k] }))]}
           />
         </Field>
         {isFiltered(filter) && (
@@ -149,165 +205,25 @@ function Overview({ model, filter, onFilter, tracks }: { model: DashboardModel; 
   );
 }
 
-/** First run: what this is, in one line, and the one thing to do. */
-function Welcome() {
+/** Not on any round yet: what to do next, in one line, and the one thing to do. */
+function Welcome({ canCreate, isAdmin }: { canCreate: boolean; isAdmin: boolean }) {
   return (
     <section className="card dash-welcome" aria-labelledby="dash-welcome-title">
-      <h2 id="dash-welcome-title">Run your first structured interview</h2>
-      <p>Choose the role and type the candidate’s name or initials: the questions are ready. Read the consent text with the candidate, then start.</p>
-      <div className="cluster-lg">
-        <Link to="/new" className={buttonClass('primary', 'lg')} data-testid="new-interview">
-          <Icon name="plus" /> New interview
-        </Link>
-        <Link to="/plan">Plan several at once</Link>
-        <HelpLink slug="02-interview-flow">How it works</HelpLink>
-      </div>
-    </section>
-  );
-}
-
-const SET_PAGE = 4;
-
-/** FLOW-9 question sets (reuse, export, import), unfinished set-ups and the bank: secondary, kept quiet. */
-function MoreSection({
-  plans,
-  sessions,
-  tracks,
-  trackNames,
-}: {
-  plans: InterviewPlan[] | undefined;
-  sessions: Session[] | undefined;
-  tracks: Track[] | undefined;
-  trackNames: Map<string, string>;
-}) {
-  const { drafts, locked } = useMemo(() => splitPlans(plans ?? []), [plans]);
-  const counts = useMemo(() => sessionCounts(sessions ?? []), [sessions]);
-  const candidateDrafts = useCandidateDrafts();
-  const draftWho = useMemo(() => new Map((candidateDrafts ?? []).map((d) => [d.planId, [d.initials, d.requisitionId].filter((x) => x.trim()).join(' · ')])), [candidateDrafts]);
-  const [toDelete, setToDelete] = useState<InterviewPlan | null>(null);
-  const [allSets, setAllSets] = useState(false);
-  const exportPlan = useExportPlan();
-  const { toast } = useToast();
-  const trackName = (p: InterviewPlan) => trackNames.get(p.trackId) ?? p.trackId;
-  const shownSets = allSets ? locked : locked.slice(0, SET_PAGE);
-
-  return (
-    <div className="dash-more">
-      <section aria-labelledby="dash-sets" className="dash-panel dash-panel--sets">
-        <div className="dash-section-head">
-          <h2 id="dash-sets" tabIndex={-1}>
-            Question sets
-          </h2>
-        </div>
-        {plans === undefined ? (
-          <p className="muted">Loading…</p>
-        ) : locked.length === 0 ? (
-          <p className="dash-empty small">The questions of each interview are kept here, to reuse for another candidate or share with your panel.</p>
-        ) : (
-          <>
-            <ul className="dash-plans" role="list">
-              {shownSets.map((p) => (
-                <li key={p.id} className="dash-plan">
-                  <div className="dash-plan__main">
-                    <Link to={`/setup/${p.id}`} className="dash-plan__name">
-                      {p.name}
-                    </Link>
-                    <span className="small muted">
-                      {trackName(p)} · {p.questions.length} questions · {counts.get(p.id) ?? 0} interview{counts.get(p.id) === 1 ? '' : 's'}
-                    </span>
-                  </div>
-                  <div className="dash-plan__actions">
-                    <Link to={`/new?reuse=${p.id}`} className={buttonClass('default', 'sm')}>
-                      <Icon name="plus" /> Reuse<span className="visually-hidden"> for a new interview: {p.name}</span>
-                    </Link>
-                    <Button size="sm" variant="ghost" icon="download" onClick={() => exportPlan(p.id)}>
-                      Export<span className="visually-hidden"> file: {p.name}</span>
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {locked.length > SET_PAGE && (
-              <Button size="sm" variant="ghost" className="dash-more-btn" aria-expanded={allSets} onClick={() => setAllSets(!allSets)}>
-                {allSets ? 'Show fewer' : `Show all ${locked.length}`}
-              </Button>
-            )}
-          </>
-        )}
-      </section>
-
-      <div className="dash-more__side">
-        {drafts.length > 0 && (
-          <section aria-labelledby="dash-drafts" className="dash-panel">
-            <div className="dash-section-head">
-              <h2 id="dash-drafts" tabIndex={-1}>
-                Unfinished set-ups
-              </h2>
-            </div>
-            <ul className="dash-drafts" role="list">
-              {drafts.map((p) => {
-                const who = draftWho.get(p.id);
-                return (
-                  <li key={p.id} className="dash-draft">
-                    <div className="grow">
-                      <p className="dash-draft__name">{who ? `For ${who}` : trackName(p)}</p>
-                      <p className="small muted">
-                        {who ? `${trackName(p)} · ` : ''}
-                        {p.questions.length} question{p.questions.length === 1 ? '' : 's'} · {formatDate(p.createdAt)}
-                      </p>
-                    </div>
-                    <div className="cluster">
-                      <Link to={`/setup/${p.id}`} className={buttonClass('default', 'sm')}>
-                        Continue<span className="visually-hidden"> setting up {who || trackName(p)}</span>
-                      </Link>
-                      <Button size="sm" variant="ghost" icon="trash" onClick={() => setToDelete(p)}>
-                        Delete<span className="visually-hidden"> set-up {who || trackName(p)}</span>
-                      </Button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        )}
-        <section aria-labelledby="dash-bank" className="dash-panel">
-          <div className="dash-section-head">
-            <h2 id="dash-bank">Question bank</h2>
+      <h2 id="dash-welcome-title">{canCreate ? 'Start a hiring round' : 'You are not on a round yet'}</h2>
+      {canCreate ? (
+        <>
+          <p>A round is one role you are hiring for, with its own team and questions. Create one, add your team, and plan its interviews one at a time or by pasting a list.</p>
+          <div className="cluster-lg">
+            <Link to="/rounds?create=1" className={buttonClass('primary', 'lg')}>
+              <Icon name="plus" /> New round
+            </Link>
+            {isAdmin && <Link to="/rounds">See every round</Link>}
+            <HelpLink slug="12-planning-and-panels">How it works</HelpLink>
           </div>
-          <ul className="dash-banklinks" role="list">
-            {(tracks ?? []).map((t) => (
-              <li key={t.id}>
-                <Link to={`/bank/${t.id}`}>
-                  {t.name}
-                  <span className="visually-hidden"> questions</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-
-      <ConfirmDialog
-        open={!!toDelete}
-        title="Delete this set-up?"
-        danger
-        confirmLabel="Delete set-up"
-        onCancel={() => setToDelete(null)}
-        onConfirm={async () => {
-          if (!toDelete) return;
-          try {
-            await deletePlanDraft(toDelete.id);
-            clearLegacyCandidateDraft(toDelete.id);
-            // The row that held the opener is gone: move focus to a stable heading (A11Y-1).
-            setTimeout(() => (document.getElementById(drafts.length > 1 ? 'dash-drafts' : 'dash-sets') as HTMLElement | null)?.focus(), 50);
-          } catch (err) {
-            toast(err instanceof RepoError ? err.message : 'Could not delete the set-up.', 'error');
-          }
-          setToDelete(null);
-        }}
-      >
-        {toDelete && <p>The set-up and anything typed for its candidate are removed from this device. This cannot be undone.</p>}
-      </ConfirmDialog>
-    </div>
+        </>
+      ) : (
+        <p>When an organiser puts you on a round’s team, its interviews appear here, yours first.</p>
+      )}
+    </section>
   );
 }

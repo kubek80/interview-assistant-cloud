@@ -42,7 +42,7 @@ function query(ctx: AppContext, f: Filter) {
   return q.orderBy('id', 'desc');
 }
 
-const toEntry = (r: { id: string | number; at: Date; actor_label: string; action: string; entity: string; entity_id: string | null; before: unknown; after: unknown; reason: string | null }): AuditEntry => ({
+export const toEntry = (r: { id: string | number; at: Date; actor_label: string; action: string; entity: string; entity_id: string | null; before: unknown; after: unknown; reason: string | null }): AuditEntry => ({
   id: Number(r.id),
   at: r.at.toISOString(),
   actor: r.actor_label,

@@ -293,3 +293,166 @@ export interface ReviewerOption {
   name: string;
   email: string;
 }
+
+// ---- Hiring rounds, question sets and planning (ROUND-1…ROUND-5, FLOW-2…FLOW-9, TEAM-1, TEAM-2, TEAM-15) ----
+
+/** A person's place in one round's team (ROUND-2). */
+export type RoundRole = 'organiser' | 'interviewer';
+export const ROUND_ROLE_LABELS: Record<RoundRole, string> = { organiser: 'Organiser', interviewer: 'Interviewer' };
+
+export interface RoundMember {
+  id: string;
+  name: string;
+  email: string;
+  role: RoundRole;
+  /** Their role in the organisation (USER-2). */
+  globalRole: Role;
+  active: boolean;
+}
+
+/** Interviews of a round by where they are (src/domain/rounds.ts interviewStatus). */
+export interface RoundCounts {
+  upcoming: number;
+  inProgress: number;
+  waiting: number;
+  finished: number;
+}
+
+export interface RoundSummary {
+  id: string;
+  name: string;
+  trackId: string;
+  trackName: string;
+  requisitionId: string | null;
+  state: 'open' | 'closed';
+  /** The signed-in person's role in this round; null for an administrator who is not on it. */
+  myRole: RoundRole | null;
+  team: Array<{ id: string; name: string; role: RoundRole }>;
+  counts: RoundCounts;
+  retentionUntil: string;
+  createdAt: string;
+}
+
+export interface RoundDetail extends Omit<RoundSummary, 'team'> {
+  team: RoundMember[];
+  /** LIVE-3: "Hide other people's scores until you have submitted yours" (stored; used in step 2b). */
+  hideOthersScores: boolean;
+  closedAt: string | null;
+  closeReason: string | null;
+  defaultQuestionSetId: string | null;
+  /** What the signed-in person may do here (the server checks every request again). */
+  canManage: boolean;
+  canPlan: boolean;
+}
+
+/** A person who can be put on a round's team (active; not a question reviewer). */
+export interface TeamOption {
+  id: string;
+  name: string;
+  email: string;
+  globalRole: Role;
+  /** ROUND-2: only organisers and administrators can organise a round. */
+  canOrganise: boolean;
+}
+
+/** FLOW-8, FLOW-9, ROUND-3: a question set with its question snapshots and comparison code. */
+export interface QuestionSetDetail {
+  id: string;
+  roundId: string | null;
+  trackId: string;
+  trackVersion: string;
+  name: string;
+  questions: import('../domain/types').Question[];
+  categories: import('../domain/types').PlanCategory[];
+  timeBudgetMin: number;
+  /** FLOW-9: the comparison code (shown shortened). */
+  fingerprint: string;
+  /** FLOW-8: fixed once the first interview using it was planned. */
+  fixed: boolean;
+  fixedAt: string | null;
+  /** Interviews (not cancelled) that use it. */
+  interviews: number;
+  /** It is the round's current question set. */
+  isRoundDefault: boolean;
+  /** Increases with every change (optimistic concurrency for editing an unfixed set). */
+  version: number;
+}
+
+/** The questions of a set as the editor sends them; the server takes the snapshots from the bank. */
+export interface QuestionSetInput {
+  questionIds: string[];
+  categories: Array<{ id: string; weight: number; mustHave: boolean }>;
+  timeBudgetMin: number;
+  name?: string;
+}
+
+export interface SaveQuestionSetResult {
+  set: QuestionSetDetail;
+  /** FLOW-9: the round's set was fixed, so this made a new set for future interviews. */
+  replaced: boolean;
+}
+
+/** Where an interview is, as the Dashboard and the round's lists show it. */
+export type InterviewStatus = 'upcoming' | 'in-progress' | 'waiting' | 'finished';
+
+export interface PanelMember {
+  id: string;
+  name: string;
+  status: 'expected' | 'joined' | 'submitted' | 'did_not_take_part';
+}
+
+export interface InterviewSummary {
+  id: string;
+  roundId: string;
+  roundName: string;
+  roundState: 'open' | 'closed';
+  trackId: string;
+  candidate: { id: string; name: string; requisitionId: string | null };
+  /** As entered: a calendar day (YYYY-MM-DD) and a time of day (HH:MM), or null. */
+  date: string | null;
+  time: string | null;
+  state: 'planned' | 'in_progress' | 'paused' | 'completed';
+  status: InterviewStatus;
+  panel: PanelMember[];
+  /** The signed-in person is on its panel. */
+  onMyPanel: boolean;
+  note: string;
+  recordingNotice: boolean;
+  questionSet: { id: string; name: string; fingerprint: string; questions: number; minutes: number; isRoundDefault: boolean };
+  createdAt: string;
+}
+
+export interface InterviewDetail extends InterviewSummary {
+  trackName: string;
+  retentionUntil: string;
+  set: QuestionSetDetail;
+  /** The signed-in person may change or cancel it (organisers of the round, administrators). */
+  canPlan: boolean;
+}
+
+export interface PlanInterviewInput {
+  candidate: { name: string; requisitionId?: string | null };
+  date?: string | null;
+  time?: string | null;
+  /** User ids, all on the round's team. */
+  panel: string[];
+  note?: string;
+  recordingNotice?: boolean;
+  /** "Use different questions for this interview": a set of its own (fixed at once). */
+  questions?: QuestionSetInput;
+}
+
+export interface PlanManyInput {
+  lines: Array<{ candidate: string; requisitionId?: string | null; date?: string | null; time?: string | null; panel: string[]; note?: string }>;
+  recordingNotice?: boolean;
+  /** People named in the lines who are not on the team yet: added as interviewers first. */
+  addToTeam?: string[];
+}
+
+export interface ChangeInterviewInput {
+  date?: string | null;
+  time?: string | null;
+  panel?: string[];
+  note?: string;
+  recordingNotice?: boolean;
+}

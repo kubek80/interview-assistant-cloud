@@ -87,15 +87,15 @@ describe('plan several (TEAM-15)', () => {
   it('TEAM-15: tab-separated lines pasted from a spreadsheet, with a header in any column order', () => {
     const { lines } = parseBulkPlan('Name\tReq\tDate\tTime\tInterviewers\nAna Diaz\tREQ-1\t2026-12-01\t9:30\tBen, Cy\n Bo  Li \t\t1/12/2026\t2pm\t\n');
     expect(lines).toEqual([
-      { line: 1, candidate: 'Ana Diaz', requisitionId: 'REQ-1', date: '2026-12-01', time: '09:30', interviewers: ['Ben', 'Cy'], problems: [] },
-      { line: 2, candidate: 'Bo Li', requisitionId: null, date: '2026-12-01', time: '14:00', interviewers: [], problems: [] },
+      { line: 1, candidate: 'Ana Diaz', requisitionId: 'REQ-1', date: '2026-12-01', time: '09:30', interviewers: ['Ben', 'Cy'], note: '', problems: [] },
+      { line: 2, candidate: 'Bo Li', requisitionId: null, date: '2026-12-01', time: '14:00', interviewers: [], note: '', problems: [] },
     ]);
   });
 
-  it('TEAM-15: comma-separated lines without a header use the order candidate, date, time, requisition id, interviewers; problems are per line', () => {
-    const { lines, tooMany } = parseBulkPlan('Ana Diaz,2026-12-01,10:00,REQ-1,Ben; Cy\nann@example.com,31/2/2026,25:00,,\nChen Wu,,10:00,,\nDee');
+  it('TEAM-15: comma-separated lines without a header use the order candidate, date, time, interviewers, note; problems are per line', () => {
+    const { lines, tooMany } = parseBulkPlan('Ana Diaz,2026-12-01,10:00,Ben; Cy,Room 4\nann@example.com,31/2/2026,25:00,,\nChen Wu,,10:00,,\nDee');
     expect(tooMany).toBe(false);
-    expect(lines[0]).toMatchObject({ candidate: 'Ana Diaz', date: '2026-12-01', time: '10:00', requisitionId: 'REQ-1', interviewers: ['Ben', 'Cy'], problems: [] });
+    expect(lines[0]).toMatchObject({ candidate: 'Ana Diaz', date: '2026-12-01', time: '10:00', requisitionId: null, interviewers: ['Ben', 'Cy'], note: 'Room 4', problems: [] });
     expect(lines[1].problems).toHaveLength(3);
     expect(lines[2].problems).toEqual(['A time needs a date.']);
     expect(lines[3]).toMatchObject({ candidate: 'Dee', date: null, problems: [] });

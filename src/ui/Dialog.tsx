@@ -148,10 +148,12 @@ export interface ReasonDialogProps {
   initialValue?: string;
   onSubmit: (reason: string) => void | Promise<void>;
   onCancel: () => void;
+  /** The reason may be left empty (closing a round, ROUND-5). */
+  optional?: boolean;
 }
 
 /** Asks for a required reason (FLOW-17 skip, AUD-4 amend). */
-export function ReasonDialog({ open, title, label = 'Reason', hint, children, submitLabel = 'Save', initialValue = '', onSubmit, onCancel }: ReasonDialogProps) {
+export function ReasonDialog({ open, title, label = 'Reason', hint, children, submitLabel = 'Save', initialValue = '', onSubmit, onCancel, optional }: ReasonDialogProps) {
   const [reason, setReason] = useState(initialValue);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -170,7 +172,7 @@ export function ReasonDialog({ open, title, label = 'Reason', hint, children, su
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!reason.trim()) {
+    if (!reason.trim() && !optional) {
       setError('A reason is required.');
       return;
     }
@@ -200,7 +202,7 @@ export function ReasonDialog({ open, title, label = 'Reason', hint, children, su
     >
       <form id={formId} onSubmit={submit} className="stack">
         {children}
-        <Field label={label} hint={hint} error={error} required>
+        <Field label={label} hint={hint} error={error} required={!optional}>
           <TextArea data-autofocus value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
         </Field>
       </form>

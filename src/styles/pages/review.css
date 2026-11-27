@@ -20,7 +20,11 @@
 .rv-add { text-decoration: underline; text-decoration-style: solid; }
 .rv-del { text-decoration: line-through; color: var(--color-text-muted); }
 .rv-work { display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: var(--space-5); align-items: start; }
-.rv-work__list { position: sticky; top: var(--space-4); max-height: calc(100vh - 8rem); overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+/* The sticky action bar below is about 4.5rem tall: the question list stops above it, and anything
+   scrolled into view (keyboard focus, links) stops above it too, so nothing is hidden behind it. */
+.rv-work { --rv-bar: 5rem; }
+html:has(.rv-actions) { scroll-padding-bottom: var(--rv-bar, 5rem); }
+.rv-work__list { position: sticky; top: var(--space-4); max-height: calc(100vh - var(--space-4) - var(--rv-bar) - var(--space-4)); overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
 .rv-work__list ol { list-style: none; margin: 0; padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; }
 .rv-work__list button { width: 100%; text-align: left; display: flex; gap: var(--space-2); align-items: baseline; background: none; border: 0; border-radius: var(--radius); padding: var(--space-2); color: var(--color-text); font: inherit; cursor: pointer; min-height: var(--target-min); }
 .rv-work__list button:hover { background: var(--color-surface-2); }
@@ -30,7 +34,10 @@
 .rv-work__main { min-width: 0; }
 .rv-actions { position: sticky; bottom: 0; background: var(--color-bg); border-top: 1px solid var(--color-border); padding: var(--space-3) 0; display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; z-index: 1; }
 @media (max-width: 48rem) {
-  .rv-work { grid-template-columns: minmax(0, 1fr); }
+  .rv-work { grid-template-columns: minmax(0, 1fr); --rv-bar: 0rem; }
+  /* On a narrow screen the buttons wrap to three rows: a sticky bar would cover a third of the
+     window, so it stays in place at the end of the question instead. */
+  .rv-actions { position: static; }
   .rv-work__list { position: static; max-height: 14rem; }
   .rv-compare th[scope='row'] { width: auto; }
 }

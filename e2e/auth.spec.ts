@@ -6,14 +6,15 @@ const navLinks = async (page: import('@playwright/test').Page) =>
 
 test('AUTH-6 USER-2 HOST-8: development sign-in as administrator, organiser and interviewer shows each the screens of their role', async ({ page, context }) => {
   await signIn(page, ADMIN);
-  expect(await navLinks(page)).toEqual(['Home', 'Question bank', 'Reviews', 'Users', 'Admin', 'Docs']);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Welcome, Ada');
+  expect(await navLinks(page)).toEqual(['Dashboard', 'Rounds', 'Question bank', 'Reviews', 'Users', 'Admin', 'Docs']);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dashboard');
+  await expect(page.getByText('Welcome, Ada.')).toBeVisible();
   await context.clearCookies();
   await signIn(page, ORGANISER);
-  expect(await navLinks(page)).toEqual(['Home', 'Question bank', 'Reviews', 'Docs']);
+  expect(await navLinks(page)).toEqual(['Dashboard', 'Rounds', 'Question bank', 'Reviews', 'Docs']);
   await context.clearCookies();
   await signIn(page, INTERVIEWER);
-  expect(await navLinks(page)).toEqual(['Home', 'Question bank', 'Docs']);
+  expect(await navLinks(page)).toEqual(['Dashboard', 'Rounds', 'Question bank', 'Docs']);
   // A screen for administrators only says so, and the server refuses its data anyway.
   await page.goto('/#/users');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Not available');

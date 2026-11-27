@@ -71,7 +71,7 @@ test('A11Y-1 A11Y-2: the sign-in screen and the Users page work with the keyboar
   await page.getByLabel('Email', { exact: true }).focus();
   await page.keyboard.type(ADMIN);
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Welcome/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dashboard');
   await page.goto('/#/users');
   await expect(page.locator('h1')).toHaveCount(1);
   await page.getByRole('button', { name: 'Add people' }).focus();

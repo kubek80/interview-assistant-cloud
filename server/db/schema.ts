@@ -147,6 +147,80 @@ export interface RoundMembersTable {
   added_by: string | null;
 }
 
+// ---- Question sets, candidates and interviews (migrations 0002 and 0004, step 2) ----
+
+export interface QuestionSetsTable {
+  id: Generated<string>;
+  round_id: string | null;
+  track_id: string;
+  track_version: string;
+  name: string;
+  /** Ordered question snapshots (src/domain/types Question). */
+  questions: Json<import('../../src/domain/types').Question[]>;
+  /** The set's categories with its own weights and must-have flags (FLOW-6). */
+  categories: Json<import('../../src/domain/types').PlanCategory[]>;
+  time_budget_min: number;
+  fingerprint: string;
+  created_at: Generated<Date>;
+  created_by: string | null;
+  /** FLOW-8: set when the first interview using it is planned; then it never changes. */
+  fixed_at: TimestampNull;
+  updated_at: Generated<Date>;
+  version: Generated<number>;
+}
+
+export interface CandidatesTable {
+  id: Generated<string>;
+  round_id: string;
+  display_name: string;
+  requisition_id: string | null;
+  /** candidateKey(): name and requisition, upper case, spaces collapsed; unique per round. */
+  key: string;
+  created_at: Generated<Date>;
+  created_by: string | null;
+}
+
+export type InterviewState = 'planned' | 'in_progress' | 'paused' | 'completed' | 'cancelled';
+
+export interface InterviewsTable {
+  id: Generated<string>;
+  round_id: string;
+  candidate_id: string;
+  question_set_id: string;
+  state: Generated<InterviewState>;
+  scheduled_date: ColumnType<string | null, string | null | undefined, string | null>;
+  scheduled_time: string | null;
+  note: string | null;
+  recording_notice: Generated<boolean>;
+  retention_until: ColumnType<string, string, string>;
+  consent_at: TimestampNull;
+  consent_by: string | null;
+  recording_consent_at: TimestampNull;
+  lead_user_id: string | null;
+  current_question_id: string | null;
+  timer_accumulated_ms: Generated<number>;
+  timer_running_since: TimestampNull;
+  question_timers: ColumnType<Record<string, unknown>, string | undefined, string>;
+  started_at: TimestampNull;
+  completed_at: TimestampNull;
+  cancelled_at: TimestampNull;
+  cancelled_by: string | null;
+  version: Generated<number>;
+  created_at: Generated<Date>;
+  created_by: string | null;
+  updated_at: Generated<Date>;
+}
+
+export type PanelStatus = 'expected' | 'joined' | 'submitted' | 'did_not_take_part';
+
+export interface InterviewPanelTable {
+  interview_id: string;
+  user_id: string;
+  status: Generated<PanelStatus>;
+  joined_at: TimestampNull;
+  marked_by: string | null;
+}
+
 // ---- Question review (migration 0003, REVIEW-1 to REVIEW-7) ----
 
 export interface ReviewRequestsTable {
@@ -235,6 +309,10 @@ export interface Database {
   schema_migrations: SchemaMigrationsTable;
   rounds: RoundsTable;
   round_members: RoundMembersTable;
+  question_sets: QuestionSetsTable;
+  candidates: CandidatesTable;
+  interviews: InterviewsTable;
+  interview_panel: InterviewPanelTable;
   review_requests: ReviewRequestsTable;
   review_request_items: ReviewRequestItemsTable;
   review_request_reviewers: ReviewRequestReviewersTable;

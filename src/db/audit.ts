@@ -34,6 +34,20 @@ export async function exportAuditCsv(filter: AuditFilter): Promise<{ fileName: s
 
 /** Plain words for the actions the log records (unknown ones are shown as they are). */
 export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  'round.created': 'Round created',
+  'round.changed': 'Round settings changed',
+  'round.closed': 'Round closed',
+  'round.reopened': 'Round reopened',
+  'round.member_added': 'Added to the team',
+  'round.member_changed': 'Team role changed',
+  'round.member_removed': 'Removed from the team',
+  'question_set.changed': 'Questions changed',
+  'question_set.fixed': 'Questions fixed',
+  'question_set.replaced': 'New questions for future interviews',
+  'interview.planned': 'Interview planned',
+  'interview.planned_many': 'Several interviews planned',
+  'interview.changed': 'Interview changed',
+  'interview.cancelled': 'Interview cancelled',
   'user.added': 'Person added',
   'user.changed': 'Person changed',
   'user.deactivated': 'Person deactivated',

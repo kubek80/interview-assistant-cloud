@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { continueProblems, mixInWords, moveItem, moveTo, normaliseInitials, parseBudget, parseQuotas, parseWeight, questionMeta, quotasToText, shortfallInWords, toggleSelected } from './logic';
-import { clearLegacyCandidateDraft as clearCandidateDraft, emptyCandidateDraft, loadLegacyCandidateDraft as loadCandidateDraft, saveLegacyCandidateDraft as saveCandidateDraft } from './candidateDraft';
 import { DEFAULT_QUOTAS } from '../../domain/plan';
 
 describe('setup logic', () => {
@@ -75,34 +74,3 @@ describe('setup logic', () => {
     expect(normaliseInitials('x'.repeat(80))).toHaveLength(60);
   });
 });
-
-describe('candidate draft (FLOW-7, RES-1, PRIV-3)', () => {
-  function memoryStore() {
-    const m = new Map<string, string>();
-    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k), m };
-  }
-
-  it('FLOW-7: defaults the retention date to 90 days ahead', () => {
-    const d = emptyCandidateDraft('Sam', new Date(2026, 10, 24));
-    expect(d).toEqual({ initials: '', requisitionId: '', interviewerName: 'Sam', otherInterviewers: [], retentionUntil: '2027-02-22' });
-  });
-
-  it('RES-1: a legacy sessionStorage draft is read by plan id (to move it into IndexedDB), and is cleared', () => {
-    const s = memoryStore();
-    const d = { ...emptyCandidateDraft('Sam'), initials: 'AB' };
-    saveCandidateDraft('p1', d, s);
-    expect(loadCandidateDraft('p1', s)).toEqual(d);
-    expect(loadCandidateDraft('p2', s)).toBeNull();
-    clearCandidateDraft('p1', s);
-    expect(loadCandidateDraft('p1', s)).toBeNull();
-  });
-
-  it('ignores malformed stored data', () => {
-    const s = memoryStore();
-    s.setItem('ia.setup-candidate.p1', '{not json');
-    expect(loadCandidateDraft('p1', s)).toBeNull();
-    s.setItem('ia.setup-candidate.p1', JSON.stringify({ initials: 5, consentConfirmed: 'yes', requisitionId: 'R1' }));
-    expect(loadCandidateDraft('p1', s)).toEqual({ requisitionId: 'R1' });
-  });
-});
-

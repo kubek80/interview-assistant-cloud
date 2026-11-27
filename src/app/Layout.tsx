@@ -15,7 +15,8 @@ function navFor(me: Me, counts: { openProposals: number; openReviewItems: number
   const has = (p: string) => me.permissions.includes(p);
   const reviewer = me.role === 'reviewer';
   return [
-    { to: '/', label: 'Home', end: true, show: !reviewer, count: 0 },
+    { to: '/', label: 'Dashboard', end: true, show: !reviewer, count: 0 },
+    { to: '/rounds', label: 'Rounds', show: has('rounds.list'), count: 0 },
     { to: '/to-review', label: 'To review', show: has('reviews.respond'), count: counts?.openReviewItems ?? 0, countLabel: 'to do' },
     { to: '/bank', label: 'Question bank', show: has('bank.read'), count: 0 },
     { to: '/reviews', label: 'Reviews', show: has('bank.review'), count: counts?.openProposals ?? 0, countLabel: 'proposals waiting' },

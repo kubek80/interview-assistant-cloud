@@ -49,13 +49,17 @@ export function LiveProvider({ children, enabled = true }: { children: ReactNode
       source = new EventSource(`/api/live?${topics.map((t) => `topic=${encodeURIComponent(t)}`).join('&')}`);
       source.addEventListener('ready', () => {
         setStatus('live');
-        topics.forEach(refetch);
+        // Anything may have been missed while disconnected: refetch what the followed topics cover
+        // (the person's own topic carries "added to a round" and permission changes).
+        new Set(topics.flatMap((t) => (t === 'rounds' || t.startsWith('round:') ? ['round'] : t.startsWith('user:') ? ['me', 'round'] : [t]))).forEach(refetch);
       });
       source.addEventListener('change', (e) => {
         try {
-          const ev = JSON.parse((e as MessageEvent<string>).data) as { topic: string };
-          if (ev.topic.startsWith('user:')) void queryClient.invalidateQueries({ queryKey: ['me'] });
-          else void refetch(ev.topic.split(':')[0] === 'round' ? 'round' : ev.topic);
+          const ev = JSON.parse((e as MessageEvent<string>).data) as { topic: string; kind: string };
+          if (ev.topic.startsWith('user:')) {
+            // "rounds": I was added to or removed from a round; anything else may change my permissions.
+            void queryClient.invalidateQueries({ queryKey: [ev.kind === 'rounds' ? 'round' : 'me'] });
+          } else void refetch(ev.topic === 'rounds' || ev.topic.startsWith('round:') ? 'round' : ev.topic);
         } catch {
           /* ignore */
         }
@@ -89,8 +93,9 @@ export function LiveProvider({ children, enabled = true }: { children: ReactNode
 }
 
 /** Keeps the given topics live while the calling component is mounted. */
-export function useLiveTopics(...topics: string[]): void {
+export function useLiveTopics(...given: string[]): void {
   const ctx = useContext(LiveContext);
+  const topics = [...new Set(given.filter(Boolean))];
   const key = topics.join('|');
   useEffect(() => {
     if (!ctx) return;

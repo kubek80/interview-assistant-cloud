@@ -19,11 +19,11 @@ test('REVIEW-1: a question reviewer sees only the bank, their review list and th
   await expect(page).toHaveURL(/#\/to-review$/);
   const nav = (await page.getByRole('navigation', { name: 'Main' }).getByRole('link').allTextContents()).map((s) => s.trim().replace(/\d+ to do$/, '').trim());
   expect(nav).toEqual(['To review', 'Question bank', 'Docs']);
-  for (const path of ['/users', '/admin', '/reviews', '/summary', '/interview/00000000-0000-4000-8000-000000000000']) {
+  for (const path of ['/users', '/admin', '/reviews', '/summary', '/rounds', '/new', '/interviews/00000000-0000-4000-8000-000000000000']) {
     await page.goto(`/#${path}`);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Not available');
   }
-  for (const url of ['/api/users', '/api/audit', '/api/settings', '/api/reviews', '/api/audit/export']) expect((await page.request.get(url)).status(), url).toBe(403);
+  for (const url of ['/api/users', '/api/audit', '/api/settings', '/api/reviews', '/api/audit/export', '/api/rounds', '/api/my/interviews']) expect((await page.request.get(url)).status(), url).toBe(403);
   const edit = await page.request.put('/api/bank/questions/qa-1', { headers: { 'x-ia-request': '1' }, data: {} });
   expect(edit.status()).toBe(403);
   await page.goto('/#/bank/qa');
@@ -182,4 +182,43 @@ test('A11Y-7 A11Y-6 REVIEW-1: the review screens pass axe in light and dark and 
     }
   }
   expect(problems).toEqual([]);
+});
+
+test('REVIEW-7 A11Y-6: on the work-through screen the action bar never hides the end of the question list or the page, at 1280 and at 390', async ({ page, browser }) => {
+  await signIn(page, ORGANISER);
+  const reviewers = (await (await page.request.get('/api/reviews/reviewers')).json()) as Array<{ id: string; email: string }>;
+  const remy = reviewers.find((r) => r.email === 'reviewer2@example.test')!;
+  const created = await page.request.post('/api/reviews', { headers: { 'x-ia-request': '1' }, data: { trackId: 'web', scope: 'track', reviewerIds: [remy.id], note: 'Everything' } });
+  const id = ((await created.json()) as { id: string }).id;
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 800 }]) {
+    const ctx = await browser.newContext({ viewport });
+    const p = await ctx.newPage();
+    await signIn(p, 'reviewer2@example.test', `/to-review/${id}`);
+    await expect(p.getByRole('heading', { name: /^Question \d+/ })).toBeVisible();
+    for (const y of [0, 400, 100_000]) {
+      await p.evaluate((top) => window.scrollTo(0, top), y);
+      await p.waitForTimeout(100);
+      // The last question in the list, scrolled into its box, is not under the bar.
+      const covered = await p.evaluate(() => {
+        const list = document.querySelector('.rv-work__list')!;
+        list.scrollTop = list.scrollHeight;
+        const last = list.querySelector('li:last-child')!.getBoundingClientRect();
+        const box = list.getBoundingClientRect();
+        const bar = document.querySelector('.rv-actions')!.getBoundingClientRect();
+        const visibleBottom = Math.min(box.bottom, window.innerHeight);
+        const overlaps = (r: DOMRect) => r.bottom > bar.top + 1 && r.top < bar.bottom - 1 && r.right > bar.left && r.left < bar.right;
+        return { listOverlaps: overlaps(box), lastHidden: visibleBottom < last.bottom - 1 && box.bottom <= window.innerHeight };
+      });
+      expect(covered.listOverlaps, `${viewport.width}px at ${y}: list under the bar`).toBe(false);
+    }
+    // At the end of the page the bar is in its place below everything else.
+    await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const end = await p.evaluate(() => {
+      const bar = document.querySelector('.rv-actions')!.getBoundingClientRect();
+      const before = (document.querySelector('.rv-actions')!.previousElementSibling as HTMLElement).getBoundingClientRect();
+      return before.bottom <= bar.top + 1;
+    });
+    expect(end).toBe(true);
+    await ctx.close();
+  }
 });

@@ -1,14 +1,16 @@
 // TEAM-15: "Plan several": lines typed or pasted from a spreadsheet, one planned interview each.
-// Pure: the repository creates the interviews once the preview is accepted.
+// Pure: the preview matches the panel against the round's team (src/domain/rounds.ts matchPanel) and
+// the server creates every interview at once, or none, when the preview is accepted.
 import { detectDelimiter, parseDelimited } from './csv';
 import { MAX_CANDIDATE, cleanCandidate, isValidCandidate } from './plan';
 import { interviewerNameProblems } from './interviewers';
 import { MAX_EXPECTED, isDay, isTimeOfDay, uniqueNames } from './team';
+import { MAX_PLAN_NOTE, MAX_REQUISITION } from './rounds';
 
-export type BulkColumn = 'candidate' | 'date' | 'time' | 'requisitionId' | 'interviewers';
+export type BulkColumn = 'candidate' | 'date' | 'time' | 'requisitionId' | 'interviewers' | 'note';
 
-/** Column order when there is no header line. */
-export const BULK_COLUMNS: readonly BulkColumn[] = ['candidate', 'date', 'time', 'requisitionId', 'interviewers'];
+/** Column order when there is no header line (a requisition id column needs a header). */
+export const BULK_COLUMNS: readonly BulkColumn[] = ['candidate', 'date', 'time', 'interviewers', 'note'];
 
 /** The most lines accepted in one go. */
 export const MAX_BULK_LINES = 200;
@@ -20,7 +22,9 @@ export interface BulkLine {
   requisitionId: string | null;
   date: string | null;
   time: string | null;
+  /** The panel as written: emails or names, matched against the team by the preview. */
   interviewers: string[];
+  note: string;
   problems: string[];
 }
 
@@ -29,7 +33,8 @@ const HEADER_WORDS: Array<[RegExp, BulkColumn]> = [
   [/^(date|day)$/, 'date'],
   [/^(time|start|start time)$/, 'time'],
   [/^(requisition|requisition id|req|req id|requisition number)$/, 'requisitionId'],
-  [/^(interviewers?|panel|who)$/, 'interviewers'],
+  [/^(interviewers?|panel|panel members?|who)$/, 'interviewers'],
+  [/^(note|notes|comment|room|link)$/, 'note'],
 ];
 
 /** A header line names its columns; returns their meaning, or null when the line is data. */
@@ -105,11 +110,13 @@ export function parseBulkPlan(text: string): { lines: BulkLine[]; tooMany: boole
     if (rawTime && !time) problems.push(`“${rawTime.slice(0, 40)}” is not a time (use 14:30 or 2:30pm).`);
     if (time && !rawDate) problems.push('A time needs a date.');
     const req = at(row, 'requisitionId');
-    if (req.length > 100) problems.push('The requisition id is longer than 100 characters.');
+    if (req.length > MAX_REQUISITION) problems.push(`The requisition id is longer than ${MAX_REQUISITION} characters.`);
+    const note = at(row, 'note');
+    if (note.length > MAX_PLAN_NOTE) problems.push(`The note is longer than ${MAX_PLAN_NOTE} characters.`);
     const names = uniqueNames(splitNames(at(row, 'interviewers'), delimiter === ','));
     if (names.length > MAX_EXPECTED) problems.push(`At most ${MAX_EXPECTED} interviewers.`);
     else if (interviewerNameProblems(names).some(Boolean)) problems.push('An interviewer’s name is too long.');
-    return { line: i + 1, candidate, requisitionId: req || null, date, time, interviewers: names, problems };
+    return { line: i + 1, candidate, requisitionId: req || null, date, time, interviewers: names, note, problems };
   });
   return { lines, tooMany: body.length > MAX_BULK_LINES };
 }

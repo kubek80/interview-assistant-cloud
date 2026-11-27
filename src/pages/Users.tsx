@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { addUsers, previewInvites, removeUser, updateUser, useUsers } from '../db';
 import { ROLES, ROLE_LABELS, type InvitePreviewLine, type Me, type Role, type UserSummary } from '../shared/api';
@@ -193,7 +194,17 @@ function UserRow(props: { user: UserSummary; isMe: boolean; onRole: (r: Role) =>
       <td data-label="Last signed in" className="nowrap">
         {u.lastSignInAt ? <time dateTime={u.lastSignInAt}>{formatDateTime(u.lastSignInAt)}</time> : <span className="muted">Never</span>}
       </td>
-      <td data-label="Rounds">{u.role === 'reviewer' ? <span className="muted">Not on rounds</span> : u.rounds.length ? u.rounds.map((r) => r.name).join(', ') : <span className="muted">None</span>}</td>
+      <td data-label="Rounds">{u.role === 'reviewer' ? <span className="muted">Not on rounds</span> : u.rounds.length ? (
+          u.rounds.map((r, i) => (
+            <span key={r.id}>
+              {i > 0 && ', '}
+              <Link to={`/rounds/${r.id}/team`}>{r.name}</Link>
+              {r.role === 'organiser' && <span className="small muted"> (organiser)</span>}
+            </span>
+          ))
+        ) : (
+          <span className="muted">None</span>
+        )}</td>
       <td className="pc-rtable__actions">
         <MenuButton label="More" variant="ghost" size="sm" srLabel={` for ${label(u)}`} items={items} />
       </td>

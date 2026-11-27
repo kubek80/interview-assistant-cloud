@@ -12,7 +12,13 @@ import Docs from '../pages/Docs';
 import Users from '../pages/Users';
 import SignIn from '../pages/SignIn';
 import NoAccess from '../pages/NoAccess';
-import Home from '../pages/Home';
+import Dashboard from '../pages/Dashboard';
+import Rounds from '../pages/Rounds';
+import RoundPage from '../pages/round/RoundPage';
+import NewInterview from '../pages/NewInterview';
+import PlanSeveral from '../pages/PlanSeveral';
+import ReadyScreen from '../pages/interview/PreStart';
+import { useRounds } from '../db';
 import ComingNext from '../pages/ComingNext';
 import Reviews from '../pages/Reviews';
 import ToReview from '../pages/ToReview';
@@ -55,6 +61,38 @@ function Interviews({ me, title }: { me: Me; title: string }) {
     );
   }
   return <ComingNext title={title} />;
+}
+
+/**
+ * /new and /plan without a round: straight into the one open round the person organises, else a
+ * choice of their rounds (ROUND-4: interviews are planned inside a round).
+ */
+function ChooseRound({ me, what }: { me: Me; what: 'new' | 'plan' }) {
+  const rounds = useRounds();
+  if (!rounds) return <PageHeader title={what === 'new' ? 'New interview' : 'Plan several interviews'} />;
+  const mine = rounds.filter((r) => r.state === 'open' && (r.myRole === 'organiser' || me.role === 'admin'));
+  if (mine.length === 1) return <Navigate to={`/rounds/${mine[0].id}/${what}`} replace />;
+  return (
+    <>
+      <PageHeader title={what === 'new' ? 'New interview' : 'Plan several interviews'} />
+      {mine.length === 0 ? (
+        <p>
+          Interviews are planned inside a hiring round, and you organise no open round. <Link to="/rounds">See your rounds</Link>
+        </p>
+      ) : (
+        <>
+          <p>Which round is it for?</p>
+          <ul className="choose-round" role="list">
+            {mine.map((r) => (
+              <li key={r.id}>
+                <Link to={`/rounds/${r.id}/${what}`}>{r.name}</Link> <span className="muted small">{r.trackName}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
 }
 
 /** Shows a plain message instead of a blank page when loading data fails. */
@@ -110,7 +148,15 @@ function SignedInApp() {
     <LiveProvider>
       <Routes>
         <Route element={<Layout me={me} />}>
-          <Route index element={me.role === 'reviewer' ? <Navigate to="/to-review" replace /> : <Home me={me} />} />
+          <Route index element={me.role === 'reviewer' ? <Navigate to="/to-review" replace /> : <Dashboard me={me} />} />
+          <Route path="rounds" element={<Only permission="rounds.list" me={me}><Rounds me={me} /></Only>} />
+          <Route path="rounds/:roundId" element={<Only permission="rounds.list" me={me}><RoundPage me={me} /></Only>} />
+          <Route path="rounds/:roundId/new" element={<Only permission="rounds.list" me={me}><NewInterview /></Only>} />
+          <Route path="rounds/:roundId/plan" element={<Only permission="rounds.list" me={me}><PlanSeveral /></Only>} />
+          <Route path="rounds/:roundId/:section" element={<Only permission="rounds.list" me={me}><RoundPage me={me} /></Only>} />
+          <Route path="interviews/:id" element={<Only permission="rounds.list" me={me}><ReadyScreen /></Only>} />
+          {/* Step 2b: the live interview (starting it records the consent, LIVE-6). */}
+          <Route path="interviews/:id/live" element={<Interviews me={me} title="Interview" />} />
           <Route path="bank" element={<QuestionBank />} />
           <Route path="bank/:trackId" element={<QuestionBank />} />
           <Route
@@ -172,10 +218,8 @@ function SignedInApp() {
             }
           />
           {/* Steps 2 and 3 of the hosted build: the routes exist so links keep working. */}
-          <Route path="new" element={<Interviews me={me} title="New interview" />} />
-          <Route path="plan" element={<Interviews me={me} title="Plan several interviews" />} />
-          <Route path="setup/:planId" element={<Interviews me={me} title="Interview set-up" />} />
-          <Route path="interview/:sessionId" element={<Interviews me={me} title="Interview" />} />
+          <Route path="new" element={<Only permission="rounds.list" me={me}><ChooseRound me={me} what="new" /></Only>} />
+          <Route path="plan" element={<Only permission="rounds.list" me={me}><ChooseRound me={me} what="plan" /></Only>} />
           <Route path="scorecard/:sessionId" element={<Interviews me={me} title="Scorecard" />} />
           <Route path="debrief/:sessionId" element={<Interviews me={me} title="Debrief" />} />
           <Route path="compare" element={<Interviews me={me} title="Compare candidates" />} />
