@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { NavLink, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { exportTrackCsv, hasPermission, setLooksGood, setQuestionStatus, useFeedback, useMe, useTrackBank, useTracks } from '../db';
 import { Feedback } from './review/Feedback';
 import '../styles/pages/review.css';
@@ -62,7 +62,7 @@ export default function QuestionBank() {
           <ul role="list">
             {tracks.map((t) => (
               <li key={t.id}>
-                <NavLink to={`/bank/${t.id}`} aria-current={t.id === trackId ? 'page' : undefined} className={t.id === trackId ? 'active' : undefined}>
+                <Link to={`/bank/${t.id}`} aria-current={t.id === trackId ? 'page' : undefined} className={t.id === trackId ? 'active' : undefined}>
                   {t.name}
                   {canEdit && t.changedAt && (
                     <span className="bank-tracks__mark" title="Not exported">
@@ -70,7 +70,7 @@ export default function QuestionBank() {
                       ●<span className="visually-hidden"> (changes not exported)</span>
                     </span>
                   )}
-                </NavLink>
+                </Link>
               </li>
             ))}
           </ul>
